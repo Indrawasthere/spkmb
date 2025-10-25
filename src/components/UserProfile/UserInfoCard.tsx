@@ -7,7 +7,6 @@ import Label from "../form/Label";
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
   const handleSave = () => {
-    // Handle save logic here
     console.log("Saving changes...");
     closeModal();
   };
@@ -25,7 +24,7 @@ export default function UserInfoCard() {
                 First Name
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Musharof
+                Muhammad
               </p>
             </div>
 
@@ -34,7 +33,7 @@ export default function UserInfoCard() {
                 Last Name
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Chowdhury
+                Fadlan
               </p>
             </div>
 
@@ -43,7 +42,7 @@ export default function UserInfoCard() {
                 Email address
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                randomuser@pimjo.com
+                mhmdfdln14@gmail.com
               </p>
             </div>
 
@@ -52,7 +51,7 @@ export default function UserInfoCard() {
                 Phone
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                +09 363 398 46
+                +62 823-1233-5006
               </p>
             </div>
 
@@ -61,7 +60,7 @@ export default function UserInfoCard() {
                 Bio
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Team Manager
+                Software Engineer Manager
               </p>
             </div>
           </div>
@@ -112,26 +111,26 @@ export default function UserInfoCard() {
                     <Label>Facebook</Label>
                     <Input
                       type="text"
-                      value="https://www.facebook.com/PimjoHQ"
+                      value="https://www.facebook.com/"
                     />
                   </div>
 
                   <div>
                     <Label>X.com</Label>
-                    <Input type="text" value="https://x.com/PimjoHQ" />
+                    <Input type="text" value="https://x.com/4lexindra" />
                   </div>
 
                   <div>
                     <Label>Linkedin</Label>
                     <Input
                       type="text"
-                      value="https://www.linkedin.com/company/pimjo"
+                      value="https://www.linkedin.com/muhammadfadlanh"
                     />
                   </div>
 
                   <div>
                     <Label>Instagram</Label>
-                    <Input type="text" value="https://instagram.com/PimjoHQ" />
+                    <Input type="text" value="https://instagram.com/mhmdfdlaan" />
                   </div>
                 </div>
               </div>
@@ -143,27 +142,27 @@ export default function UserInfoCard() {
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                   <div className="col-span-2 lg:col-span-1">
                     <Label>First Name</Label>
-                    <Input type="text" value="Musharof" />
+                    <Input type="text" value="Muhammad" />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Last Name</Label>
-                    <Input type="text" value="Chowdhury" />
+                    <Input type="text" value="Fadlan" />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email Address</Label>
-                    <Input type="text" value="randomuser@pimjo.com" />
+                    <Input type="text" value="mhmdfdln14@gmail.com" />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Phone</Label>
-                    <Input type="text" value="+09 363 398 46" />
+                    <Input type="text" value="+62 823 1233 5006" />
                   </div>
 
                   <div className="col-span-2">
                     <Label>Bio</Label>
-                    <Input type="text" value="Team Manager" />
+                    <Input type="text" value="Software Engineer Manager" />
                   </div>
                 </div>
               </div>

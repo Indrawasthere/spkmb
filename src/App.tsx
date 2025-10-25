@@ -1,56 +1,57 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
-import Videos from "./pages/UiElements/Videos";
-import Images from "./pages/UiElements/Images";
-import Alerts from "./pages/UiElements/Alerts";
-import Badges from "./pages/UiElements/Badges";
-import Avatars from "./pages/UiElements/Avatars";
-import Buttons from "./pages/UiElements/Buttons";
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
 import Calendar from "./pages/Calendar";
-import BasicTables from "./pages/Tables/BasicTables";
-import FormElements from "./pages/Forms/FormElements";
-import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+
+import ManajemenPaket from "./pages/ManajemenPaket";
+import DokumenArsip from "./pages/DokumenArsip";
+import PengawasanAudit from "./pages/PengawasanAudit";
+import VendorPenyedia from "./pages/VendorPenyedia";
+import KompetensiPPK from "./pages/KompetensiPPK";
+import MonitoringEvaluasi from "./pages/MonitoringEvaluasi";
+import LaporanAnalisis from "./pages/LaporanAnalisis";
+import PengaturanAkses from "./pages/PengaturanAkses";
+import BantuanPanduan from "./pages/BantuanPanduan";
+import EditProfile from "./pages/EditProfile";
+import AccountSettings from "./pages/AccountSettings";
+
+function ProtectedRoute({ children }: { children: React.ReactElement }) {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/spkmb/signin" replace />;
+}
 
 export default function App() {
   return (
-    <>
+    <AuthProvider>
       <Router>
         <ScrollToTop />
         <Routes>
           {/* Dashboard Layout */}
-          <Route path="/spkmb/" element={<AppLayout />}>
+          <Route path="/spkmb/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route index element={<Home />} />
+
+            {/* Sistem Pengawasan Routes */}
+            <Route path="manajemen-paket" element={<ManajemenPaket />} />
+            <Route path="dokumen-arsip" element={<DokumenArsip />} />
+            <Route path="pengawasan-audit" element={<PengawasanAudit />} />
+            <Route path="vendor-penyedia" element={<VendorPenyedia />} />
+            <Route path="kompetensi-ppk" element={<KompetensiPPK />} />
+            <Route path="monitoring-evaluasi" element={<MonitoringEvaluasi />} />
+            <Route path="laporan-analisis" element={<LaporanAnalisis />} />
+            <Route path="pengaturan-akses" element={<PengaturanAkses />} />
+            <Route path="bantuan-panduan" element={<BantuanPanduan />} />
 
             {/* Others Page */}
             <Route path="profile" element={<UserProfiles />} />
+            <Route path="edit-profile" element={<EditProfile />} />
+            <Route path="account-settings" element={<AccountSettings />} />
             <Route path="calendar" element={<Calendar />} />
-            <Route path="blank" element={<Blank />} />
-
-            {/* Forms */}
-            <Route path="form-elements" element={<FormElements />} />
-
-            {/* Tables */}
-            <Route path="basic-tables" element={<BasicTables />} />
-
-            {/* Ui Elements */}
-            <Route path="alerts" element={<Alerts />} />
-            <Route path="avatars" element={<Avatars />} />
-            <Route path="badge" element={<Badges />} />
-            <Route path="buttons" element={<Buttons />} />
-            <Route path="images" element={<Images />} />
-            <Route path="videos" element={<Videos />} />
-
-            {/* Charts */}
-            <Route path="line-chart" element={<LineChart />} />
-            <Route path="bar-chart" element={<BarChart />} />
           </Route>
 
           {/* Auth Layout */}
@@ -61,6 +62,6 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
-    </>
+    </AuthProvider>
   );
 }

@@ -103,12 +103,12 @@ export default function StatisticsChart() {
 
   const series = [
     {
-      name: "Sales",
-      data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
+      name: "Paket Diawasi",
+      data: [85, 92, 78, 88, 95, 82, 90, 105, 118, 112, 125, 120],
     },
     {
-      name: "Revenue",
-      data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+      name: "Temuan Audit",
+      data: [12, 8, 15, 10, 18, 14, 22, 25, 20, 28, 30, 26],
     },
   ];
   return (
@@ -116,10 +116,10 @@ export default function StatisticsChart() {
       <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
         <div className="w-full">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Statistics
+            Statistik Pengawasan
           </h3>
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Target you’ve set for each month
+            Progress pengawasan dan audit bulanan
           </p>
         </div>
         <div className="flex items-start w-full gap-3 sm:justify-end">
