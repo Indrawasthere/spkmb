@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = (email: string, password: string): boolean => {
-    if (email === 'admin@gmail.com' && password === 'djisamsoe17') {
+    if (email === 'admin@gmail.com' && password === 'qwe123') {
       setIsAuthenticated(true);
       setUserName('Admin');
       localStorage.setItem('auth', 'true');

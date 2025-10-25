@@ -43,7 +43,7 @@ SPKMB bertujuan untuk meningkatkan efisiensi dan transparansi dalam proses penge
 
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/username/spkmb.git
+   git clone https://github.com/mhmdfdln14/spkmb.git
    cd spkmb
    ```
 
@@ -78,7 +78,6 @@ Aplikasi ini menggunakan lisensi MIT. Lihat file [LICENSE.md](LICENSE.md) untuk 
 
 
 **Versi**: 2.0.1  
-**Terakhir Diperbarui**: [Tanggal]  
+**Terakhir Diperbarui**: [2025]  
 **Kontak**: [mhmdfdln14@gmail.com]
 
-Jika Anda menyukai proyek ini, beri bintang di GitHub!
