@@ -1,128 +1,163 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon } from "../icons";
+import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
+import { useAuth } from "../context/AuthContext";
 
 interface Paket {
   id: string;
   kodePaket: string;
   namaPaket: string;
-  nilai: string;
-  satker: string;
-  metode: string;
-  status: "Perencanaan" | "Proses" | "Selesai" | "Batal";
-  tanggal: string;
+  jenisPaket: string;
+  nilaiPaket: number;
+  metodePengadaan: string;
+  status: "DRAFT" | "PUBLISHED" | "ON_PROGRESS" | "COMPLETED" | "CANCELLED";
+  tanggalBuat: string;
+  createdBy: string;
 }
 
-// Dummy data paket pengadaan
-const initialPakets: Paket[] = [
-  {
-    id: "1",
-    kodePaket: "PKT-2024-001",
-    namaPaket: "Pengadaan Komputer dan Printer",
-    nilai: "Rp 250.000.000",
-    satker: "IT Department",
-    metode: "E-Lelang",
-    status: "Proses",
-    tanggal: "15 Jan 2024",
-  },
-  {
-    id: "2",
-    kodePaket: "PKT-2024-002",
-    namaPaket: "Renovasi Gedung Kantor",
-    nilai: "Rp 1.500.000.000",
-    satker: "Bagian Umum",
-    metode: "Tender",
-    status: "Perencanaan",
-    tanggal: "20 Jan 2024",
-  },
-  {
-    id: "3",
-    kodePaket: "PKT-2024-003",
-    namaPaket: "Pengadaan Kendaraan Dinas",
-    nilai: "Rp 850.000.000",
-    satker: "Bagian Umum",
-    metode: "E-Lelang",
-    status: "Selesai",
-    tanggal: "10 Jan 2024",
-  },
-  {
-    id: "4",
-    kodePaket: "PKT-2024-004",
-    namaPaket: "Jasa Konsultansi IT",
-    nilai: "Rp 450.000.000",
-    satker: "IT Department",
-    metode: "Penunjukan Langsung",
-    status: "Proses",
-    tanggal: "25 Jan 2024",
-  },
-];
-
 export default function ManajemenPaket() {
-  const [pakets, setPakets] = useState<Paket[]>(initialPakets);
+  const { user } = useAuth();
+  const [pakets, setPakets] = useState<Paket[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     kodePaket: "",
     namaPaket: "",
-    nilai: "",
-    satker: "",
-    metode: "",
-    status: "" as Paket["status"] | "",
+    jenisPaket: "",
+    nilaiPaket: "",
+    metodePengadaan: "",
+    status: "DRAFT" as Paket["status"],
   });
+  const [editingPaket, setEditingPaket] = useState<Paket | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
 
-  const handleSubmit = () => {
-    const newPaket: Paket = {
-      id: Date.now().toString(),
-      kodePaket: formData.kodePaket,
-      namaPaket: formData.namaPaket,
-      nilai: formData.nilai,
-      satker: formData.satker,
-      metode: formData.metode,
-      status: formData.status || "Perencanaan",
-      tanggal: new Date().toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-    };
+  // Fetch paket data from API
+  useEffect(() => {
+    fetchPakets();
+  }, []);
 
-    setPakets([newPaket, ...pakets]);
-    closeModal();
+  const fetchPakets = async () => {
+    try {
+      const response = await fetch('/api/paket');
+      if (response.ok) {
+        const data = await response.json();
+        setPakets(data);
+      }
+    } catch (error) {
+      console.error('Error fetching paket:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const paketData = {
+        kodePaket: formData.kodePaket,
+        namaPaket: formData.namaPaket,
+        jenisPaket: formData.jenisPaket,
+        nilaiPaket: parseFloat(formData.nilaiPaket.replace(/[^\d]/g, '')),
+        metodePengadaan: formData.metodePengadaan,
+        createdBy: user?.id || '',
+      };
+
+      let response;
+      if (editingPaket) {
+        response = await fetch(`/api/paket/${editingPaket.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...paketData, updatedBy: user?.id }),
+        });
+      } else {
+        response = await fetch('/api/paket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(paketData),
+        });
+      }
+
+      if (response.ok) {
+        await fetchPakets();
+        closeModal();
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Error saving paket:', error);
+    }
+  };
+
+  const handleEdit = (paket: Paket) => {
+    setEditingPaket(paket);
+    setFormData({
+      kodePaket: paket.kodePaket,
+      namaPaket: paket.namaPaket,
+      jenisPaket: paket.jenisPaket,
+      nilaiPaket: paket.nilaiPaket.toString(),
+      metodePengadaan: paket.metodePengadaan,
+      status: paket.status,
+    });
+    openModal();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Apakah Anda yakin ingin menghapus paket ini?')) {
+      try {
+        const response = await fetch(`/api/paket/${id}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          await fetchPakets();
+        }
+      } catch (error) {
+        console.error('Error deleting paket:', error);
+      }
+    }
+  };
+
+  const resetForm = () => {
     setFormData({
       kodePaket: "",
       namaPaket: "",
-      nilai: "",
-      satker: "",
-      metode: "",
-      status: "",
+      jenisPaket: "",
+      nilaiPaket: "",
+      metodePengadaan: "",
+      status: "DRAFT",
     });
+    setEditingPaket(null);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    openModal();
   };
 
   const filteredPakets = pakets.filter(
     (paket) =>
       paket.namaPaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
       paket.kodePaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      paket.satker.toLowerCase().includes(searchQuery.toLowerCase())
+      paket.jenisPaket.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusColor = (status: Paket["status"]) => {
     switch (status) {
-      case "Selesai":
+      case "COMPLETED":
         return "success";
-      case "Proses":
+      case "ON_PROGRESS":
         return "warning";
-      case "Perencanaan":
+      case "PUBLISHED":
         return "info";
-      case "Batal":
+      case "DRAFT":
+        return "light";
+      case "CANCELLED":
         return "error";
       default:
         return "light";
@@ -209,7 +244,7 @@ export default function ManajemenPaket() {
                     Nilai
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Satker
+                    Jenis
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     Metode
@@ -235,13 +270,13 @@ export default function ManajemenPaket() {
                       {paket.namaPaket}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {paket.nilai}
+                      Rp {paket.nilaiPaket.toLocaleString('id-ID')}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {paket.satker}
+                      {paket.jenisPaket}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {paket.metode}
+                      {paket.metodePengadaan}
                     </td>
                     <td className="px-6 py-4">
                       <Badge size="sm" color={getStatusColor(paket.status)}>
@@ -249,7 +284,7 @@ export default function ManajemenPaket() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {paket.tanggal}
+                      {new Date(paket.tanggalBuat).toLocaleDateString('id-ID')}
                     </td>
                   </tr>
                 ))}
@@ -263,7 +298,7 @@ export default function ManajemenPaket() {
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            Tambah Paket Pengadaan
+            {editingPaket ? 'Edit Paket Pengadaan' : 'Tambah Paket Pengadaan'}
           </h3>
 
           <div className="space-y-4">
@@ -305,14 +340,18 @@ export default function ManajemenPaket() {
             </div>
 
             <div>
-              <Label>Satuan Kerja</Label>
-              <Input
-                type="text"
-                value={formData.satker}
-                onChange={(e) =>
-                  setFormData({ ...formData, satker: e.target.value })
+              <Label>Jenis Paket</Label>
+              <Select
+                options={[
+                  { value: "Konstruksi", label: "Konstruksi" },
+                  { value: "Barang", label: "Barang" },
+                  { value: "Jasa Konsultansi", label: "Jasa Konsultansi" },
+                  { value: "Jasa Lainnya", label: "Jasa Lainnya" },
+                ]}
+                placeholder="Pilih jenis paket"
+                onChange={(value) =>
+                  setFormData({ ...formData, jenisPaket: value })
                 }
-                placeholder="Masukkan satuan kerja"
               />
             </div>
 

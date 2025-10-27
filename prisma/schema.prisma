@@ -1,0 +1,252 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  AUDITOR
+  MANAGER
+}
+
+// Audit Logs
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+// Manajemen Paket
+model Paket {
+  id          String     @id @default(cuid())
+  kodePaket   String     @unique
+  namaPaket   String
+  jenisPaket  String
+  nilaiPaket  Float
+  metodePengadaan String
+  status      PaketStatus @default(DRAFT)
+  tanggalBuat DateTime   @default(now())
+  tanggalUpdate DateTime @updatedAt
+  createdBy   String
+  updatedBy   String?
+
+  // Relations
+  dokumen     Dokumen[]
+  laporan     LaporanItwasda[]
+
+  @@map("paket")
+}
+
+enum PaketStatus {
+  DRAFT
+  PUBLISHED
+  ON_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Dokumen & Arsip
+model Dokumen {
+  id          String      @id @default(cuid())
+  paketId     String
+  namaDokumen String
+  jenisDokumen String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  uploadedBy  String
+  uploadedAt  DateTime    @default(now())
+
+  // Relations
+  paket Paket @relation(fields: [paketId], references: [id], onDelete: Cascade)
+
+  @@map("dokumen")
+}
+
+// Pengawasan & Audit
+model LaporanItwasda {
+  id            String           @id @default(cuid())
+  nomorLaporan  String           @unique
+  paketId       String
+  jenisLaporan  String
+  deskripsi     String
+  tingkatKeparahan KeparahanLevel
+  status        LaporanStatus    @default(BARU)
+  tanggal       DateTime
+  auditor       String
+  pic           String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  paket Paket @relation(fields: [paketId], references: [id], onDelete: Cascade)
+
+  @@map("laporan_itwasda")
+}
+
+enum KeparahanLevel {
+  RENDAH
+  SEDANG
+  TINGGI
+  KRITIS
+}
+
+enum LaporanStatus {
+  BARU
+  PROSES
+  SELESAI
+  DITUNDA
+}
+
+// Vendor / Penyedia
+model Vendor {
+  id          String     @id @default(cuid())
+  namaVendor  String
+  jenisVendor VendorType
+  nomorIzin   String     @unique
+  spesialisasi String?
+  jumlahProyek Int       @default(0)
+  rating      Float?     @default(0)
+  status      VendorStatus @default(AKTIF)
+  kontak      String?
+  alamat      String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("vendor")
+}
+
+enum VendorType {
+  KONSULTAN_PERENCANAAN
+  KONSULTAN_PENGAWAS
+  KONSTRUKSI
+}
+
+enum VendorStatus {
+  AKTIF
+  NON_AKTIF
+  SUSPENDED
+}
+
+// Kompetensi PPK
+model PPK {
+  id          String     @id @default(cuid())
+  namaLengkap String
+  nip         String     @unique
+  jabatan     String
+  unitKerja   String
+  kompetensi  Json       // Store kompetensi as JSON
+  sertifikasi Json       // Store sertifikasi as JSON
+  pengalaman  Int        @default(0)
+  status      PPKStatus  @default(AKTIF)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("ppk")
+}
+
+enum PPKStatus {
+  AKTIF
+  NON_AKTIF
+  CUTI
+}
+
+// Monitoring & Evaluasi
+model Monitoring {
+  id          String           @id @default(cuid())
+  paketId     String
+  jenisMonitoring String
+  periode     String
+  status      MonitoringStatus @default(ON_TRACK)
+  progress    Int              @default(0)
+  issues      String?
+  rekomendasi String?
+  tanggalMonitoring DateTime
+  monitoredBy String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("monitoring")
+}
+
+enum MonitoringStatus {
+  ON_TRACK
+  DELAYED
+  CRITICAL
+  COMPLETED
+}
+
+// Laporan & Analisis
+model LaporanAnalisis {
+  id          String           @id @default(cuid())
+  jenisLaporan String
+  periode     String
+  data        Json             // Store analysis data as JSON
+  kesimpulan  String
+  rekomendasi String?
+  generatedBy String
+  generatedAt DateTime         @default(now())
+
+  @@map("laporan_analisis")
+}
+
+// Pengaturan & Hak Akses
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json     // Store permissions as JSON
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  resource    String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@map("permissions")
+}

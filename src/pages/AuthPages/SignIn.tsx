@@ -6,7 +6,7 @@ export default function SignIn() {
   return (
     <>
       <PageMeta
-        title="Sistem Pengawasan Kinerja dan Audit Mutu Berkelanjutan"
+        title="Sistem Pengawasan Terintegrasi dan Kolaboratif Pengadaan Barang dan Jasa"
         description="Sign In"
       />
       <AuthLayout>

@@ -79,7 +79,7 @@ const Header: React.FC<HeaderProps> = ({ onClick, onToggle }) => {
           </button>
 
           <Link to="/" className="lg:hidden">
-            <span className="text-xl font-bold text-gray-900 dark:text-white">SPKMB</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">SIP-KPBJ</span>
           </Link>
 
           <button

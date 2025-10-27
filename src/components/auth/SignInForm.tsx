@@ -32,10 +32,12 @@ export default function SignInForm() {
           <div>
             
             </div>
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
-              if (login(email, password)) {
-                navigate("/spkmb/");
+              setError('');
+              const success = await login(email, password);
+              if (success) {
+                navigate("/sip-kpbj/");
               } else {
                 setError("Invalid email or password");
               }
@@ -97,7 +99,7 @@ export default function SignInForm() {
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
                 Don&apos;t have an account? {""}
                 <Link
-                  to="/spkmb/signup"
+                  to="/sip-kpbj/signup"
                   className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
                 >
                   Sign Up

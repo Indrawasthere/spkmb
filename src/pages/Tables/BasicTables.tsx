@@ -7,7 +7,7 @@ export default function BasicTables() {
   return (
     <>
       <PageMeta
-        title="Sistem Pengawasan Kinerja dan Audit Mutu Berkelanjutan"
+        title="Sistem Pengawasan Terintegrasi dan Kolaboratif Pengadaan Barang dan Jasa"
         description="Basic Tables"
       />
       <PageBreadcrumb pageTitle="Basic Tables" />

@@ -8,54 +8,52 @@ import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
-import Select from "../components/form/Select";
-import { useAuth } from "../context/AuthContext";
 
-interface Vendor {
+interface Proyek {
   id: string;
-  namaVendor: string;
-  jenisVendor: "KONSULTAN_PERENCANAAN" | "KONSULTAN_PENGAWAS" | "KONSTRUKSI";
-  nomorIzin: string;
-  spesialisasi: string | null;
-  jumlahProyek: number;
-  rating: number | null;
-  status: "AKTIF" | "NON_AKTIF" | "SUSPENDED";
-  kontak: string | null;
-  alamat: string | null;
+  namaProyek: string;
+  lokasi: string;
+  anggaran: number;
+  status: "PERENCANAAN" | "PELAKSANAAN" | "SELESAI" | "DITUNDA";
+  progress: number;
+  kontraktor: string;
+  tanggalMulai: string;
+  tanggalSelesai: string;
   createdAt: string;
+  updatedAt: string;
 }
 
-export default function VendorPenyedia() {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+export default function PUPR() {
+  const [proyek, setProyek] = useState<Proyek[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [formData, setFormData] = useState({
-    namaVendor: "",
-    jenisVendor: "KONSTRUKSI" as Vendor["jenisVendor"],
-    nomorIzin: "",
-    spesialisasi: "",
-    kontak: "",
-    alamat: "",
+    namaProyek: "",
+    lokasi: "",
+    anggaran: "",
+    kontraktor: "",
+    tanggalMulai: "",
+    tanggalSelesai: "",
   });
-  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [editingProyek, setEditingProyek] = useState<Proyek | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
 
-  // Fetch vendor data from API
+  // Fetch proyek data from API
   useEffect(() => {
-    fetchVendors();
+    fetchProyek();
   }, []);
 
-  const fetchVendors = async () => {
+  const fetchProyek = async () => {
     try {
-      const response = await fetch('/api/vendor');
+      const response = await fetch('/api/proyek-pupr');
       if (response.ok) {
         const data = await response.json();
-        setVendors(data);
+        setProyek(data);
       }
     } catch (error) {
-      console.error('Error fetching vendors:', error);
+      console.error('Error fetching proyek:', error);
     } finally {
       setLoading(false);
     }
@@ -63,78 +61,78 @@ export default function VendorPenyedia() {
 
   const handleSubmit = async () => {
     try {
-      const vendorData = {
-        namaVendor: formData.namaVendor,
-        jenisVendor: formData.jenisVendor,
-        nomorIzin: formData.nomorIzin,
-        spesialisasi: formData.spesialisasi || null,
-        kontak: formData.kontak || null,
-        alamat: formData.alamat || null,
+      const proyekData = {
+        namaProyek: formData.namaProyek,
+        lokasi: formData.lokasi,
+        anggaran: parseFloat(formData.anggaran.replace(/[^\d]/g, '')) || 0,
+        kontraktor: formData.kontraktor,
+        tanggalMulai: new Date(formData.tanggalMulai),
+        tanggalSelesai: new Date(formData.tanggalSelesai),
       };
 
       let response;
-      if (editingVendor) {
-        response = await fetch(`/api/vendor/${editingVendor.id}`, {
+      if (editingProyek) {
+        response = await fetch(`/api/proyek-pupr/${editingProyek.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(vendorData),
+          body: JSON.stringify(proyekData),
         });
       } else {
-        response = await fetch('/api/vendor', {
+        response = await fetch('/api/proyek-pupr', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(vendorData),
+          body: JSON.stringify(proyekData),
         });
       }
 
       if (response.ok) {
-        await fetchVendors();
+        await fetchProyek();
         closeModal();
         resetForm();
       }
     } catch (error) {
-      console.error('Error saving vendor:', error);
+      console.error('Error saving proyek:', error);
     }
   };
 
-  const handleEdit = (vendor: Vendor) => {
-    setEditingVendor(vendor);
+  const handleEdit = (proyek: Proyek) => {
+    setEditingProyek(proyek);
     setFormData({
-      namaVendor: vendor.namaVendor,
-      jenisVendor: vendor.jenisVendor,
-      nomorIzin: vendor.nomorIzin,
-      spesialisasi: vendor.spesialisasi || "",
-      kontak: vendor.kontak || "",
-      alamat: vendor.alamat || "",
+      namaProyek: proyek.namaProyek,
+      lokasi: proyek.lokasi,
+      anggaran: proyek.anggaran.toString(),
+      kontraktor: proyek.kontraktor,
+      tanggalMulai: proyek.tanggalMulai.split('T')[0],
+      tanggalSelesai: proyek.tanggalSelesai.split('T')[0],
     });
     openModal();
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus vendor ini?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus proyek ini?')) {
       try {
-        const response = await fetch(`/api/vendor/${id}`, {
+        const response = await fetch(`/api/proyek-pupr/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
-          await fetchVendors();
+          await fetchProyek();
         }
       } catch (error) {
-        console.error('Error deleting vendor:', error);
+        console.error('Error deleting proyek:', error);
       }
     }
   };
 
   const resetForm = () => {
     setFormData({
-      namaVendor: "",
-      jenisVendor: "KONSTRUKSI",
-      nomorIzin: "",
-      spesialisasi: "",
-      kontak: "",
-      alamat: "",
+      namaProyek: "",
+      lokasi: "",
+      anggaran: "",
+      kontraktor: "",
+      tanggalMulai: "",
+      tanggalSelesai: "",
     });
-    setEditingVendor(null);
+    setEditingProyek(null);
   };
 
   const openAddModal = () => {
@@ -142,73 +140,50 @@ export default function VendorPenyedia() {
     openModal();
   };
 
-  const filteredVendors = vendors.filter((vendor) => {
+  const filteredProyek = proyek.filter((p) => {
     const matchSearch =
-      vendor.namaVendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.nomorIzin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.jenisVendor.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchFilter =
-      filterStatus === "all" || vendor.status === filterStatus;
+      p.namaProyek.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.lokasi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.kontraktor.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchFilter = filterStatus === "all" || p.status === filterStatus;
     return matchSearch && matchFilter;
   });
 
-  const getStatusColor = (status: Vendor["status"]) => {
+  const getStatusColor = (status: Proyek["status"]) => {
     switch (status) {
-      case "AKTIF":
+      case "SELESAI":
         return "success";
-      case "NON_AKTIF":
+      case "PELAKSANAAN":
         return "warning";
-      case "SUSPENDED":
+      case "PERENCANAAN":
+        return "info";
+      case "DITUNDA":
         return "error";
       default:
         return "light";
     }
   };
 
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, index) => (
-          <svg
-            key={index}
-            className={`size-4 ${
-              index < Math.floor(rating)
-                ? "fill-warning-500 text-warning-500"
-                : "fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600"
-            }`}
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-          </svg>
-        ))}
-        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-          {rating.toFixed(1)}
-        </span>
-      </div>
-    );
-  };
-
   // Stats Cards
   const stats = [
     {
-      label: "Total Vendor",
-      value: vendors.length,
+      label: "Total Proyek",
+      value: proyek.length,
       color: "text-brand-500",
     },
     {
-      label: "Vendor Aktif",
-      value: vendors.filter((v) => v.status === "AKTIF").length,
+      label: "Dalam Pelaksanaan",
+      value: proyek.filter((p) => p.status === "PELAKSANAAN").length,
+      color: "text-warning-500",
+    },
+    {
+      label: "Selesai",
+      value: proyek.filter((p) => p.status === "SELESAI").length,
       color: "text-success-500",
     },
     {
-      label: "Suspended",
-      value: vendors.filter((v) => v.status === "SUSPENDED").length,
-      color: "text-error-500",
-    },
-    {
-      label: "Total Proyek",
-      value: vendors.reduce((acc, v) => acc + v.jumlahProyek, 0),
+      label: "Total Anggaran",
+      value: proyek.length > 0 ? `Rp ${(proyek.reduce((sum, p) => sum + p.anggaran, 0) / 1000000000000).toFixed(2)}T` : "Rp 0T",
       color: "text-blue-light-500",
     },
   ];
@@ -216,10 +191,10 @@ export default function VendorPenyedia() {
   return (
     <>
       <PageMeta
-        title="Vendor/Penyedia - Sistem Pengawasan"
-        description="Kelola database vendor dan penyedia jasa"
+        title="PUPR | SIP-KPBJ"
+        description="Halaman PUPR untuk Pengawasan dan Audit"
       />
-      <PageBreadcrumb pageTitle="Vendor / Penyedia" />
+      <PageBreadcrumb pageTitle="PUPR" />
 
       <div className="space-y-6">
         {/* Stats Cards */}
@@ -243,10 +218,10 @@ export default function VendorPenyedia() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-              Database Vendor
+              Daftar Proyek PUPR
             </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Kelola data vendor dan evaluasi kinerja
+              Kelola proyek infrastruktur dan perumahan
             </p>
           </div>
           <Button
@@ -255,7 +230,7 @@ export default function VendorPenyedia() {
             startIcon={<PlusIcon />}
             onClick={openModal}
           >
-            Tambah Vendor
+            Tambah Proyek
           </Button>
         </div>
 
@@ -264,7 +239,7 @@ export default function VendorPenyedia() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Input
               type="text"
-              placeholder="Cari vendor..."
+              placeholder="Cari proyek..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full sm:w-96"
@@ -276,9 +251,10 @@ export default function VendorPenyedia() {
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
                 <option value="all">Semua Status</option>
-                <option value="AKTIF">Aktif</option>
-                <option value="NON_AKTIF">Nonaktif</option>
-                <option value="SUSPENDED">Suspended</option>
+                <option value="Perencanaan">Perencanaan</option>
+                <option value="Pelaksanaan">Pelaksanaan</option>
+                <option value="Selesai">Selesai</option>
+                <option value="Ditunda">Ditunda</option>
               </select>
             </div>
           </div>
@@ -291,59 +267,82 @@ export default function VendorPenyedia() {
               <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nama Perusahaan
+                    Nama Proyek
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    No. Izin
+                    Lokasi
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Jenis Vendor
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Rating
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Proyek
+                    Anggaran
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Kontak
+                    Progress
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Kontraktor
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Aksi
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredVendors.map((vendor) => (
+                {filteredProyek.map((p) => (
                   <tr
-                    key={vendor.id}
+                    key={p.id}
                     className="hover:bg-gray-50 dark:hover:bg-white/5"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
                       <div>
-                        <p>{vendor.namaVendor}</p>
+                        <p>{p.namaProyek}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {vendor.alamat}
+                          {p.tanggalMulai} - {p.tanggalSelesai}
                         </p>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.nomorIzin}
+                      {p.lokasi}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.jenisVendor.replace('_', ' ')}
-                    </td>
-                    <td className="px-6 py-4">{vendor.rating ? renderStars(vendor.rating) : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.jumlahProyek} proyek
+                      Rp {p.anggaran.toLocaleString('id-ID')}
                     </td>
                     <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(vendor.status)}>
-                        {vendor.status}
+                      <Badge size="sm" color={getStatusColor(p.status)}>
+                        {p.status}
                       </Badge>
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="w-16 bg-gray-200 rounded-full h-2 mr-2 dark:bg-gray-700">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${p.progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {p.progress}%
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.kontak}
+                      {p.kontraktor}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                        onClick={() => handleEdit(p)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        onClick={() => handleDelete(p.id)}
+                      >
+                        Hapus
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -357,83 +356,78 @@ export default function VendorPenyedia() {
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingVendor ? 'Edit Vendor' : 'Tambah Vendor Baru'}
+            {editingProyek ? 'Edit Proyek' : 'Tambah Proyek Baru'}
           </h3>
 
           <div className="space-y-4">
             <div>
-              <Label>Nama Vendor</Label>
+              <Label>Nama Proyek</Label>
               <Input
                 type="text"
-                value={formData.namaVendor}
+                value={formData.namaProyek}
                 onChange={(e) =>
-                  setFormData({ ...formData, namaVendor: e.target.value })
+                  setFormData({ ...formData, namaProyek: e.target.value })
                 }
-                placeholder="PT/CV Nama Vendor"
+                placeholder="Nama proyek lengkap"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Jenis Vendor</Label>
-                <Select
-                  options={[
-                    { value: "KONSTRUKSI", label: "Konstruksi" },
-                    { value: "KONSULTAN_PERENCANAAN", label: "Konsultan Perencanaan" },
-                    { value: "KONSULTAN_PENGAWAS", label: "Konsultan Pengawas" },
-                  ]}
-                  placeholder="Pilih jenis vendor"
-                  onChange={(value) =>
-                    setFormData({ ...formData, jenisVendor: value as Vendor["jenisVendor"] })
-                  }
-                />
-              </div>
-              <div>
-                <Label>Nomor Izin</Label>
+                <Label>Lokasi</Label>
                 <Input
                   type="text"
-                  value={formData.nomorIzin}
+                  value={formData.lokasi}
                   onChange={(e) =>
-                    setFormData({ ...formData, nomorIzin: e.target.value })
-                  }
-                  placeholder="Nomor izin vendor"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Spesialisasi</Label>
-              <Input
-                type="text"
-                value={formData.spesialisasi}
-                onChange={(e) =>
-                  setFormData({ ...formData, spesialisasi: e.target.value })
-                }
-                placeholder="Spesialisasi vendor"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Alamat</Label>
-                <Input
-                  type="text"
-                  value={formData.alamat}
-                  onChange={(e) =>
-                    setFormData({ ...formData, alamat: e.target.value })
+                    setFormData({ ...formData, lokasi: e.target.value })
                   }
                   placeholder="Kota/Kabupaten"
                 />
               </div>
               <div>
-                <Label>Kontak</Label>
+                <Label>Anggaran</Label>
                 <Input
-                  type="email"
-                  value={formData.kontak}
+                  type="text"
+                  value={formData.anggaran}
                   onChange={(e) =>
-                    setFormData({ ...formData, kontak: e.target.value })
+                    setFormData({ ...formData, anggaran: e.target.value })
                   }
-                  placeholder="email@vendor.com"
+                  placeholder="Rp XXX"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Kontraktor</Label>
+              <Input
+                type="text"
+                value={formData.kontraktor}
+                onChange={(e) =>
+                  setFormData({ ...formData, kontraktor: e.target.value })
+                }
+                placeholder="PT. Nama Kontraktor"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tanggal Mulai</Label>
+                <Input
+                  type="date"
+                  value={formData.tanggalMulai}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tanggalMulai: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Tanggal Selesai</Label>
+                <Input
+                  type="date"
+                  value={formData.tanggalSelesai}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tanggalSelesai: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -444,7 +438,7 @@ export default function VendorPenyedia() {
               Batal
             </Button>
             <Button size="sm" variant="primary" onClick={handleSubmit}>
-              {editingVendor ? 'Update Vendor' : 'Simpan Vendor'}
+              Simpan Proyek
             </Button>
           </div>
         </div>

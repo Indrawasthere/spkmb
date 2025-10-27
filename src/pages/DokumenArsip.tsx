@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, DownloadIcon } from "../icons";
+import { PlusIcon, DownloadIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
@@ -14,123 +14,149 @@ interface Dokumen {
   id: string;
   namaDokumen: string;
   jenisDokumen: string;
-  paket: string;
-  tanggalUpload: string;
+  paketId: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
   uploadedBy: string;
-  status: "Terverifikasi" | "Pending" | "Ditolak";
-  ukuran: string;
+  uploadedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const initialDokumens: Dokumen[] = [
-  {
-    id: "1",
-    namaDokumen: "TOR_Pengadaan_Komputer_2024.pdf",
-    jenisDokumen: "TOR",
-    paket: "PKT-2024-001",
-    tanggalUpload: "15 Jan 2024",
-    uploadedBy: "Ahmad Subagja",
-    status: "Terverifikasi",
-    ukuran: "2.5 MB",
-  },
-  {
-    id: "2",
-    namaDokumen: "HPS_Renovasi_Gedung.xlsx",
-    jenisDokumen: "HPS",
-    paket: "PKT-2024-002",
-    tanggalUpload: "20 Jan 2024",
-    uploadedBy: "Siti Nurhaliza",
-    status: "Pending",
-    ukuran: "1.8 MB",
-  },
-  {
-    id: "3",
-    namaDokumen: "Kontrak_Pengadaan_Kendaraan.pdf",
-    jenisDokumen: "Kontrak",
-    paket: "PKT-2024-003",
-    tanggalUpload: "10 Jan 2024",
-    uploadedBy: "Budi Santoso",
-    status: "Terverifikasi",
-    ukuran: "3.2 MB",
-  },
-  {
-    id: "4",
-    namaDokumen: "BA_Serah_Terima_Kendaraan.pdf",
-    jenisDokumen: "BA Serah Terima",
-    paket: "PKT-2024-003",
-    tanggalUpload: "12 Jan 2024",
-    uploadedBy: "Budi Santoso",
-    status: "Terverifikasi",
-    ukuran: "1.5 MB",
-  },
-  {
-    id: "5",
-    namaDokumen: "Laporan_Kemajuan_IT_Konsultan.pdf",
-    jenisDokumen: "Laporan Kemajuan",
-    paket: "PKT-2024-004",
-    tanggalUpload: "25 Jan 2024",
-    uploadedBy: "Dewi Lestari",
-    status: "Pending",
-    ukuran: "4.1 MB",
-  },
-];
-
 export default function DokumenArsip() {
-  const [dokumens, setDokumens] = useState<Dokumen[]>(initialDokumens);
+  const [dokumens, setDokumens] = useState<Dokumen[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterJenis, setFilterJenis] = useState("all");
   const [formData, setFormData] = useState({
     namaDokumen: "",
     jenisDokumen: "",
-    paket: "",
+    paketId: "",
+    file: null as File | null,
   });
+  const [editingDokumen, setEditingDokumen] = useState<Dokumen | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
 
-  const handleSubmit = () => {
-    const newDokumen: Dokumen = {
-      id: Date.now().toString(),
-      namaDokumen: formData.namaDokumen,
-      jenisDokumen: formData.jenisDokumen,
-      paket: formData.paket,
-      tanggalUpload: new Date().toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      uploadedBy: "Current User",
-      status: "Pending",
-      ukuran: "0 KB",
-    };
+  // Fetch dokumen data from API
+  useEffect(() => {
+    fetchDokumens();
+  }, []);
 
-    setDokumens([newDokumen, ...dokumens]);
-    closeModal();
+  const fetchDokumens = async () => {
+    try {
+      const response = await fetch('/api/dokumen');
+      if (response.ok) {
+        const data = await response.json();
+        setDokumens(data);
+      }
+    } catch (error) {
+      console.error('Error fetching dokumens:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.file && !editingDokumen) {
+      alert('Pilih file untuk diupload');
+      return;
+    }
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('namaDokumen', formData.namaDokumen);
+      formDataToSend.append('jenisDokumen', formData.jenisDokumen);
+      formDataToSend.append('paketId', formData.paketId);
+      if (formData.file) {
+        formDataToSend.append('file', formData.file);
+      }
+
+      let response;
+      if (editingDokumen) {
+        response = await fetch(`/api/dokumen/${editingDokumen.id}`, {
+          method: 'PUT',
+          body: formDataToSend,
+        });
+      } else {
+        response = await fetch('/api/dokumen', {
+          method: 'POST',
+          body: formDataToSend,
+        });
+      }
+
+      if (response.ok) {
+        await fetchDokumens();
+        closeModal();
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Error saving dokumen:', error);
+    }
+  };
+
+  const handleEdit = (dokumen: Dokumen) => {
+    setEditingDokumen(dokumen);
+    setFormData({
+      namaDokumen: dokumen.namaDokumen,
+      jenisDokumen: dokumen.jenisDokumen,
+      paketId: dokumen.paketId,
+      file: null,
+    });
+    openModal();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Apakah Anda yakin ingin menghapus dokumen ini?')) {
+      try {
+        const response = await fetch(`/api/dokumen/${id}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          await fetchDokumens();
+        }
+      } catch (error) {
+        console.error('Error deleting dokumen:', error);
+      }
+    }
+  };
+
+  const resetForm = () => {
     setFormData({
       namaDokumen: "",
       jenisDokumen: "",
-      paket: "",
+      paketId: "",
+      file: null,
     });
+    setEditingDokumen(null);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    openModal();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData({ ...formData, file });
   };
 
   const filteredDokumens = dokumens.filter((doc) => {
     const matchSearch =
       doc.namaDokumen.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.paket.toLowerCase().includes(searchQuery.toLowerCase());
+      doc.paketId.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFilter =
       filterJenis === "all" || doc.jenisDokumen === filterJenis;
     return matchSearch && matchFilter;
   });
 
-  const getStatusColor = (status: Dokumen["status"]) => {
-    switch (status) {
-      case "Terverifikasi":
-        return "success";
-      case "Pending":
-        return "warning";
-      case "Ditolak":
-        return "error";
-      default:
-        return "light";
-    }
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const jenisDokumenOptions = [
@@ -150,14 +176,9 @@ export default function DokumenArsip() {
       color: "text-brand-500",
     },
     {
-      label: "Terverifikasi",
-      value: dokumens.filter((d) => d.status === "Terverifikasi").length,
-      color: "text-success-500",
-    },
-    {
-      label: "Pending",
-      value: dokumens.filter((d) => d.status === "Pending").length,
-      color: "text-warning-500",
+      label: "Total Ukuran",
+      value: dokumens.length > 0 ? formatFileSize(dokumens.reduce((sum, d) => sum + d.fileSize, 0)) : "0 Bytes",
+      color: "text-blue-light-500",
     },
   ];
 
@@ -279,21 +300,21 @@ export default function DokumenArsip() {
                       {doc.jenisDokumen}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {doc.paket}
+                      {doc.paketId}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {doc.uploadedBy}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {doc.tanggalUpload}
+                      {new Date(doc.uploadedAt).toLocaleDateString('id-ID')}
                     </td>
                     <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(doc.status)}>
-                        {doc.status}
+                      <Badge size="sm" color="info">
+                        Uploaded
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {doc.ukuran}
+                      {formatFileSize(doc.fileSize)}
                     </td>
                     <td className="px-6 py-4">
                       <button className="text-brand-500 hover:text-brand-600">
@@ -312,7 +333,7 @@ export default function DokumenArsip() {
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            Upload Dokumen
+            {editingDokumen ? 'Edit Dokumen' : 'Upload Dokumen'}
           </h3>
 
           <div className="space-y-4">
@@ -343,9 +364,9 @@ export default function DokumenArsip() {
               <Label>Kode Paket</Label>
               <Input
                 type="text"
-                value={formData.paket}
+                value={formData.paketId}
                 onChange={(e) =>
-                  setFormData({ ...formData, paket: e.target.value })
+                  setFormData({ ...formData, paketId: e.target.value })
                 }
                 placeholder="PKT-2024-XXX"
               />
@@ -355,6 +376,7 @@ export default function DokumenArsip() {
               <Label>File Dokumen</Label>
               <input
                 type="file"
+                onChange={handleFileChange}
                 className="focus:border-ring-brand-300 h-11 w-full overflow-hidden rounded-lg border border-gray-300 bg-transparent text-sm text-gray-500 shadow-theme-xs transition-colors file:mr-5 file:border-collapse file:cursor-pointer file:rounded-l-lg file:border-0 file:border-r file:border-solid file:border-gray-200 file:bg-gray-50 file:py-3 file:pl-3.5 file:pr-3 file:text-sm file:text-gray-700 placeholder:text-gray-400 hover:file:bg-gray-100 focus:outline-none focus:file:ring-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:text-white/90 dark:file:border-gray-800 dark:file:bg-white/[0.03] dark:file:text-gray-400 dark:placeholder:text-gray-400"
               />
             </div>
@@ -365,7 +387,7 @@ export default function DokumenArsip() {
               Batal
             </Button>
             <Button size="sm" variant="primary" onClick={handleSubmit}>
-              Upload
+              {editingDokumen ? 'Update' : 'Upload'}
             </Button>
           </div>
         </div>

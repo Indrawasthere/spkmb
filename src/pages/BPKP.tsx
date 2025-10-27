@@ -8,54 +8,56 @@ import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
+import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
-import { useAuth } from "../context/AuthContext";
 
-interface Vendor {
+interface Temuan {
   id: string;
-  namaVendor: string;
-  jenisVendor: "KONSULTAN_PERENCANAAN" | "KONSULTAN_PENGAWAS" | "KONSTRUKSI";
-  nomorIzin: string;
-  spesialisasi: string | null;
-  jumlahProyek: number;
-  rating: number | null;
-  status: "AKTIF" | "NON_AKTIF" | "SUSPENDED";
-  kontak: string | null;
-  alamat: string | null;
+  nomorTemuan: string;
+  paketId: string;
+  jenisTemuan: string;
+  deskripsi: string;
+  tingkatKeparahan: "RENDAH" | "SEDANG" | "TINGGI" | "KRITIS";
+  status: "BARU" | "PROSES" | "SELESAI" | "DITUNDA";
+  tanggal: string;
+  auditor: string;
+  pic: string;
   createdAt: string;
+  updatedAt: string;
 }
 
-export default function VendorPenyedia() {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+export default function BPKP() {
+  const [temuans, setTemuans] = useState<Temuan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [formData, setFormData] = useState({
-    namaVendor: "",
-    jenisVendor: "KONSTRUKSI" as Vendor["jenisVendor"],
-    nomorIzin: "",
-    spesialisasi: "",
-    kontak: "",
-    alamat: "",
+    nomorTemuan: "",
+    paketId: "",
+    jenisTemuan: "",
+    deskripsi: "",
+    tingkatKeparahan: "" as Temuan["tingkatKeparahan"] | "",
+    auditor: "",
+    pic: "",
   });
-  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [editingTemuan, setEditingTemuan] = useState<Temuan | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
 
-  // Fetch vendor data from API
+  // Fetch temuans data from API
   useEffect(() => {
-    fetchVendors();
+    fetchTemuans();
   }, []);
 
-  const fetchVendors = async () => {
+  const fetchTemuans = async () => {
     try {
-      const response = await fetch('/api/vendor');
+      const response = await fetch('/api/temuan-bpkp');
       if (response.ok) {
         const data = await response.json();
-        setVendors(data);
+        setTemuans(data);
       }
     } catch (error) {
-      console.error('Error fetching vendors:', error);
+      console.error('Error fetching temuans:', error);
     } finally {
       setLoading(false);
     }
@@ -63,78 +65,82 @@ export default function VendorPenyedia() {
 
   const handleSubmit = async () => {
     try {
-      const vendorData = {
-        namaVendor: formData.namaVendor,
-        jenisVendor: formData.jenisVendor,
-        nomorIzin: formData.nomorIzin,
-        spesialisasi: formData.spesialisasi || null,
-        kontak: formData.kontak || null,
-        alamat: formData.alamat || null,
+      const temuanData = {
+        nomorTemuan: formData.nomorTemuan,
+        paketId: formData.paketId,
+        jenisTemuan: formData.jenisTemuan,
+        deskripsi: formData.deskripsi,
+        tingkatKeparahan: formData.tingkatKeparahan,
+        auditor: formData.auditor,
+        pic: formData.pic,
+        tanggal: new Date(),
       };
 
       let response;
-      if (editingVendor) {
-        response = await fetch(`/api/vendor/${editingVendor.id}`, {
+      if (editingTemuan) {
+        response = await fetch(`/api/temuan-bpkp/${editingTemuan.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(vendorData),
+          body: JSON.stringify(temuanData),
         });
       } else {
-        response = await fetch('/api/vendor', {
+        response = await fetch('/api/temuan-bpkp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(vendorData),
+          body: JSON.stringify(temuanData),
         });
       }
 
       if (response.ok) {
-        await fetchVendors();
+        await fetchTemuans();
         closeModal();
         resetForm();
       }
     } catch (error) {
-      console.error('Error saving vendor:', error);
+      console.error('Error saving temuan:', error);
     }
   };
 
-  const handleEdit = (vendor: Vendor) => {
-    setEditingVendor(vendor);
+  const handleEdit = (temuan: Temuan) => {
+    setEditingTemuan(temuan);
     setFormData({
-      namaVendor: vendor.namaVendor,
-      jenisVendor: vendor.jenisVendor,
-      nomorIzin: vendor.nomorIzin,
-      spesialisasi: vendor.spesialisasi || "",
-      kontak: vendor.kontak || "",
-      alamat: vendor.alamat || "",
+      nomorTemuan: temuan.nomorTemuan,
+      paketId: temuan.paketId,
+      jenisTemuan: temuan.jenisTemuan,
+      deskripsi: temuan.deskripsi,
+      tingkatKeparahan: temuan.tingkatKeparahan,
+      auditor: temuan.auditor,
+      pic: temuan.pic,
     });
     openModal();
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus vendor ini?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus temuan ini?')) {
       try {
-        const response = await fetch(`/api/vendor/${id}`, {
+        const response = await fetch(`/api/temuan-bpkp/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
-          await fetchVendors();
+          await fetchTemuans();
         }
       } catch (error) {
-        console.error('Error deleting vendor:', error);
+        console.error('Error deleting temuan:', error);
       }
     }
   };
 
   const resetForm = () => {
     setFormData({
-      namaVendor: "",
-      jenisVendor: "KONSTRUKSI",
-      nomorIzin: "",
-      spesialisasi: "",
-      kontak: "",
-      alamat: "",
+      nomorTemuan: "",
+      paketId: "",
+      jenisTemuan: "",
+      deskripsi: "",
+      tingkatKeparahan: "",
+      auditor: "",
+      pic: "",
     });
-    setEditingVendor(null);
+    setEditingTemuan(null);
   };
 
   const openAddModal = () => {
@@ -142,84 +148,92 @@ export default function VendorPenyedia() {
     openModal();
   };
 
-  const filteredVendors = vendors.filter((vendor) => {
+  const filteredTemuans = temuans.filter((temuan) => {
     const matchSearch =
-      vendor.namaVendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.nomorIzin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.jenisVendor.toLowerCase().includes(searchQuery.toLowerCase());
+      temuan.nomorTemuan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      temuan.paketId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      temuan.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFilter =
-      filterStatus === "all" || vendor.status === filterStatus;
+      filterStatus === "all" || temuan.status === filterStatus;
     return matchSearch && matchFilter;
   });
 
-  const getStatusColor = (status: Vendor["status"]) => {
+  const getStatusColor = (status: Temuan["status"]) => {
     switch (status) {
-      case "AKTIF":
+      case "SELESAI":
         return "success";
-      case "NON_AKTIF":
+      case "PROSES":
         return "warning";
-      case "SUSPENDED":
+      case "BARU":
+        return "info";
+      case "DITUNDA":
         return "error";
       default:
         return "light";
     }
   };
 
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, index) => (
-          <svg
-            key={index}
-            className={`size-4 ${
-              index < Math.floor(rating)
-                ? "fill-warning-500 text-warning-500"
-                : "fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600"
-            }`}
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-          </svg>
-        ))}
-        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-          {rating.toFixed(1)}
-        </span>
-      </div>
-    );
+  const getKeparahanColor = (keparahan: Temuan["tingkatKeparahan"]) => {
+    switch (keparahan) {
+      case "KRITIS":
+        return "error";
+      case "TINGGI":
+        return "warning";
+      case "SEDANG":
+        return "info";
+      case "RENDAH":
+        return "success";
+      default:
+        return "light";
+    }
   };
+
+  const jenisTemuanOptions = [
+    { value: "Administrasi", label: "Administrasi" },
+    { value: "Teknis", label: "Teknis" },
+    { value: "Keuangan", label: "Keuangan" },
+    { value: "Waktu", label: "Waktu" },
+    { value: "Kualitas", label: "Kualitas" },
+  ];
+
+  const keparahanOptions = [
+    { value: "RENDAH", label: "Rendah" },
+    { value: "SEDANG", label: "Sedang" },
+    { value: "TINGGI", label: "Tinggi" },
+    { value: "KRITIS", label: "Kritis" },
+  ];
 
   // Stats Cards
   const stats = [
     {
-      label: "Total Vendor",
-      value: vendors.length,
+      label: "Total Temuan",
+      value: temuans.length,
       color: "text-brand-500",
     },
     {
-      label: "Vendor Aktif",
-      value: vendors.filter((v) => v.status === "AKTIF").length,
-      color: "text-success-500",
-    },
-    {
-      label: "Suspended",
-      value: vendors.filter((v) => v.status === "SUSPENDED").length,
-      color: "text-error-500",
-    },
-    {
-      label: "Total Proyek",
-      value: vendors.reduce((acc, v) => acc + v.jumlahProyek, 0),
+      label: "Temuan Baru",
+      value: temuans.filter((t) => t.status === "BARU").length,
       color: "text-blue-light-500",
+    },
+    {
+      label: "Dalam Proses",
+      value: temuans.filter((t) => t.status === "PROSES").length,
+      color: "text-warning-500",
+    },
+    {
+      label: "Selesai",
+      value: temuans.filter((t) => t.status === "SELESAI").length,
+      color: "text-success-500",
     },
   ];
 
   return (
     <>
       <PageMeta
-        title="Vendor/Penyedia - Sistem Pengawasan"
-        description="Kelola database vendor dan penyedia jasa"
+        title="BPKP | SIP-KPBJ"
+        description="Halaman BPKP untuk Pengawasan dan Audit"
       />
-      <PageBreadcrumb pageTitle="Vendor / Penyedia" />
+      <PageBreadcrumb pageTitle="BPKP" />
 
       <div className="space-y-6">
         {/* Stats Cards */}
@@ -243,10 +257,10 @@ export default function VendorPenyedia() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-              Database Vendor
+              Daftar Temuan Audit BPKP
             </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Kelola data vendor dan evaluasi kinerja
+              Kelola temuan audit dan tindak lanjut rekomendasi
             </p>
           </div>
           <Button
@@ -255,7 +269,7 @@ export default function VendorPenyedia() {
             startIcon={<PlusIcon />}
             onClick={openModal}
           >
-            Tambah Vendor
+            Tambah Temuan
           </Button>
         </div>
 
@@ -264,7 +278,7 @@ export default function VendorPenyedia() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Input
               type="text"
-              placeholder="Cari vendor..."
+              placeholder="Cari temuan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full sm:w-96"
@@ -276,9 +290,10 @@ export default function VendorPenyedia() {
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
                 <option value="all">Semua Status</option>
-                <option value="AKTIF">Aktif</option>
-                <option value="NON_AKTIF">Nonaktif</option>
-                <option value="SUSPENDED">Suspended</option>
+                <option value="Baru">Baru</option>
+                <option value="Proses">Proses</option>
+                <option value="Selesai">Selesai</option>
+                <option value="Ditunda">Ditunda</option>
               </select>
             </div>
           </div>
@@ -291,59 +306,61 @@ export default function VendorPenyedia() {
               <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nama Perusahaan
+                    No. Temuan
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    No. Izin
+                    Paket
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Jenis Vendor
+                    Jenis
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Rating
+                    Deskripsi
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Proyek
+                    Keparahan
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Kontak
+                    PIC
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredVendors.map((vendor) => (
+                {filteredTemuans.map((temuan) => (
                   <tr
-                    key={vendor.id}
+                    key={temuan.id}
                     className="hover:bg-gray-50 dark:hover:bg-white/5"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                      <div>
-                        <p>{vendor.namaVendor}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {vendor.alamat}
-                        </p>
-                      </div>
+                      {temuan.nomorTemuan}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.nomorIzin}
+                      {temuan.paketId}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.jenisVendor.replace('_', ' ')}
+                      {temuan.jenisTemuan}
                     </td>
-                    <td className="px-6 py-4">{vendor.rating ? renderStars(vendor.rating) : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.jumlahProyek} proyek
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400 max-w-xs truncate">
+                      {temuan.deskripsi}
                     </td>
                     <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(vendor.status)}>
-                        {vendor.status}
+                      <Badge
+                        size="sm"
+                        color={getKeparahanColor(temuan.tingkatKeparahan)}
+                      >
+                        {temuan.tingkatKeparahan}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge size="sm" color={getStatusColor(temuan.status)}>
+                        {temuan.status}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {vendor.kontak}
+                      {temuan.pic}
                     </td>
                   </tr>
                 ))}
@@ -357,85 +374,83 @@ export default function VendorPenyedia() {
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingVendor ? 'Edit Vendor' : 'Tambah Vendor Baru'}
+            {editingTemuan ? 'Edit Temuan Audit' : 'Tambah Temuan Audit'}
           </h3>
 
           <div className="space-y-4">
-            <div>
-              <Label>Nama Vendor</Label>
-              <Input
-                type="text"
-                value={formData.namaVendor}
-                onChange={(e) =>
-                  setFormData({ ...formData, namaVendor: e.target.value })
-                }
-                placeholder="PT/CV Nama Vendor"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Nomor Temuan</Label>
+                <Input
+                  type="text"
+                  value={formData.nomorTemuan}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nomorTemuan: e.target.value })
+                  }
+                  placeholder="TMN-2024-XXX"
+                />
+              </div>
+              <div>
+                <Label>Kode Paket</Label>
+                <Input
+                  type="text"
+                  value={formData.paketId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, paketId: e.target.value })
+                  }
+                  placeholder="PKT-2024-XXX"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Jenis Vendor</Label>
+                <Label>Jenis Temuan</Label>
                 <Select
-                  options={[
-                    { value: "KONSTRUKSI", label: "Konstruksi" },
-                    { value: "KONSULTAN_PERENCANAAN", label: "Konsultan Perencanaan" },
-                    { value: "KONSULTAN_PENGAWAS", label: "Konsultan Pengawas" },
-                  ]}
-                  placeholder="Pilih jenis vendor"
+                  options={jenisTemuanOptions}
+                  placeholder="Pilih jenis"
                   onChange={(value) =>
-                    setFormData({ ...formData, jenisVendor: value as Vendor["jenisVendor"] })
+                    setFormData({ ...formData, jenisTemuan: value })
                   }
                 />
               </div>
               <div>
-                <Label>Nomor Izin</Label>
-                <Input
-                  type="text"
-                  value={formData.nomorIzin}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nomorIzin: e.target.value })
+                <Label>Tingkat Keparahan</Label>
+                <Select
+                  options={keparahanOptions}
+                  placeholder="Pilih keparahan"
+                  onChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      tingkatKeparahan: value as Temuan["tingkatKeparahan"],
+                    })
                   }
-                  placeholder="Nomor izin vendor"
                 />
               </div>
             </div>
 
             <div>
-              <Label>Spesialisasi</Label>
-              <Input
-                type="text"
-                value={formData.spesialisasi}
-                onChange={(e) =>
-                  setFormData({ ...formData, spesialisasi: e.target.value })
+              <Label>Deskripsi Temuan</Label>
+              <TextArea
+                rows={4}
+                value={formData.deskripsi}
+                onChange={(value) =>
+                  setFormData({ ...formData, deskripsi: value })
                 }
-                placeholder="Spesialisasi vendor"
+                placeholder="Jelaskan temuan audit secara detail..."
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Alamat</Label>
-                <Input
-                  type="text"
-                  value={formData.alamat}
-                  onChange={(e) =>
-                    setFormData({ ...formData, alamat: e.target.value })
-                  }
-                  placeholder="Kota/Kabupaten"
-                />
-              </div>
-              <div>
-                <Label>Kontak</Label>
-                <Input
-                  type="email"
-                  value={formData.kontak}
-                  onChange={(e) =>
-                    setFormData({ ...formData, kontak: e.target.value })
-                  }
-                  placeholder="email@vendor.com"
-                />
-              </div>
+            <div>
+              <Label>PIC (Person in Charge)</Label>
+              <Input
+                type="text"
+                value={formData.pic}
+                onChange={(e) =>
+                  setFormData({ ...formData, pic: e.target.value })
+                }
+                placeholder="Nama penanggung jawab"
+              />
             </div>
           </div>
 
@@ -444,7 +459,7 @@ export default function VendorPenyedia() {
               Batal
             </Button>
             <Button size="sm" variant="primary" onClick={handleSubmit}>
-              {editingVendor ? 'Update Vendor' : 'Simpan Vendor'}
+              Simpan Temuan
             </Button>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 // Assume these icons are imported from an icon library
 import {
@@ -30,52 +30,62 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    path: "/spkmb/",
+    path: "/sip-kpbj/",
   },
   {
     icon: <BoxCubeIcon />,
     name: "Manajemen Paket",
-    path: "/spkmb/manajemen-paket",
+    path: "/sip-kpbj/manajemen-paket",
   },
   {
     icon: <DocsIcon />,
     name: "Dokumen & Arsip",
-    path: "/spkmb/dokumen-arsip",
+    path: "/sip-kpbj/dokumen-arsip",
   },
   {
     icon: <TaskIcon />,
     name: "Pengawasan & Audit",
-    path: "/spkmb/pengawasan-audit",
+    path: "/sip-kpbj/pengawasan-audit",
+    subItems: [
+      { name: "Itwasda", path: "/sip-kpbj/pengawasan-audit/itwasda" },
+      { name: "BPKP", path: "/sip-kpbj/pengawasan-audit/bpkp" },
+      { name: "PUPR", path: "/sip-kpbj/pengawasan-audit/pupr" },
+    ],
   },
   {
     icon: <GroupIcon />,
     name: "Vendor / Penyedia",
-    path: "/spkmb/vendor-penyedia",
+    path: "/sip-kpbj/vendor-penyedia",
+    subItems: [
+      { name: "Konsultan Perencanaan", path: "/sip-kpbj/vendor-penyedia/konsultan-perencanaan" },
+      { name: "Konsultan Pengawas", path: "/sip-kpbj/vendor-penyedia/konsultan-pengawas" },
+      { name: "Konstruksi", path: "/sip-kpbj/vendor-penyedia/konstruksi" },
+    ],
   },
   {
     icon: <UserCircleIcon />,
     name: "Kompetensi PPK",
-    path: "/spkmb/kompetensi-ppk",
+    path: "/sip-kpbj/kompetensi-ppk",
   },
   {
     icon: <PieChartIcon />,
     name: "Monitoring & Evaluasi",
-    path: "/spkmb/monitoring-evaluasi",
+    path: "/sip-kpbj/monitoring-evaluasi",
   },
   {
     icon: <TableIcon />,
     name: "Laporan & Analisis",
-    path: "/spkmb/laporan-analisis",
+    path: "/sip-kpbj/laporan-analisis",
   },
   {
     icon: <LockIcon />,
     name: "Pengaturan & Hak Akses",
-    path: "/spkmb/pengaturan-akses",
+    path: "/sip-kpbj/pengaturan-akses",
   },
   {
     icon: <InfoIcon />,
     name: "Bantuan & Panduan",
-    path: "/spkmb/bantuan-panduan",
+    path: "/sip-kpbj/bantuan-panduan",
   },
 ];
 
@@ -292,14 +302,14 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/spkmb/">
+        <Link to="/sip-kpbj/">
           {isExpanded || isHovered || isMobileOpen ? (
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              SPKMB
+              SIP-KPBJ
             </span>
           ) : (
             <span className="text-xl font-bold text-gray-900 dark:text-white">
-              SP
+              SIP
             </span>
           )}
         </Link>

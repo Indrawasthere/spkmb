@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon } from "../icons";
+import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
@@ -12,113 +12,156 @@ import Select from "../components/form/Select";
 
 interface PPK {
   id: string;
+  namaLengkap: string;
   nip: string;
-  nama: string;
   jabatan: string;
-  sertifikat: string;
-  masaBerlaku: string;
-  status: "Aktif" | "Kadaluarsa" | "Pending";
+  unitKerja: string;
+  kompetensi: any; // JSON
+  sertifikasi: any; // JSON
+  pengalaman: number;
+  status: "AKTIF" | "NON_AKTIF" | "CUTI";
+  createdAt: string;
 }
 
-// Dummy data PPK
-const initialPPKs: PPK[] = [
-  {
-    id: "1",
-    nip: "198501012010011001",
-    nama: "Ahmad Surya",
-    jabatan: "PPK Bagian IT",
-    sertifikat: "Sertifikat Pengadaan Tingkat II",
-    masaBerlaku: "15 Des 2025",
-    status: "Aktif",
-  },
-  {
-    id: "2",
-    nip: "198703152011012002",
-    nama: "Siti Nurhaliza",
-    jabatan: "PPK Bagian Umum",
-    sertifikat: "Sertifikat Pengadaan Tingkat I",
-    masaBerlaku: "20 Nov 2024",
-    status: "Aktif",
-  },
-  {
-    id: "3",
-    nip: "199001202012013003",
-    nama: "Budi Santoso",
-    jabatan: "PPK Bagian Keuangan",
-    sertifikat: "Sertifikat Pengadaan Tingkat III",
-    masaBerlaku: "10 Jan 2024",
-    status: "Kadaluarsa",
-  },
-];
-
 export default function KompetensiPPK() {
-  const [ppks, setPpks] = useState<PPK[]>(initialPPKs);
+  const [ppks, setPpks] = useState<PPK[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
+    namaLengkap: "",
     nip: "",
-    nama: "",
     jabatan: "",
-    sertifikat: "",
-    masaBerlaku: "",
-    status: "" as PPK["status"] | "",
+    unitKerja: "",
+    kompetensi: "",
+    sertifikasi: "",
+    pengalaman: "",
   });
+  const [editingPPK, setEditingPPK] = useState<PPK | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
 
-  const handleSubmit = () => {
-    const newPPK: PPK = {
-      id: Date.now().toString(),
-      nip: formData.nip,
-      nama: formData.nama,
-      jabatan: formData.jabatan,
-      sertifikat: formData.sertifikat,
-      masaBerlaku: formData.masaBerlaku,
-      status: formData.status || "Aktif",
-    };
+  // Fetch PPK data from API
+  useEffect(() => {
+    fetchPPKs();
+  }, []);
 
-    setPpks([newPPK, ...ppks]);
-    closeModal();
+  const fetchPPKs = async () => {
+    try {
+      const response = await fetch('/api/ppk');
+      if (response.ok) {
+        const data = await response.json();
+        setPpks(data);
+      }
+    } catch (error) {
+      console.error('Error fetching PPKs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const ppkData = {
+        namaLengkap: formData.namaLengkap,
+        nip: formData.nip,
+        jabatan: formData.jabatan,
+        unitKerja: formData.unitKerja,
+        kompetensi: JSON.parse(formData.kompetensi || '{}'),
+        sertifikasi: JSON.parse(formData.sertifikasi || '{}'),
+        pengalaman: parseInt(formData.pengalaman) || 0,
+      };
+
+      let response;
+      if (editingPPK) {
+        response = await fetch(`/api/ppk/${editingPPK.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ppkData),
+        });
+      } else {
+        response = await fetch('/api/ppk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ppkData),
+        });
+      }
+
+      if (response.ok) {
+        await fetchPPKs();
+        closeModal();
+        resetForm();
+      }
+    } catch (error) {
+      console.error('Error saving PPK:', error);
+    }
+  };
+
+  const handleEdit = (ppk: PPK) => {
+    setEditingPPK(ppk);
     setFormData({
-      nip: "",
-      nama: "",
-      jabatan: "",
-      sertifikat: "",
-      masaBerlaku: "",
-      status: "",
+      namaLengkap: ppk.namaLengkap,
+      nip: ppk.nip,
+      jabatan: ppk.jabatan,
+      unitKerja: ppk.unitKerja,
+      kompetensi: JSON.stringify(ppk.kompetensi, null, 2),
+      sertifikasi: JSON.stringify(ppk.sertifikasi, null, 2),
+      pengalaman: ppk.pengalaman.toString(),
     });
+    openModal();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Apakah Anda yakin ingin menghapus PPK ini?')) {
+      try {
+        const response = await fetch(`/api/ppk/${id}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          await fetchPPKs();
+        }
+      } catch (error) {
+        console.error('Error deleting PPK:', error);
+      }
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      namaLengkap: "",
+      nip: "",
+      jabatan: "",
+      unitKerja: "",
+      kompetensi: "",
+      sertifikasi: "",
+      pengalaman: "",
+    });
+    setEditingPPK(null);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    openModal();
   };
 
   const filteredPPKs = ppks.filter(
     (ppk) =>
-      ppk.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ppk.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ppk.nip.includes(searchQuery) ||
       ppk.jabatan.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusColor = (status: PPK["status"]) => {
     switch (status) {
-      case "Aktif":
+      case "AKTIF":
         return "success";
-      case "Kadaluarsa":
-        return "error";
-      case "Pending":
+      case "NON_AKTIF":
         return "warning";
+      case "CUTI":
+        return "info";
       default:
         return "light";
     }
   };
-
-  const sertifikatOptions = [
-    { value: "Sertifikat Pengadaan Tingkat I", label: "Sertifikat Pengadaan Tingkat I" },
-    { value: "Sertifikat Pengadaan Tingkat II", label: "Sertifikat Pengadaan Tingkat II" },
-    { value: "Sertifikat Pengadaan Tingkat III", label: "Sertifikat Pengadaan Tingkat III" },
-  ];
-
-  const statusOptions = [
-    { value: "Aktif", label: "Aktif" },
-    { value: "Kadaluarsa", label: "Kadaluarsa" },
-    { value: "Pending", label: "Pending" },
-  ];
 
   return (
     <>
@@ -186,13 +229,16 @@ export default function KompetensiPPK() {
                     Jabatan
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Sertifikat
+                    Unit Kerja
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Masa Berlaku
+                    Pengalaman
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Aksi
                   </th>
                 </tr>
               </thead>
@@ -206,21 +252,35 @@ export default function KompetensiPPK() {
                       {ppk.nip}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {ppk.nama}
+                      {ppk.namaLengkap}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {ppk.jabatan}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {ppk.sertifikat}
+                      {ppk.unitKerja}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {ppk.masaBerlaku}
+                      {ppk.pengalaman} tahun
                     </td>
                     <td className="px-6 py-4">
                       <Badge size="sm" color={getStatusColor(ppk.status)}>
                         {ppk.status}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                        onClick={() => handleEdit(ppk)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        onClick={() => handleDelete(ppk.id)}
+                      >
+                        Hapus
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -234,7 +294,7 @@ export default function KompetensiPPK() {
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            Tambah PPK
+            {editingPPK ? 'Edit PPK' : 'Tambah PPK'}
           </h3>
 
           <div className="space-y-4">
@@ -251,66 +311,77 @@ export default function KompetensiPPK() {
                 />
               </div>
               <div>
-                <Label>Masa Berlaku</Label>
+                <Label>Pengalaman (tahun)</Label>
                 <Input
-                  type="text"
-                  value={formData.masaBerlaku}
+                  type="number"
+                  value={formData.pengalaman}
                   onChange={(e) =>
-                    setFormData({ ...formData, masaBerlaku: e.target.value })
+                    setFormData({ ...formData, pengalaman: e.target.value })
                   }
-                  placeholder="15 Des 2025"
+                  placeholder="5"
                 />
               </div>
             </div>
 
             <div>
-              <Label>Nama</Label>
+              <Label>Nama Lengkap</Label>
               <Input
                 type="text"
-                value={formData.nama}
+                value={formData.namaLengkap}
                 onChange={(e) =>
-                  setFormData({ ...formData, nama: e.target.value })
+                  setFormData({ ...formData, namaLengkap: e.target.value })
                 }
-                placeholder="Masukkan nama"
-              />
-            </div>
-
-            <div>
-              <Label>Jabatan</Label>
-              <Input
-                type="text"
-                value={formData.jabatan}
-                onChange={(e) =>
-                  setFormData({ ...formData, jabatan: e.target.value })
-                }
-                placeholder="Masukkan jabatan"
+                placeholder="Masukkan nama lengkap"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Sertifikat</Label>
-                <Select
-                  options={sertifikatOptions}
-                  placeholder="Pilih sertifikat"
-                  onChange={(value) =>
-                    setFormData({ ...formData, sertifikat: value })
+                <Label>Jabatan</Label>
+                <Input
+                  type="text"
+                  value={formData.jabatan}
+                  onChange={(e) =>
+                    setFormData({ ...formData, jabatan: e.target.value })
                   }
+                  placeholder="Masukkan jabatan"
                 />
               </div>
               <div>
-                <Label>Status</Label>
-                <Select
-                  options={statusOptions}
-                  placeholder="Pilih status"
-                  onChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      status: value as PPK["status"],
-                    })
+                <Label>Unit Kerja</Label>
+                <Input
+                  type="text"
+                  value={formData.unitKerja}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unitKerja: e.target.value })
                   }
+                  placeholder="Masukkan unit kerja"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label>Kompetensi (JSON)</Label>
+              <textarea
+                className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                value={formData.kompetensi}
+                onChange={(e) =>
+                  setFormData({ ...formData, kompetensi: e.target.value })
+                }
+                placeholder='{"pengadaan": "tingkat III", "manajemen": "tingkat II"}'
+              />
+            </div>
+
+            <div>
+              <Label>Sertifikasi (JSON)</Label>
+              <textarea
+                className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                value={formData.sertifikasi}
+                onChange={(e) =>
+                  setFormData({ ...formData, sertifikasi: e.target.value })
+                }
+                placeholder='{"sertifikat_pengadaan": "2025-12-15", "sertifikat_manajemen": "2024-08-20"}'
+              />
             </div>
           </div>
 
@@ -319,7 +390,7 @@ export default function KompetensiPPK() {
               Batal
             </Button>
             <Button size="sm" variant="primary" onClick={handleSubmit}>
-              Simpan PPK
+              {editingPPK ? 'Update PPK' : 'Simpan PPK'}
             </Button>
           </div>
         </div>
