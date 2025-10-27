@@ -30,62 +30,62 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    path: "/sip-kpbj/",
+    path: "/",
   },
   {
     icon: <BoxCubeIcon />,
     name: "Manajemen Paket",
-    path: "/sip-kpbj/manajemen-paket",
+    path: "/manajemen-paket",
   },
   {
     icon: <DocsIcon />,
     name: "Dokumen & Arsip",
-    path: "/sip-kpbj/dokumen-arsip",
+    path: "/dokumen-arsip",
   },
   {
     icon: <TaskIcon />,
     name: "Pengawasan & Audit",
-    path: "/sip-kpbj/pengawasan-audit",
+    path: "/pengawasan-audit",
     subItems: [
-      { name: "Itwasda", path: "/sip-kpbj/pengawasan-audit/itwasda" },
-      { name: "BPKP", path: "/sip-kpbj/pengawasan-audit/bpkp" },
-      { name: "PUPR", path: "/sip-kpbj/pengawasan-audit/pupr" },
+      { name: "Itwasda", path: "/pengawasan-audit/itwasda" },
+      { name: "BPKP", path: "/pengawasan-audit/bpkp" },
+      { name: "PUPR", path: "/pengawasan-audit/pupr" },
     ],
   },
   {
     icon: <GroupIcon />,
     name: "Vendor / Penyedia",
-    path: "/sip-kpbj/vendor-penyedia",
+    path: "/vendor-penyedia",
     subItems: [
-      { name: "Konsultan Perencanaan", path: "/sip-kpbj/vendor-penyedia/konsultan-perencanaan" },
-      { name: "Konsultan Pengawas", path: "/sip-kpbj/vendor-penyedia/konsultan-pengawas" },
-      { name: "Konstruksi", path: "/sip-kpbj/vendor-penyedia/konstruksi" },
+      { name: "Konsultan Perencanaan", path: "/vendor-penyedia/konsultan-perencanaan" },
+      { name: "Konsultan Pengawas", path: "/vendor-penyedia/konsultan-pengawas" },
+      { name: "Konstruksi", path: "/vendor-penyedia/konstruksi" },
     ],
   },
   {
     icon: <UserCircleIcon />,
     name: "Kompetensi PPK",
-    path: "/sip-kpbj/kompetensi-ppk",
+    path: "/kompetensi-ppk",
   },
   {
     icon: <PieChartIcon />,
     name: "Monitoring & Evaluasi",
-    path: "/sip-kpbj/monitoring-evaluasi",
+    path: "/monitoring-evaluasi",
   },
   {
     icon: <TableIcon />,
     name: "Laporan & Analisis",
-    path: "/sip-kpbj/laporan-analisis",
+    path: "/laporan-analisis",
   },
   {
     icon: <LockIcon />,
     name: "Pengaturan & Hak Akses",
-    path: "/sip-kpbj/pengaturan-akses",
+    path: "/pengaturan-akses",
   },
   {
     icon: <InfoIcon />,
     name: "Bantuan & Panduan",
-    path: "/sip-kpbj/bantuan-panduan",
+    path: "/bantuan-panduan",
   },
 ];
 
@@ -302,7 +302,7 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/sip-kpbj/">
+        <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               SIP-KPBJ

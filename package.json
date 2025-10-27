@@ -8,7 +8,7 @@
         "dev": "vite",
         "dev:server": "tsx watch src/server.ts",
         "build": "vite build",
-        "build:server": "tsc src/server.ts --outDir dist --module commonjs --target es2020",
+    "build:server": "tsc --project tsconfig.server.json",
         "start": "node dist/server.js",
         "deploy": "vite build && gh-pages --dotfiles -d dist",
         "lint": "eslint .",

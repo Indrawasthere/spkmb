@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 // Allow credentials and set specific origin for CORS
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: ['http://148.230.100.248', 'http://sipakat-bpj.com', 'https://sipakat-bpj.com', 'http://www.sipakat-bpj.com', 'https://www.sipakat-bpj.com'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
@@ -374,55 +374,12 @@ app.get('/api/monitoring', async (req, res) => {
   }
 });
 
-// Dokumen routes
-app.get('/api/dokumen', async (req, res) => {
-  try {
-    const dokumen = await prisma.dokumen.findMany({
-      orderBy: {
-        uploadedAt: 'desc',
-      },
-    });
-    res.json(dokumen);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch dokumen' });
-  }
-});
 
-app.post('/api/dokumen', async (req, res) => {
-  try {
-    const { namaDokumen, jenisDokumen, paketId } = req.body;
-    const file = req.files?.file;
-
-    if (!file) {
-      return res.status(400).json({ error: 'File is required' });
-    }
-
-    // For now, we'll store the file path as a string
-    // In a real application, you'd upload to cloud storage or local storage
-    const filePath = `/uploads/${Date.now()}-${file.name}`;
-
-    const dokumen = await prisma.dokumen.create({
-      data: {
-        namaDokumen,
-        jenisDokumen,
-        paketId,
-        filePath,
-        fileSize: file.size,
-        mimeType: file.mimetype,
-        uploadedBy: 'Current User', // In real app, get from auth
-      },
-    });
-    res.json(dokumen);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create dokumen' });
-  }
-});
 
 app.put('/api/dokumen/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { namaDokumen, jenisDokumen, paketId } = req.body;
-    const file = req.files?.file;
+    const { namaDokumen, jenisDokumen, paketId, filePath, fileSize, mimeType } = req.body;
 
     const updateData: any = {
       namaDokumen,
@@ -430,10 +387,10 @@ app.put('/api/dokumen/:id', async (req, res) => {
       paketId,
     };
 
-    if (file) {
-      updateData.filePath = `/uploads/${Date.now()}-${file.name}`;
-      updateData.fileSize = file.size;
-      updateData.mimeType = file.mimetype;
+    if (filePath) {
+      updateData.filePath = filePath;
+      updateData.fileSize = parseInt(fileSize);
+      updateData.mimeType = mimeType;
     }
 
     const dokumen = await prisma.dokumen.update({
@@ -535,11 +492,7 @@ app.post('/api/laporan-analisis', async (req, res) => {
 // Role routes
 app.get('/api/roles', async (req, res) => {
   try {
-    const roles = await prisma.role.findMany({
-      include: {
-        permissions: true,
-      },
-    });
+    const roles = await prisma.role.findMany();
     res.json(roles);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch roles' });
@@ -819,6 +772,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
+});
+
+// Serve static files from the React app build directory
+app.use(express.static('dist'));
+
+// Catch all handler: send back React's index.html file for any non-API routes
+app.use((req, res) => {
+  res.sendFile('index.html', { root: 'dist' });
 });
 
 // Start server

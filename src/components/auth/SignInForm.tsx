@@ -37,7 +37,7 @@ export default function SignInForm() {
               setError('');
               const success = await login(email, password);
               if (success) {
-                navigate("/sip-kpbj/");
+                navigate("/");
               } else {
                 setError("Invalid email or password");
               }
@@ -99,7 +99,7 @@ export default function SignInForm() {
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
                 Don&apos;t have an account? {""}
                 <Link
-                  to="/sip-kpbj/signup"
+                  to="/signup"
                   className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
                 >
                   Sign Up

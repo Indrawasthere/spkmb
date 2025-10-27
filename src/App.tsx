@@ -31,7 +31,7 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const { isAuthenticated, isLoading } = useAuth();
   // While we don't know the auth state yet, don't redirect — let the auth check finish
   if (isLoading) return null;
-  return isAuthenticated ? children : <Navigate to="/sip-kpbj/signin" replace />;
+  return isAuthenticated ? children : <Navigate to="/signin" replace />;
 }
 
 export default function App() {
@@ -41,7 +41,7 @@ export default function App() {
         <ScrollToTop />
         <Routes>
           {/* Dashboard Layout */}
-          <Route path="/sip-kpbj/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route index element={<Home />} />
 
             {/* Sistem Pengawasan Routes */}
@@ -69,8 +69,8 @@ export default function App() {
           </Route>
 
           {/* Auth Layout */}
-          <Route path="/sip-kpbj/signin" element={<SignIn />} />
-          <Route path="/sip-kpbj/signup" element={<SignUp />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />
