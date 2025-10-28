@@ -1,35 +1,30 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
-const helmet_1 = __importDefault(require("helmet"));
-const morgan_1 = __importDefault(require("morgan"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const bcrypt_1 = __importDefault(require("bcrypt"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const cookie_parser_1 = __importDefault(require("cookie-parser"));
-const prisma_1 = require("./lib/prisma");
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
+import { prisma } from './lib/prisma.js';
 // Load environment variables
-dotenv_1.default.config();
-const app = (0, express_1.default)();
+dotenv.config();
+const app = express();
 const PORT = process.env.PORT || 3001;
 // Middleware
-app.use((0, helmet_1.default)());
+app.use(helmet());
 // Allow credentials and set specific origin for CORS
-app.use((0, cors_1.default)({
+app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? 'https://sipakat-bpj.com' : 'http://localhost:5173',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['set-cookie']
 }));
-app.use((0, cookie_parser_1.default)());
-app.use((0, morgan_1.default)('combined'));
-app.use(express_1.default.json());
-app.use(express_1.default.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(morgan('combined'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 // Debug middleware to log all requests and cookies
 app.use((req, res, next) => {
     console.log('Request URL:', req.url);
@@ -42,19 +37,19 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         console.log('Login attempt:', req.body);
         const { email, password } = req.body;
-        const user = await prisma_1.prisma.user.findUnique({
+        const user = await prisma.user.findUnique({
             where: { email },
         });
         console.log('Found user:', user ? { ...user, password: '[REDACTED]' } : null);
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
-        const isPasswordValid = await bcrypt_1.default.compare(password, user.password);
+        const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         // Sign JWT and set as HttpOnly cookie
-        const token = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
         // Set cookie with development-friendly options (no domain)
         res.cookie('token', token, {
             httpOnly: true,
@@ -75,20 +70,21 @@ app.post('/api/auth/login', async (req, res) => {
         });
     }
     catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
 });
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, password, firstName, lastName } = req.body;
-        const existingUser = await prisma_1.prisma.user.findUnique({
+        const existingUser = await prisma.user.findUnique({
             where: { email },
         });
         if (existingUser) {
             return res.status(400).json({ error: 'User already exists' });
         }
-        const hashedPassword = await bcrypt_1.default.hash(password, 10);
-        const user = await prisma_1.prisma.user.create({
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
@@ -97,7 +93,7 @@ app.post('/api/auth/register', async (req, res) => {
             },
         });
         // Sign JWT and set cookie
-        const token = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -131,9 +127,9 @@ app.get('/api/auth/me', async (req, res) => {
             console.log('No token found'); // Debug log
             return res.status(401).json({ user: null });
         }
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret');
         console.log('Decoded token:', decoded); // Debug log
-        const user = await prisma_1.prisma.user.findUnique({ where: { id: decoded.userId } });
+        const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
         console.log('Found user:', user); // Debug log
         if (!user) {
             console.log('No user found for token'); // Debug log
@@ -141,7 +137,7 @@ app.get('/api/auth/me', async (req, res) => {
             return res.status(401).json({ user: null });
         }
         // Refresh token
-        const newToken = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
+        const newToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
         // Set refreshed token cookie
         res.cookie('token', newToken, {
             httpOnly: true,
@@ -175,7 +171,7 @@ app.get('/api/health', (req, res) => {
 // User routes
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await prisma_1.prisma.user.findMany({
+        const users = await prisma.user.findMany({
             select: {
                 id: true,
                 email: true,
@@ -195,7 +191,7 @@ app.get('/api/users', async (req, res) => {
 // Paket routes
 app.get('/api/paket', async (req, res) => {
     try {
-        const paket = await prisma_1.prisma.paket.findMany({
+        const paket = await prisma.paket.findMany({
             include: {
                 dokumen: true,
                 laporan: true,
@@ -210,7 +206,7 @@ app.get('/api/paket', async (req, res) => {
 app.post('/api/paket', async (req, res) => {
     try {
         const { kodePaket, namaPaket, jenisPaket, nilaiPaket, metodePengadaan, createdBy } = req.body;
-        const paket = await prisma_1.prisma.paket.create({
+        const paket = await prisma.paket.create({
             data: {
                 kodePaket,
                 namaPaket,
@@ -229,7 +225,7 @@ app.post('/api/paket', async (req, res) => {
 // Laporan Itwasda routes
 app.get('/api/itwasda', async (req, res) => {
     try {
-        const laporan = await prisma_1.prisma.laporanItwasda.findMany({
+        const laporan = await prisma.laporanItwasda.findMany({
             include: {
                 paket: {
                     select: {
@@ -251,7 +247,7 @@ app.get('/api/itwasda', async (req, res) => {
 app.post('/api/itwasda', async (req, res) => {
     try {
         const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKeparahan, auditor, pic, } = req.body;
-        const laporan = await prisma_1.prisma.laporanItwasda.create({
+        const laporan = await prisma.laporanItwasda.create({
             data: {
                 nomorLaporan,
                 paketId,
@@ -272,7 +268,7 @@ app.post('/api/itwasda', async (req, res) => {
 // Vendor routes
 app.get('/api/vendor', async (req, res) => {
     try {
-        const vendor = await prisma_1.prisma.vendor.findMany({
+        const vendor = await prisma.vendor.findMany({
             orderBy: {
                 createdAt: 'desc',
             },
@@ -286,7 +282,7 @@ app.get('/api/vendor', async (req, res) => {
 app.post('/api/vendor', async (req, res) => {
     try {
         const { namaVendor, jenisVendor, nomorIzin, spesialisasi, kontak, alamat, } = req.body;
-        const vendor = await prisma_1.prisma.vendor.create({
+        const vendor = await prisma.vendor.create({
             data: {
                 namaVendor,
                 jenisVendor,
@@ -305,7 +301,7 @@ app.post('/api/vendor', async (req, res) => {
 // PPK routes
 app.get('/api/ppk', async (req, res) => {
     try {
-        const ppk = await prisma_1.prisma.pPK.findMany({
+        const ppk = await prisma.pPK.findMany({
             orderBy: {
                 createdAt: 'desc',
             },
@@ -319,7 +315,7 @@ app.get('/api/ppk', async (req, res) => {
 // Monitoring routes
 app.get('/api/monitoring', async (req, res) => {
     try {
-        const monitoring = await prisma_1.prisma.monitoring.findMany({
+        const monitoring = await prisma.monitoring.findMany({
             orderBy: {
                 createdAt: 'desc',
             },
@@ -328,40 +324,6 @@ app.get('/api/monitoring', async (req, res) => {
     }
     catch (error) {
         res.status(500).json({ error: 'Failed to fetch monitoring' });
-    }
-});
-// Dokumen routes
-app.get('/api/dokumen', async (req, res) => {
-    try {
-        const dokumen = await prisma_1.prisma.dokumen.findMany({
-            orderBy: {
-                uploadedAt: 'desc',
-            },
-        });
-        res.json(dokumen);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch dokumen' });
-    }
-});
-app.post('/api/dokumen', async (req, res) => {
-    try {
-        const { namaDokumen, jenisDokumen, paketId, filePath, fileSize, mimeType } = req.body;
-        const dokumen = await prisma_1.prisma.dokumen.create({
-            data: {
-                namaDokumen,
-                jenisDokumen,
-                paketId,
-                filePath,
-                fileSize: parseInt(fileSize),
-                mimeType,
-                uploadedBy: 'Current User', // In real app, get from auth
-            },
-        });
-        res.json(dokumen);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to create dokumen' });
     }
 });
 app.put('/api/dokumen/:id', async (req, res) => {
@@ -378,7 +340,7 @@ app.put('/api/dokumen/:id', async (req, res) => {
             updateData.fileSize = parseInt(fileSize);
             updateData.mimeType = mimeType;
         }
-        const dokumen = await prisma_1.prisma.dokumen.update({
+        const dokumen = await prisma.dokumen.update({
             where: { id },
             data: updateData,
         });
@@ -391,7 +353,7 @@ app.put('/api/dokumen/:id', async (req, res) => {
 app.delete('/api/dokumen/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.prisma.dokumen.delete({
+        await prisma.dokumen.delete({
             where: { id },
         });
         res.json({ message: 'Dokumen deleted successfully' });
@@ -403,7 +365,7 @@ app.delete('/api/dokumen/:id', async (req, res) => {
 app.post('/api/monitoring', async (req, res) => {
     try {
         const { paketId, jenisMonitoring, periode, status, progress, issues, rekomendasi, tanggalMonitoring, monitoredBy, } = req.body;
-        const monitoring = await prisma_1.prisma.monitoring.create({
+        const monitoring = await prisma.monitoring.create({
             data: {
                 paketId,
                 jenisMonitoring,
@@ -425,7 +387,7 @@ app.post('/api/monitoring', async (req, res) => {
 // Laporan Analisis routes
 app.get('/api/laporan-analisis', async (req, res) => {
     try {
-        const laporan = await prisma_1.prisma.laporanAnalisis.findMany({
+        const laporan = await prisma.laporanAnalisis.findMany({
             orderBy: {
                 generatedAt: 'desc',
             },
@@ -439,7 +401,7 @@ app.get('/api/laporan-analisis', async (req, res) => {
 app.post('/api/laporan-analisis', async (req, res) => {
     try {
         const { jenisLaporan, periode, data, kesimpulan, rekomendasi, generatedBy, } = req.body;
-        const laporan = await prisma_1.prisma.laporanAnalisis.create({
+        const laporan = await prisma.laporanAnalisis.create({
             data: {
                 jenisLaporan,
                 periode,
@@ -458,7 +420,7 @@ app.post('/api/laporan-analisis', async (req, res) => {
 // Role routes
 app.get('/api/roles', async (req, res) => {
     try {
-        const roles = await prisma_1.prisma.role.findMany();
+        const roles = await prisma.role.findMany();
         res.json(roles);
     }
     catch (error) {
@@ -468,7 +430,7 @@ app.get('/api/roles', async (req, res) => {
 app.post('/api/roles', async (req, res) => {
     try {
         const { name, description, permissions } = req.body;
-        const role = await prisma_1.prisma.role.create({
+        const role = await prisma.role.create({
             data: {
                 name,
                 description,
@@ -484,7 +446,7 @@ app.post('/api/roles', async (req, res) => {
 // Permission routes
 app.get('/api/permissions', async (req, res) => {
     try {
-        const permissions = await prisma_1.prisma.permission.findMany();
+        const permissions = await prisma.permission.findMany();
         res.json(permissions);
     }
     catch (error) {
@@ -494,7 +456,7 @@ app.get('/api/permissions', async (req, res) => {
 // Dokumen routes
 app.get('/api/dokumen', async (req, res) => {
     try {
-        const dokumen = await prisma_1.prisma.dokumen.findMany({
+        const dokumen = await prisma.dokumen.findMany({
             include: {
                 paket: {
                     select: {
@@ -516,7 +478,7 @@ app.get('/api/dokumen', async (req, res) => {
 app.post('/api/dokumen', async (req, res) => {
     try {
         const { paketId, namaDokumen, jenisDokumen, filePath, fileSize, mimeType, uploadedBy, } = req.body;
-        const dokumen = await prisma_1.prisma.dokumen.create({
+        const dokumen = await prisma.dokumen.create({
             data: {
                 paketId,
                 namaDokumen,
@@ -538,7 +500,7 @@ app.put('/api/paket/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { kodePaket, namaPaket, jenisPaket, nilaiPaket, metodePengadaan, status, updatedBy } = req.body;
-        const paket = await prisma_1.prisma.paket.update({
+        const paket = await prisma.paket.update({
             where: { id },
             data: {
                 kodePaket,
@@ -561,7 +523,7 @@ app.put('/api/vendor/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { namaVendor, jenisVendor, nomorIzin, spesialisasi, kontak, alamat, status } = req.body;
-        const vendor = await prisma_1.prisma.vendor.update({
+        const vendor = await prisma.vendor.update({
             where: { id },
             data: {
                 namaVendor,
@@ -584,7 +546,7 @@ app.put('/api/ppk/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { namaLengkap, nip, jabatan, unitKerja, kompetensi, sertifikasi, pengalaman, status } = req.body;
-        const ppk = await prisma_1.prisma.pPK.update({
+        const ppk = await prisma.pPK.update({
             where: { id },
             data: {
                 namaLengkap,
@@ -608,7 +570,7 @@ app.put('/api/itwasda/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKeparahan, status, auditor, pic } = req.body;
-        const laporan = await prisma_1.prisma.laporanItwasda.update({
+        const laporan = await prisma.laporanItwasda.update({
             where: { id },
             data: {
                 nomorLaporan,
@@ -632,7 +594,7 @@ app.put('/api/monitoring/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { paketId, jenisMonitoring, periode, status, progress, issues, rekomendasi, tanggalMonitoring, monitoredBy } = req.body;
-        const monitoring = await prisma_1.prisma.monitoring.update({
+        const monitoring = await prisma.monitoring.update({
             where: { id },
             data: {
                 paketId,
@@ -657,7 +619,7 @@ app.put('/api/monitoring/:id', async (req, res) => {
 app.delete('/api/paket/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.prisma.paket.delete({
+        await prisma.paket.delete({
             where: { id },
         });
         res.json({ message: 'Paket deleted successfully' });
@@ -669,7 +631,7 @@ app.delete('/api/paket/:id', async (req, res) => {
 app.delete('/api/vendor/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.prisma.vendor.delete({
+        await prisma.vendor.delete({
             where: { id },
         });
         res.json({ message: 'Vendor deleted successfully' });
@@ -681,7 +643,7 @@ app.delete('/api/vendor/:id', async (req, res) => {
 app.delete('/api/ppk/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.prisma.pPK.delete({
+        await prisma.pPK.delete({
             where: { id },
         });
         res.json({ message: 'PPK deleted successfully' });
@@ -693,7 +655,7 @@ app.delete('/api/ppk/:id', async (req, res) => {
 app.delete('/api/itwasda/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.prisma.laporanItwasda.delete({
+        await prisma.laporanItwasda.delete({
             where: { id },
         });
         res.json({ message: 'Laporan Itwasda deleted successfully' });
@@ -705,7 +667,7 @@ app.delete('/api/itwasda/:id', async (req, res) => {
 app.delete('/api/monitoring/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma_1.prisma.monitoring.delete({
+        await prisma.monitoring.delete({
             where: { id },
         });
         res.json({ message: 'Monitoring deleted successfully' });
@@ -724,23 +686,23 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
 // Serve static files from the React app build directory
-app.use(express_1.default.static('dist'));
+app.use(express.static('dist'));
 // Catch all handler: send back React's index.html file for any non-API routes
-app.get('*', (req, res) => {
+app.use((req, res) => {
     res.sendFile('index.html', { root: 'dist' });
 });
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 SIP-KPBJ API server running on port ${PORT}`);
 });
 // Graceful shutdown
 process.on('SIGTERM', async () => {
     console.log('SIGTERM received, shutting down gracefully');
-    await prisma_1.prisma.$disconnect();
+    await prisma.$disconnect();
     process.exit(0);
 });
 process.on('SIGINT', async () => {
     console.log('SIGINT received, shutting down gracefully');
-    await prisma_1.prisma.$disconnect();
+    await prisma.$disconnect();
     process.exit(0);
 });

@@ -5,7 +5,7 @@ This guide provides step-by-step instructions for deploying the SIP-KPBJ applica
 ## Prerequisites
 
 - VPS server (e.g., from Niagahoster)
-- Domain name (sipakat-bpj.co.id)
+- Domain name (sipakat-bpj.com)
 - SSH access to VPS
 - Node.js 18+ installed on VPS
 - PostgreSQL 15+ installed on VPS
@@ -152,7 +152,7 @@ Add the following configuration:
 ```nginx
 server {
     listen 80;
-    server_name sipakat-bpj.co.id www.sipakat-bpj.co.id;
+    server_name sipakat-bpj.com www.sipakat-bpj.com;
 
     # Proxy API requests to Node.js backend
     location /api {
@@ -195,14 +195,14 @@ sudo systemctl reload nginx
 
 In your Niagahoster control panel:
 1. Go to Domain Management
-2. Select sipakat-bpj.co.id
+2. Select sipakat-bpj.com
 3. Update DNS records:
    - **Type**: A
    - **Name**: @
    - **Value**: your-vps-ip-address
    - **Type**: CNAME
    - **Name**: www
-   - **Value**: sipakat-bpj.co.id
+   - **Value**: sipakat-bpj.com
 
 ### 2. SSL Certificate (Let's Encrypt)
 
@@ -213,7 +213,7 @@ sudo apt install certbot python3-certbot-nginx -y
 
 Obtain SSL certificate:
 ```bash
-sudo certbot --nginx -d sipakat-bpj.co.id -d www.sipakat-bpj.co.id
+sudo certbot --nginx -d sipakat-bpj.com -d www.sipakat-bpj.com
 ```
 
 Follow the prompts to configure SSL.
@@ -288,7 +288,7 @@ crontab -e
    - View logs: `sudo tail -f /var/log/nginx/error.log`
 
 4. **Domain not resolving**
-   - Check DNS propagation: `nslookup sipakat-bpj.co.id`
+   - Check DNS propagation: `nslookup sipakat-bpj.com`
    - Verify DNS records in Niagahoster panel
 
 ### Logs Locations
@@ -327,5 +327,5 @@ For issues or questions:
 **Deployment completed successfully!**
 
 Your SIP-KPBJ application should now be accessible at:
-- **URL**: https://sipakat-bpj.co.id
-- **API**: https://sipakat-bpj.co.id/api/health
+- **URL**: https://sipakat-bpj.com
+- **API**: https://sipakat-bpj.com/api/health

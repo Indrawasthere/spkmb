@@ -784,7 +784,7 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 SIP-KPBJ API server running on port ${PORT}`);
 });
 
