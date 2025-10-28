@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 // Allow credentials and set specific origin for CORS
 app.use(cors({
-  origin: ['http://148.230.100.248', 'http://sipakat-bpj.com', 'https://sipakat-bpj.com', 'http://www.sipakat-bpj.com', 'https://www.sipakat-bpj.com'],
+  origin: process.env.NODE_ENV === 'production' ? 'https://sipakat-bpj.com' : 'http://localhost:5173',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
@@ -82,6 +82,7 @@ app.post('/api/auth/login', async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
   }
 });
