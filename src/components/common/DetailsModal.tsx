@@ -199,7 +199,7 @@ export const DetailsModal = ({
           </div>
         )}
 
-        {/* ✅ TAB CONTENT */}
+        {/* TAB CONTENT */}
         <div className="overflow-y-auto px-6 py-4">
           {activeTab === 'data' ? (
             <>
@@ -230,25 +230,6 @@ export const DetailsModal = ({
         </div>
         <div className="p-6 space-y-6">
           {/* Sections */}
-          {sections.map((section, idx) => (
-            <div key={idx} className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white border-b pb-2">
-                {section.title}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {section.fields.map((field, fieldIdx) => (
-                  <div key={fieldIdx} className={field.fullWidth ? 'md:col-span-2' : ''}>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      {field.label}
-                    </p>
-                    <div className="text-base text-gray-900 dark:text-white break-words">
-                      {field.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
 
           {/* Documents Section */}
           {documents && documents.length > 0 ? (
