@@ -4,7 +4,7 @@
 
 **SIP-KPBJ** adalah singkatan dari **Sistem Pengawasan Terintegrasi dan Kolaboratif Pengadaan Barang dan Jasa**, sebuah aplikasi dashboard modern yang dirancang untuk mengelola proses pengadaan, kompetensi, monitoring, dan audit dalam lingkungan pemerintah atau organisasi. Dibangun dengan teknologi React dan Tailwind CSS, aplikasi ini menyediakan antarmuka yang intuitif dan responsif untuk memudahkan pengelolaan data terkait paket pengadaan, dokumen arsip, pengawasan audit, vendor penyedia, kompetensi PPK (Pejabat Pembuat Komitmen), monitoring evaluasi, laporan analisis, pengaturan akses, dan panduan bantuan.
 
-**Tagline**: Berbasis Website – Kolaboratif, Transparan, dan Akuntabel.
+**Tagline**: Sistem Pengawasan Berbasis Website – Kolaboratif, Transparan, dan Akuntabel.
 
 ## Fitur Utama
 
