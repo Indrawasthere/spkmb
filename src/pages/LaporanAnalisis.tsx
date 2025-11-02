@@ -19,6 +19,11 @@ export default function LaporanAnalisis() {
     alert(`Mengekspor laporan dalam format ${format}`);
   };
 
+  const handleUpload = (id: number) => {
+    // Placeholder untuk modal upload
+    alert(`Upload dokumen untuk laporan ${id}`);
+  };
+
   const reports = [
     {
       id: 1,
@@ -148,6 +153,13 @@ export default function LaporanAnalisis() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUpload(report.id)}
+                    >
+                      Upload
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

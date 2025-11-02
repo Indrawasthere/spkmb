@@ -4,6 +4,10 @@ import BarChartOne from "../components/charts/bar/BarChartOne";
 import LineChartOne from "../components/charts/line/LineChartOne";
 
 export default function MonitoringEvaluasi() {
+  const handleUpload = (unit: string) => {
+    alert(`Upload dokumen untuk unit ${unit}`);
+  };
+
   return (
     <>
       <PageMeta
@@ -127,7 +131,13 @@ export default function MonitoringEvaluasi() {
                     Temuan
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Dokumen
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Aksi
                   </th>
                 </tr>
               </thead>
@@ -145,10 +155,21 @@ export default function MonitoringEvaluasi() {
                   <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                     2
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                    5
+                  </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                       Baik
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium">
+                    <button
+                      className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                      onClick={() => handleUpload("IT Department")}
+                    >
+                      Upload
+                    </button>
                   </td>
                 </tr>
                 <tr className="hover:bg-gray-50 dark:hover:bg-white/5">
@@ -164,10 +185,21 @@ export default function MonitoringEvaluasi() {
                   <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                     8
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                    3
+                  </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
                       Sedang
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium">
+                    <button
+                      className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                      onClick={() => handleUpload("Bagian Umum")}
+                    >
+                      Upload
+                    </button>
                   </td>
                 </tr>
                 <tr className="hover:bg-gray-50 dark:hover:bg-white/5">
@@ -183,10 +215,21 @@ export default function MonitoringEvaluasi() {
                   <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                     3
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                    7
+                  </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                       Baik
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium">
+                    <button
+                      className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                      onClick={() => handleUpload("Bagian Keuangan")}
+                    >
+                      Upload
+                    </button>
                   </td>
                 </tr>
               </tbody>

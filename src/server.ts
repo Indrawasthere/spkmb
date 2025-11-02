@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
+import multer from 'multer';
 import { prisma } from './lib/prisma';
 
 // Load environment variables
@@ -28,6 +29,26 @@ app.use(cookieParser());
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Configure multer for file uploads
+const upload = multer({
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, XLSX, CSV allowed.'));
+    }
+  }
+});
 
 // Debug middleware to log all requests and cookies
 app.use((req, res, next) => {
@@ -237,7 +258,13 @@ app.get('/api/paket', async (req, res) => {
 
 app.post('/api/paket', async (req, res) => {
   try {
+    console.log('Creating paket with data:', req.body);
     const { kodePaket, namaPaket, jenisPaket, nilaiPaket, metodePengadaan, createdBy } = req.body;
+
+    if (!kodePaket || !namaPaket || !jenisPaket || !nilaiPaket || !metodePengadaan || !createdBy) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
     const paket = await prisma.paket.create({
       data: {
         kodePaket,
@@ -248,8 +275,10 @@ app.post('/api/paket', async (req, res) => {
         createdBy,
       },
     });
+    console.log('Paket created successfully:', paket);
     res.json(paket);
   } catch (error) {
+    console.error('Error creating paket:', error);
     res.status(500).json({ error: 'Failed to create paket' });
   }
 });
@@ -575,6 +604,66 @@ app.post('/api/dokumen', async (req, res) => {
     res.json(dokumen);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create dokumen' });
+  }
+});
+
+// Upload dokumen dengan file handling
+app.post('/api/dokumen/upload', upload.single('file'), async (req, res) => {
+  try {
+    const { paketId, jenisDokumen } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Generate unique filename
+    const fileExtension = file.originalname.split('.').pop();
+    const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+
+    // Create uploads directory if it doesn't exist
+    const fs = require('fs');
+    const path = require('path');
+    const uploadsDir = path.join(__dirname, 'uploads');
+
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // Move file to uploads directory
+    const filePath = path.join(uploadsDir, uniqueFilename);
+    fs.writeFileSync(filePath, file.buffer);
+
+    // Get user from token
+    const token = req.cookies?.token;
+    let uploadedBy = 'system';
+
+    if (token) {
+      try {
+        const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret');
+        uploadedBy = decoded.userId;
+      } catch (err) {
+        // Continue with system user
+      }
+    }
+
+    // Save to database
+    const dokumen = await prisma.dokumen.create({
+      data: {
+        paketId,
+        namaDokumen: file.originalname,
+        jenisDokumen,
+        filePath: `/uploads/${uniqueFilename}`,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        uploadedBy,
+      },
+    });
+
+    res.json(dokumen);
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload dokumen' });
   }
 });
 

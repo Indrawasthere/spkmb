@@ -6,6 +6,7 @@ import Badge from "../components/ui/badge/Badge";
 import { PlusIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
+import { useDebounce } from "../hooks/useDebounce";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
@@ -90,6 +91,8 @@ export default function PengawasanAudit() {
 
   const { isOpen, openModal, closeModal } = useModal();
 
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   const handleSubmit = () => {
     const newTemuan: Temuan = {
       id: Date.now().toString(),
@@ -120,6 +123,32 @@ export default function PengawasanAudit() {
     });
   };
 
+  const handleEdit = (temuan: Temuan) => {
+    setFormData({
+      nomorTemuan: temuan.nomorTemuan,
+      paket: temuan.paket,
+      jenisTemuan: temuan.jenisTemuan,
+      deskripsi: temuan.deskripsi,
+      tingkatKeparahan: temuan.tingkatKeparahan,
+      pic: temuan.pic,
+    });
+    openModal();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Apakah Anda yakin ingin menghapus temuan ini?')) {
+      try {
+        // Remove from local state for now
+        setTemuans(temuans.filter(t => t.id !== id));
+        // TODO: Add API call when backend is ready
+        console.log('Deleted temuan:', id);
+      } catch (error) {
+        console.error('Error deleting temuan:', error);
+        alert('Gagal menghapus temuan');
+      }
+    }
+  };
+
   const handleUpload = (id: string) => {
     // Placeholder untuk modal upload
     alert(`Upload dokumen untuk temuan ${id}`);
@@ -127,9 +156,9 @@ export default function PengawasanAudit() {
 
   const filteredTemuans = temuans.filter((temuan) => {
     const matchSearch =
-      temuan.nomorTemuan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      temuan.paket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      temuan.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
+      temuan.nomorTemuan.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      temuan.paket.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      temuan.deskripsi.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
     const matchFilter =
       filterStatus === "all" || temuan.status === filterStatus;
     return matchSearch && matchFilter;

@@ -85,7 +85,7 @@ enum PaketStatus {
 // Dokumen & Arsip
 model Dokumen {
   id          String      @id @default(cuid())
-  paketId     String
+  paketId     String?
   namaDokumen String
   jenisDokumen String
   filePath    String
@@ -95,7 +95,19 @@ model Dokumen {
   uploadedAt  DateTime    @default(now())
 
   // Relations
-  paket Paket @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  paket Paket? @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  laporanItwasda LaporanItwasda? @relation(fields: [laporanItwasdaId], references: [id], onDelete: Cascade)
+  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  ppk PPK? @relation(fields: [ppkId], references: [id], onDelete: Cascade)
+  monitoring Monitoring? @relation(fields: [monitoringId], references: [id], onDelete: Cascade)
+  laporanAnalisis LaporanAnalisis? @relation(fields: [laporanAnalisisId], references: [id], onDelete: Cascade)
+
+  // Foreign keys
+  laporanItwasdaId String?
+  vendorId String?
+  ppkId String?
+  monitoringId String?
+  laporanAnalisisId String?
 
   @@map("dokumen")
 }
@@ -104,7 +116,7 @@ model Dokumen {
 model LaporanItwasda {
   id            String           @id @default(cuid())
   nomorLaporan  String           @unique
-  paketId       String
+  paketId       String?
   jenisLaporan  String
   deskripsi     String
   tingkatKeparahan KeparahanLevel
@@ -116,7 +128,10 @@ model LaporanItwasda {
   updatedAt     DateTime         @updatedAt
 
   // Relations
-  paket Paket @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  paket Paket? @relation(fields: [paketId], references: [id], onDelete: Cascade)
+
+  // Relations
+  dokumen     Dokumen[]
 
   @@map("laporan_itwasda")
 }
@@ -150,6 +165,9 @@ model Vendor {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  // Relations
+  dokumen     Dokumen[]
+
   @@map("vendor")
 }
 
@@ -179,6 +197,9 @@ model PPK {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  // Relations
+  dokumen     Dokumen[]
+
   @@map("ppk")
 }
 
@@ -191,7 +212,7 @@ enum PPKStatus {
 // Monitoring & Evaluasi
 model Monitoring {
   id          String           @id @default(cuid())
-  paketId     String
+  paketId     String?
   jenisMonitoring String
   periode     String
   status      MonitoringStatus @default(ON_TRACK)
@@ -202,6 +223,9 @@ model Monitoring {
   monitoredBy String
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  // Relations
+  dokumen     Dokumen[]
 
   @@map("monitoring")
 }
@@ -223,6 +247,9 @@ model LaporanAnalisis {
   rekomendasi String?
   generatedBy String
   generatedAt DateTime         @default(now())
+
+  // Relations
+  dokumen     Dokumen[]
 
   @@map("laporan_analisis")
 }

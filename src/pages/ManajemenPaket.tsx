@@ -21,12 +21,24 @@ interface Paket {
   status: "DRAFT" | "PUBLISHED" | "ON_PROGRESS" | "COMPLETED" | "CANCELLED";
   tanggalBuat: string;
   createdBy: string;
+  dokumen?: Dokumen[];
+}
+
+interface Dokumen {
+  id: string;
+  namaDokumen: string;
+  jenisDokumen: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedBy: string;
+  uploadedAt: string;
 }
 
 export default function ManajemenPaket() {
   const { user } = useAuth();
   const [pakets, setPakets] = useState<Paket[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     kodePaket: "",
@@ -35,6 +47,15 @@ export default function ManajemenPaket() {
     nilaiPaket: "",
     metodePengadaan: "",
     status: "DRAFT" as Paket["status"],
+  });
+  const [formDokumen, setFormDokumen] = useState<{
+    [key: string]: File | null;
+  }>({
+    "KAK/RAB": null,
+    "Spesifikasi Teknis": null,
+    "Kontrak": null,
+    "Timeline": null,
+    "Syarat Khusus": null,
   });
   const [editingPaket, setEditingPaket] = useState<Paket | null>(null);
 
@@ -54,12 +75,13 @@ export default function ManajemenPaket() {
       }
     } catch (error) {
       console.error('Error fetching paket:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleSubmit = async () => {
+    console.log('Submitting paket data:', formData);
+    console.log('Dokumen files:', formDokumen);
+
     try {
       const paketData = {
         kodePaket: formData.kodePaket,
@@ -69,6 +91,8 @@ export default function ManajemenPaket() {
         metodePengadaan: formData.metodePengadaan,
         createdBy: user?.id || '',
       };
+
+      console.log('Sending paket data:', paketData);
 
       let response;
       if (editingPaket) {
@@ -85,13 +109,53 @@ export default function ManajemenPaket() {
         });
       }
 
+      console.log('Response status:', response.status);
+
       if (response.ok) {
+        const result = await response.json();
+        console.log('Response result:', result);
+        const paketId = editingPaket ? editingPaket.id : result.id;
+
+        // Upload dokumen jika ada
+        if (!editingPaket) {
+          console.log('Uploading dokumen for paket ID:', paketId);
+          await uploadDokumenPaket(paketId);
+        }
+
         await fetchPakets();
         closeModal();
         resetForm();
+        alert('Paket berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        alert('Gagal menyimpan paket: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving paket:', error);
+      alert('Terjadi kesalahan saat menyimpan paket');
+    }
+  };
+
+  const uploadDokumenPaket = async (paketId: string) => {
+    const dokumenKeys = Object.keys(formDokumen);
+    for (const key of dokumenKeys) {
+      const file = formDokumen[key];
+      if (file) {
+        try {
+          const formDataToSend = new FormData();
+          formDataToSend.append('paketId', paketId);
+          formDataToSend.append('jenisDokumen', key);
+          formDataToSend.append('file', file);
+
+          await fetch('/api/dokumen/upload', {
+            method: 'POST',
+            body: formDataToSend,
+          });
+        } catch (error) {
+          console.error(`Error uploading ${key}:`, error);
+        }
+      }
     }
   };
 
@@ -123,9 +187,54 @@ export default function ManajemenPaket() {
     }
   };
 
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedPaketId, setSelectedPaketId] = useState<string>("");
+  const [uploadFormData, setUploadFormData] = useState({
+    jenisDokumen: "",
+    file: null as File | null,
+  });
+
   const handleUpload = (paketId: string) => {
-    // Placeholder untuk modal upload
-    alert(`Upload dokumen untuk paket ${paketId}`);
+    setSelectedPaketId(paketId);
+    setUploadModalOpen(true);
+  };
+
+  const handleFileUpload = async () => {
+    if (!uploadFormData.file || !uploadFormData.jenisDokumen) {
+      alert('Pilih file dan jenis dokumen');
+      return;
+    }
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('paketId', selectedPaketId);
+      formDataToSend.append('jenisDokumen', uploadFormData.jenisDokumen);
+      formDataToSend.append('file', uploadFormData.file);
+
+      const response = await fetch('/api/dokumen/upload', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        alert('Dokumen berhasil diupload');
+        setUploadModalOpen(false);
+        setUploadFormData({ jenisDokumen: "", file: null });
+        fetchPakets(); // Refresh data
+      } else {
+        alert('Gagal upload dokumen');
+      }
+    } catch (error) {
+      console.error('Error uploading dokumen:', error);
+      alert('Terjadi kesalahan saat upload');
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadFormData({ ...uploadFormData, file });
+    }
   };
 
   const resetForm = () => {
@@ -137,13 +246,17 @@ export default function ManajemenPaket() {
       metodePengadaan: "",
       status: "DRAFT",
     });
+    setFormDokumen({
+      "KAK/RAB": null,
+      "Spesifikasi Teknis": null,
+      "Kontrak": null,
+      "Timeline": null,
+      "Syarat Khusus": null,
+    });
     setEditingPaket(null);
   };
 
-  const openAddModal = () => {
-    resetForm();
-    openModal();
-  };
+
 
   const filteredPakets = pakets.filter(
     (paket) =>
@@ -298,12 +411,15 @@ export default function ManajemenPaket() {
                       {new Date(paket.tanggalBuat).toLocaleDateString('id-ID')}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {/* Placeholder untuk list dokumen */}
                       <div className="space-y-1">
-                        <span className="text-xs">Dokumen terkait: 2 file</span>
-                        <button className="text-blue-600 hover:text-blue-900 text-xs">
-                          Lihat Dokumen
-                        </button>
+                        <span className="text-xs">
+                          Dokumen terkait: {paket.dokumen?.length || 0} file
+                        </span>
+                        {paket.dokumen && paket.dokumen.length > 0 && (
+                          <button className="text-blue-600 hover:text-blue-900 text-xs">
+                            Lihat Dokumen
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
@@ -422,6 +538,92 @@ export default function ManajemenPaket() {
                 />
               </div>
             </div>
+
+            {/* Upload Dokumen Section */}
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-800 dark:text-white/90 mb-4">
+                Upload Dokumen Paket
+              </h4>
+              <div className="space-y-4">
+                <div>
+                  <Label>KAK/RAB</Label>
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFormDokumen({ ...formDokumen, "KAK/RAB": file });
+                      }
+                    }}
+                    accept=".pdf,.doc,.docx,.xlsx,.csv"
+                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                  />
+                </div>
+
+                <div>
+                  <Label>Spesifikasi Teknis</Label>
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFormDokumen({ ...formDokumen, "Spesifikasi Teknis": file });
+                      }
+                    }}
+                    accept=".pdf,.doc,.docx,.xlsx,.csv"
+                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                  />
+                </div>
+
+                <div>
+                  <Label>Kontrak</Label>
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFormDokumen({ ...formDokumen, "Kontrak": file });
+                      }
+                    }}
+                    accept=".pdf,.doc,.docx,.xlsx,.csv"
+                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                  />
+                </div>
+
+                <div>
+                  <Label>Timeline</Label>
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFormDokumen({ ...formDokumen, "Timeline": file });
+                      }
+                    }}
+                    accept=".pdf,.doc,.docx,.xlsx,.csv"
+                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                  />
+                </div>
+
+                <div>
+                  <Label>Syarat Khusus</Label>
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFormDokumen({ ...formDokumen, "Syarat Khusus": file });
+                      }
+                    }}
+                    accept=".pdf,.doc,.docx,.xlsx,.csv"
+                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                  />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Format yang didukung: PDF, DOC, DOCX, XLSX, CSV (Max 10MB per file)
+              </p>
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
@@ -430,6 +632,61 @@ export default function ManajemenPaket() {
             </Button>
             <Button size="sm" variant="primary" onClick={handleSubmit}>
               Simpan Paket
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Upload Modal */}
+      <Modal isOpen={uploadModalOpen} onClose={() => setUploadModalOpen(false)} className="max-w-md m-4">
+        <div className="p-6">
+          <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+            Upload Dokumen Paket
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Jenis Dokumen</Label>
+              <Select
+                options={[
+                  { value: "KAK/RAB", label: "KAK/RAB" },
+                  { value: "Spesifikasi Teknis", label: "Spesifikasi Teknis" },
+                  { value: "Kontrak", label: "Kontrak" },
+                  { value: "Timeline", label: "Timeline" },
+                  { value: "Syarat Khusus", label: "Syarat Khusus" },
+                  { value: "Lainnya", label: "Lainnya" },
+                ]}
+                placeholder="Pilih jenis dokumen"
+                onChange={(value) =>
+                  setUploadFormData({ ...uploadFormData, jenisDokumen: value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label>File Dokumen</Label>
+              <input
+                type="file"
+                onChange={handleFileChange}
+                accept=".pdf,.doc,.docx,.xlsx,.csv"
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Format yang didukung: PDF, DOC, DOCX, XLSX, CSV (Max 10MB)
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setUploadModalOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button size="sm" variant="primary" onClick={handleFileUpload}>
+              Upload Dokumen
             </Button>
           </div>
         </div>
