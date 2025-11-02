@@ -90,9 +90,14 @@ export default function DokumenArsip() {
         await fetchDokumens();
         closeModal();
         resetForm();
+        alert('Dokumen berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan dokumen: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving dokumen:', error);
+      alert('Terjadi kesalahan saat menyimpan dokumen');
     }
   };
 
@@ -115,9 +120,14 @@ export default function DokumenArsip() {
         });
         if (response.ok) {
           await fetchDokumens();
+          alert('Dokumen berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus dokumen: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting dokumen:', error);
+        alert('Terjadi kesalahan saat menghapus dokumen');
       }
     }
   };

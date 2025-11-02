@@ -79,9 +79,6 @@ export default function ManajemenPaket() {
   };
 
   const handleSubmit = async () => {
-    console.log('Submitting paket data:', formData);
-    console.log('Dokumen files:', formDokumen);
-
     try {
       const paketData = {
         kodePaket: formData.kodePaket,
@@ -89,10 +86,9 @@ export default function ManajemenPaket() {
         jenisPaket: formData.jenisPaket,
         nilaiPaket: parseFloat(formData.nilaiPaket.replace(/[^\d]/g, '')),
         metodePengadaan: formData.metodePengadaan,
+        status: formData.status,
         createdBy: user?.id || '',
       };
-
-      console.log('Sending paket data:', paketData);
 
       let response;
       if (editingPaket) {
@@ -109,16 +105,12 @@ export default function ManajemenPaket() {
         });
       }
 
-      console.log('Response status:', response.status);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('Response result:', result);
         const paketId = editingPaket ? editingPaket.id : result.id;
 
-        // Upload dokumen jika ada
+        // Upload dokumen jika ada dan bukan edit
         if (!editingPaket) {
-          console.log('Uploading dokumen for paket ID:', paketId);
           await uploadDokumenPaket(paketId);
         }
 
@@ -128,7 +120,6 @@ export default function ManajemenPaket() {
         alert('Paket berhasil disimpan!');
       } else {
         const errorText = await response.text();
-        console.error('Error response:', errorText);
         alert('Gagal menyimpan paket: ' + errorText);
       }
     } catch (error) {
@@ -180,9 +171,14 @@ export default function ManajemenPaket() {
         });
         if (response.ok) {
           await fetchPakets();
+          alert('Paket berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus paket: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting paket:', error);
+        alert('Terjadi kesalahan saat menghapus paket');
       }
     }
   };

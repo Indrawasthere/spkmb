@@ -91,9 +91,14 @@ export default function VendorPenyedia() {
         await fetchVendors();
         closeModal();
         resetForm();
+        alert('Vendor berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan vendor: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving vendor:', error);
+      alert('Terjadi kesalahan saat menyimpan vendor');
     }
   };
 
@@ -118,9 +123,14 @@ export default function VendorPenyedia() {
         });
         if (response.ok) {
           await fetchVendors();
+          alert('Vendor berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus vendor: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting vendor:', error);
+        alert('Terjadi kesalahan saat menghapus vendor');
       }
     }
   };

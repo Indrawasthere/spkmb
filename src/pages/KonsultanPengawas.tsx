@@ -88,9 +88,14 @@ export default function KonsultanPengawas() {
         await fetchKonsultan();
         closeModal();
         resetForm();
+        alert('Konsultan berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan konsultan: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving konsultan:', error);
+      alert('Terjadi kesalahan saat menyimpan konsultan');
     }
   };
 
@@ -114,9 +119,14 @@ export default function KonsultanPengawas() {
         });
         if (response.ok) {
           await fetchKonsultan();
+          alert('Konsultan berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus konsultan: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting konsultan:', error);
+        alert('Terjadi kesalahan saat menghapus konsultan');
       }
     }
   };

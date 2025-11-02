@@ -95,9 +95,14 @@ export default function Itwasda() {
         await fetchLaporan();
         closeModal();
         resetForm();
+        alert('Laporan berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan laporan: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving laporan:', error);
+      alert('Terjadi kesalahan saat menyimpan laporan');
     }
   };
 
@@ -123,9 +128,14 @@ export default function Itwasda() {
         });
         if (response.ok) {
           await fetchLaporan();
+          alert('Laporan berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus laporan: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting laporan:', error);
+        alert('Terjadi kesalahan saat menghapus laporan');
       }
     }
   };

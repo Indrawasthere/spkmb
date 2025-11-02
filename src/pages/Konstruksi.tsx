@@ -88,9 +88,14 @@ export default function Konstruksi() {
         await fetchKontraktor();
         closeModal();
         resetForm();
+        alert('Kontraktor berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan kontraktor: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving kontraktor:', error);
+      alert('Terjadi kesalahan saat menyimpan kontraktor');
     }
   };
 
@@ -114,9 +119,14 @@ export default function Konstruksi() {
         });
         if (response.ok) {
           await fetchKontraktor();
+          alert('Kontraktor berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus kontraktor: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting kontraktor:', error);
+        alert('Terjadi kesalahan saat menghapus kontraktor');
       }
     }
   };

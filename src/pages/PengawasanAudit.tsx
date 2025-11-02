@@ -88,31 +88,13 @@ export default function PengawasanAudit() {
     tingkatKeparahan: "" as Temuan["tingkatKeparahan"] | "",
     pic: "",
   });
+  const [editingTemuan, setEditingTemuan] = useState<Temuan | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
 
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const handleSubmit = () => {
-    const newTemuan: Temuan = {
-      id: Date.now().toString(),
-      nomorTemuan: formData.nomorTemuan,
-      paket: formData.paket,
-      jenisTemuan: formData.jenisTemuan,
-      deskripsi: formData.deskripsi,
-      tingkatKeparahan: formData.tingkatKeparahan || "Rendah",
-      status: "Baru",
-      tanggal: new Date().toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      auditor: "Current Auditor",
-      pic: formData.pic,
-    };
-
-    setTemuans([newTemuan, ...temuans]);
-    closeModal();
+  const resetForm = () => {
     setFormData({
       nomorTemuan: "",
       paket: "",
@@ -121,6 +103,59 @@ export default function PengawasanAudit() {
       tingkatKeparahan: "",
       pic: "",
     });
+  };
+
+  const fetchTemuan = async () => {
+    try {
+      const response = await fetch('/api/temuan');
+      if (response.ok) {
+        const data = await response.json();
+        setTemuans(data);
+      }
+    } catch (error) {
+      console.error('Error fetching temuans:', error);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const temuanData = {
+        nomorTemuan: formData.nomorTemuan,
+        paket: formData.paket,
+        jenisTemuan: formData.jenisTemuan,
+        deskripsi: formData.deskripsi,
+        tingkatKeparahan: formData.tingkatKeparahan || "Rendah",
+        pic: formData.pic,
+      };
+
+      let response;
+      if (editingTemuan) {
+        response = await fetch(`/api/temuan/${editingTemuan.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(temuanData),
+        });
+      } else {
+        response = await fetch('/api/temuan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(temuanData),
+        });
+      }
+
+      if (response.ok) {
+        await fetchTemuan();
+        closeModal();
+        resetForm();
+        alert('Temuan berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan temuan: ' + errorText);
+      }
+    } catch (error) {
+      console.error('Error saving temuan:', error);
+      alert('Terjadi kesalahan saat menyimpan temuan');
+    }
   };
 
   const handleEdit = (temuan: Temuan) => {
@@ -132,19 +167,26 @@ export default function PengawasanAudit() {
       tingkatKeparahan: temuan.tingkatKeparahan,
       pic: temuan.pic,
     });
+    setEditingTemuan(temuan);
     openModal();
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus temuan ini?')) {
       try {
-        // Remove from local state for now
-        setTemuans(temuans.filter(t => t.id !== id));
-        // TODO: Add API call when backend is ready
-        console.log('Deleted temuan:', id);
+        const response = await fetch(`/api/temuan/${id}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          await fetchTemuan();
+          alert('Temuan berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus temuan: ' + errorText);
+        }
       } catch (error) {
         console.error('Error deleting temuan:', error);
-        alert('Gagal menghapus temuan');
+        alert('Terjadi kesalahan saat menghapus temuan');
       }
     }
   };
@@ -403,7 +445,7 @@ export default function PengawasanAudit() {
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            Tambah Temuan Audit
+            {editingTemuan ? 'Edit Temuan Audit' : 'Tambah Temuan Audit'}
           </h3>
 
           <div className="space-y-4">

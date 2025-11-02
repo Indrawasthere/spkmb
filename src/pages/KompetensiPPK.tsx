@@ -90,9 +90,14 @@ export default function KompetensiPPK() {
         await fetchPPKs();
         closeModal();
         resetForm();
+        alert('PPK berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan PPK: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving PPK:', error);
+      alert('Terjadi kesalahan saat menyimpan PPK');
     }
   };
 
@@ -118,9 +123,14 @@ export default function KompetensiPPK() {
         });
         if (response.ok) {
           await fetchPPKs();
+          alert('PPK berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus PPK: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting PPK:', error);
+        alert('Terjadi kesalahan saat menghapus PPK');
       }
     }
   };

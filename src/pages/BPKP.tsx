@@ -95,9 +95,14 @@ export default function BPKP() {
         await fetchTemuans();
         closeModal();
         resetForm();
+        alert('Temuan berhasil disimpan!');
+      } else {
+        const errorText = await response.text();
+        alert('Gagal menyimpan temuan: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving temuan:', error);
+      alert('Terjadi kesalahan saat menyimpan temuan');
     }
   };
 
@@ -123,9 +128,14 @@ export default function BPKP() {
         });
         if (response.ok) {
           await fetchTemuans();
+          alert('Temuan berhasil dihapus!');
+        } else {
+          const errorText = await response.text();
+          alert('Gagal menghapus temuan: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting temuan:', error);
+        alert('Terjadi kesalahan saat menghapus temuan');
       }
     }
   };
