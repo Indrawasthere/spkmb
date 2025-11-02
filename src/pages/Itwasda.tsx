@@ -130,6 +130,11 @@ export default function Itwasda() {
     }
   };
 
+  const handleUpload = (id: string) => {
+    // Placeholder untuk modal upload
+    alert(`Upload dokumen untuk laporan ${id}`);
+  };
+
   const resetForm = () => {
     setFormData({
       nomorLaporan: "",
@@ -323,7 +328,10 @@ export default function Itwasda() {
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    PIC
+                    Dokumen
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Aksi
                   </th>
                 </tr>
               </thead>
@@ -360,6 +368,35 @@ export default function Itwasda() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {l.pic}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                      {/* Placeholder untuk list dokumen */}
+                      <div className="space-y-1">
+                        <span className="text-xs">Dokumen terkait: 1 file</span>
+                        <button className="text-blue-600 hover:text-blue-900 text-xs">
+                          Lihat Dokumen
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                        onClick={() => handleUpload(l.id)}
+                      >
+                        Upload
+                      </button>
+                      <button
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                        onClick={() => handleEdit(l)}
+                      >
+                        <PencilIcon className="size-5" />
+                      </button>
+                      <button
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        onClick={() => handleDelete(l.id)}
+                      >
+                        <TrashBinIcon className="size-5" />
+                      </button>
                     </td>
                   </tr>
                 ))}

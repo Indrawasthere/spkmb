@@ -123,6 +123,11 @@ export default function PUPR() {
     }
   };
 
+  const handleUpload = (id: string) => {
+    // Placeholder untuk modal upload
+    alert(`Upload dokumen untuk proyek ${id}`);
+  };
+
   const resetForm = () => {
     setFormData({
       namaProyek: "",
@@ -282,7 +287,7 @@ export default function PUPR() {
                     Progress
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Kontraktor
+                    Dokumen
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     Aksi
@@ -330,7 +335,22 @@ export default function PUPR() {
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {p.kontraktor}
                     </td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                      {/* Placeholder untuk list dokumen */}
+                      <div className="space-y-1">
+                        <span className="text-xs">Dokumen terkait: 2 file</span>
+                        <button className="text-blue-600 hover:text-blue-900 text-xs">
+                          Lihat Dokumen
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-sm font-medium">
+                      <button
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                        onClick={() => handleUpload(p.id)}
+                      >
+                        Upload
+                      </button>
                       <button
                         className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
                         onClick={() => handleEdit(p)}

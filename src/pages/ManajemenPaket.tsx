@@ -123,6 +123,11 @@ export default function ManajemenPaket() {
     }
   };
 
+  const handleUpload = (paketId: string) => {
+    // Placeholder untuk modal upload
+    alert(`Upload dokumen untuk paket ${paketId}`);
+  };
+
   const resetForm = () => {
     setFormData({
       kodePaket: "",
@@ -255,6 +260,12 @@ export default function ManajemenPaket() {
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     Tanggal
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Dokumen
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -285,6 +296,37 @@ export default function ManajemenPaket() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {new Date(paket.tanggalBuat).toLocaleDateString('id-ID')}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                      {/* Placeholder untuk list dokumen */}
+                      <div className="space-y-1">
+                        <span className="text-xs">Dokumen terkait: 2 file</span>
+                        <button className="text-blue-600 hover:text-blue-900 text-xs">
+                          Lihat Dokumen
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                        onClick={() => handleEdit(paket)}
+                      >
+                        <PencilIcon className="size-5" />
+                      </button>
+                      <button
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                        onClick={() => handleUpload(paket.id)}
+                      >
+                        Upload
+                      </button>
+                      {user?.role === 'operator' && (
+                        <button
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          onClick={() => handleDelete(paket.id)}
+                        >
+                          <TrashBinIcon className="size-5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -318,9 +360,9 @@ export default function ManajemenPaket() {
                 <Label>Nilai Paket</Label>
                 <Input
                   type="text"
-                  value={formData.nilai}
+                  value={formData.nilaiPaket}
                   onChange={(e) =>
-                    setFormData({ ...formData, nilai: e.target.value })
+                    setFormData({ ...formData, nilaiPaket: e.target.value })
                   }
                   placeholder="Rp 0"
                 />
@@ -362,7 +404,7 @@ export default function ManajemenPaket() {
                   options={metodeOptions}
                   placeholder="Pilih metode"
                   onChange={(value) =>
-                    setFormData({ ...formData, metode: value })
+                    setFormData({ ...formData, metodePengadaan: value })
                   }
                 />
               </div>

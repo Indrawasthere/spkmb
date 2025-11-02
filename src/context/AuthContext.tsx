@@ -1,8 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
+  user: User | null;
   userName: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -26,6 +35,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,16 +56,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (data.user) {
           setIsAuthenticated(true);
+          setUser(data.user);
           setUserName(data.user.firstName + ' ' + data.user.lastName);
           console.log('User authenticated:', data.user); // Debug log
         } else {
           setIsAuthenticated(false);
+          setUser(null);
           setUserName(null);
           console.log('User not authenticated'); // Debug log
         }
       } catch (e) {
         console.error('Auth check failed:', e);
         setIsAuthenticated(false);
+        setUser(null);
         setUserName(null);
       } finally {
         setIsLoading(false);
@@ -77,6 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setIsAuthenticated(true);
+        setUser(data.user);
         setUserName(data.user.firstName + ' ' + data.user.lastName);
         return true;
       }
@@ -91,6 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // call backend to clear cookie
     fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     setIsAuthenticated(false);
+    setUser(null);
     setUserName(null);
   };
 
@@ -106,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setIsAuthenticated(true);
+        setUser(data.user);
         setUserName(data.user.firstName + ' ' + data.user.lastName);
         return true;
       }
@@ -117,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, userName, login, logout, signup }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, userName, login, logout, signup }}>
       {children}
     </AuthContext.Provider>
   );

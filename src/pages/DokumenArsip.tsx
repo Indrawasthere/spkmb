@@ -122,6 +122,11 @@ export default function DokumenArsip() {
     }
   };
 
+  const handleUpload = (id: string) => {
+    // Placeholder untuk modal upload
+    alert(`Upload dokumen untuk ${id}`);
+  };
+
   const resetForm = () => {
     setFormData({
       namaDokumen: "",
@@ -316,9 +321,27 @@ export default function DokumenArsip() {
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {formatFileSize(doc.fileSize)}
                     </td>
-                    <td className="px-6 py-4">
-                      <button className="text-brand-500 hover:text-brand-600">
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3">
                         <DownloadIcon className="size-5" />
+                      </button>
+                      <button
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                        onClick={() => handleUpload(doc.id)}
+                      >
+                        Upload
+                      </button>
+                      <button
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                        onClick={() => handleEdit(doc)}
+                      >
+                        <PencilIcon className="size-5" />
+                      </button>
+                      <button
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        onClick={() => handleDelete(doc.id)}
+                      >
+                        <TrashBinIcon className="size-5" />
                       </button>
                     </td>
                   </tr>

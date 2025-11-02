@@ -120,6 +120,11 @@ export default function PengawasanAudit() {
     });
   };
 
+  const handleUpload = (id: string) => {
+    // Placeholder untuk modal upload
+    alert(`Upload dokumen untuk temuan ${id}`);
+  };
+
   const filteredTemuans = temuans.filter((temuan) => {
     const matchSearch =
       temuan.nomorTemuan.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -298,6 +303,9 @@ export default function PengawasanAudit() {
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                     PIC
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -333,6 +341,26 @@ export default function PengawasanAudit() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {temuan.pic}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
+                        onClick={() => handleUpload(temuan.id)}
+                      >
+                        Upload
+                      </button>
+                      <button
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                        onClick={() => handleEdit(temuan)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        onClick={() => handleDelete(temuan.id)}
+                      >
+                        Hapus
+                      </button>
                     </td>
                   </tr>
                 ))}
