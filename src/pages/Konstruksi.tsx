@@ -9,6 +9,8 @@ import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface Kontraktor {
   id: string;
   namaVendor: string;
@@ -46,7 +48,9 @@ export default function Konstruksi() {
 
   const fetchKontraktor = async () => {
     try {
-      const response = await fetch('/api/vendor?jenis=KONSTRUKSI');
+      const response = await fetch(`${API_BASE_URL}/api/vendor?jenis=KONSTRUKSI`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setKontraktor(data);
@@ -71,14 +75,16 @@ export default function Konstruksi() {
 
       let response;
       if (editingKontraktor) {
-        response = await fetch(`/api/vendor/${editingKontraktor.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/vendor/${editingKontraktor.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(kontraktorData),
         });
       } else {
-        response = await fetch('/api/vendor', {
+        response = await fetch(`${API_BASE_URL}/api/vendor`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(kontraktorData),
         });
@@ -114,8 +120,9 @@ export default function Konstruksi() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus kontraktor ini?')) {
       try {
-        const response = await fetch(`/api/vendor/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/vendor/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchKontraktor();

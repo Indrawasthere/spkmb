@@ -12,6 +12,8 @@ import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface Temuan {
   id: string;
   nomorTemuan: string;
@@ -107,7 +109,9 @@ export default function PengawasanAudit() {
 
   const fetchTemuan = async () => {
     try {
-      const response = await fetch('/api/temuan');
+      const response = await fetch(`${API_BASE_URL}/api/temuan`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setTemuans(data);
@@ -130,14 +134,16 @@ export default function PengawasanAudit() {
 
       let response;
       if (editingTemuan) {
-        response = await fetch(`/api/temuan/${editingTemuan.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/temuan/${editingTemuan.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(temuanData),
         });
       } else {
-        response = await fetch('/api/temuan', {
+        response = await fetch(`${API_BASE_URL}/api/temuan`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(temuanData),
         });
@@ -174,8 +180,9 @@ export default function PengawasanAudit() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus temuan ini?')) {
       try {
-        const response = await fetch(`/api/temuan/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/temuan/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchTemuan();

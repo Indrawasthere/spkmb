@@ -35,6 +35,8 @@ interface Dokumen {
   uploadedAt: string;
 }
 
+const API_BASE_URL = 'http://localhost:3001'; // Ganti sesuai port backend Anda
+
 export default function ManajemenPaket() {
   const { user } = useAuth();
   const [pakets, setPakets] = useState<Paket[]>([]);
@@ -68,7 +70,9 @@ export default function ManajemenPaket() {
 
   const fetchPakets = async () => {
     try {
-      const response = await fetch('/api/paket');
+      const response = await fetch(`${API_BASE_URL}/api/paket`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setPakets(data);
@@ -80,26 +84,56 @@ export default function ManajemenPaket() {
 
   const handleSubmit = async () => {
     try {
+      // Form validation
+      if (!formData.kodePaket.trim()) {
+        alert('Kode paket wajib diisi');
+        return;
+      }
+      if (!formData.namaPaket.trim()) {
+        alert('Nama paket wajib diisi');
+        return;
+      }
+      if (!formData.jenisPaket) {
+        alert('Jenis paket wajib dipilih');
+        return;
+      }
+      if (!formData.metodePengadaan) {
+        alert('Metode pengadaan wajib dipilih');
+        return;
+      }
+
+      // Validasi nilaiPaket supaya parseFloat tidak error
+      const nilai = parseFloat(formData.nilaiPaket.replace(/[^\d]/g, ''));
+      if (isNaN(nilai) || nilai <= 0) {
+        alert('Nilai paket harus berupa angka positif yang valid');
+        return;
+      }
+
+      // Status management: Default to DRAFT for new paket, or keep current for edit
+      const status = editingPaket ? formData.status : 'DRAFT';
+
       const paketData = {
-        kodePaket: formData.kodePaket,
-        namaPaket: formData.namaPaket,
+        kodePaket: formData.kodePaket.trim(),
+        namaPaket: formData.namaPaket.trim(),
         jenisPaket: formData.jenisPaket,
-        nilaiPaket: parseFloat(formData.nilaiPaket.replace(/[^\d]/g, '')),
+        nilaiPaket: nilai,
         metodePengadaan: formData.metodePengadaan,
-        status: formData.status,
+        status: status,
         createdBy: user?.id || '',
       };
 
       let response;
       if (editingPaket) {
-        response = await fetch(`/api/paket/${editingPaket.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/paket/${editingPaket.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...paketData, updatedBy: user?.id }),
         });
       } else {
-        response = await fetch('/api/paket', {
+        response = await fetch(`${API_BASE_URL}/api/paket`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(paketData),
         });
@@ -109,7 +143,7 @@ export default function ManajemenPaket() {
         const result = await response.json();
         const paketId = editingPaket ? editingPaket.id : result.id;
 
-        // Upload dokumen jika ada dan bukan edit
+        // Only upload documents if creating new paket
         if (!editingPaket) {
           await uploadDokumenPaket(paketId);
         }
@@ -119,8 +153,14 @@ export default function ManajemenPaket() {
         resetForm();
         alert('Paket berhasil disimpan!');
       } else {
-        const errorText = await response.text();
-        alert('Gagal menyimpan paket: ' + errorText);
+        let errorMsg;
+        try {
+          const errorJSON = await response.json();
+          errorMsg = errorJSON.error || JSON.stringify(errorJSON);
+        } catch {
+          errorMsg = await response.text();
+        }
+        alert('Gagal menyimpan paket: ' + errorMsg);
       }
     } catch (error) {
       console.error('Error saving paket:', error);
@@ -139,8 +179,9 @@ export default function ManajemenPaket() {
           formDataToSend.append('jenisDokumen', key);
           formDataToSend.append('file', file);
 
-          await fetch('/api/dokumen/upload', {
+          await fetch(`${API_BASE_URL}/api/dokumen/upload`, {
             method: 'POST',
+            credentials: 'include',
             body: formDataToSend,
           });
         } catch (error) {
@@ -166,15 +207,22 @@ export default function ManajemenPaket() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus paket ini?')) {
       try {
-        const response = await fetch(`/api/paket/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/paket/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchPakets();
           alert('Paket berhasil dihapus!');
         } else {
-          const errorText = await response.text();
-          alert('Gagal menghapus paket: ' + errorText);
+          let errorMsg;
+          try {
+            const errorJSON = await response.json();
+            errorMsg = JSON.stringify(errorJSON);
+          } catch {
+            errorMsg = await response.text();
+          }
+          alert('Gagal menghapus paket: ' + errorMsg);
         }
       } catch (error) {
         console.error('Error deleting paket:', error);
@@ -207,8 +255,9 @@ export default function ManajemenPaket() {
       formDataToSend.append('jenisDokumen', uploadFormData.jenisDokumen);
       formDataToSend.append('file', uploadFormData.file);
 
-      const response = await fetch('/api/dokumen/upload', {
+      const response = await fetch(`${API_BASE_URL}/api/dokumen/upload`, {
         method: 'POST',
+        credentials: 'include',
         body: formDataToSend,
       });
 
@@ -252,8 +301,6 @@ export default function ManajemenPaket() {
     setEditingPaket(null);
   };
 
-
-
   const filteredPakets = pakets.filter(
     (paket) =>
       paket.namaPaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -286,10 +333,10 @@ export default function ManajemenPaket() {
   ];
 
   const statusOptions = [
-    { value: "Perencanaan", label: "Perencanaan" },
-    { value: "Proses", label: "Proses" },
-    { value: "Selesai", label: "Selesai" },
-    { value: "Batal", label: "Batal" },
+    { value: "DRAFT", label: "Perencanaan" },
+    { value: "ON_PROGRESS", label: "Proses" },
+    { value: "COMPLETED", label: "Selesai" },
+    { value: "CANCELLED", label: "Batal" },
   ];
 
   return (
@@ -331,14 +378,6 @@ export default function ManajemenPaket() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full sm:w-96"
             />
-            <div className="flex gap-2">
-              <select className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                <option>Semua Status</option>
-                <option>Perencanaan</option>
-                <option>Proses</option>
-                <option>Selesai</option>
-              </select>
-            </div>
           </div>
         </div>
 
@@ -506,6 +545,7 @@ export default function ManajemenPaket() {
                 onChange={(value) =>
                   setFormData({ ...formData, jenisPaket: value })
                 }
+                defaultValue={formData.jenisPaket}
               />
             </div>
 
@@ -518,6 +558,7 @@ export default function ManajemenPaket() {
                   onChange={(value) =>
                     setFormData({ ...formData, metodePengadaan: value })
                   }
+                  defaultValue={formData.metodePengadaan}
                 />
               </div>
               <div>
@@ -531,6 +572,7 @@ export default function ManajemenPaket() {
                       status: value as Paket["status"],
                     })
                   }
+                  defaultValue={formData.status}
                 />
               </div>
             </div>
@@ -653,6 +695,7 @@ export default function ManajemenPaket() {
                   { value: "Lainnya", label: "Lainnya" },
                 ]}
                 placeholder="Pilih jenis dokumen"
+                value={uploadFormData.jenisDokumen}
                 onChange={(value) =>
                   setUploadFormData({ ...uploadFormData, jenisDokumen: value })
                 }
@@ -690,3 +733,4 @@ export default function ManajemenPaket() {
     </>
   );
 }
+

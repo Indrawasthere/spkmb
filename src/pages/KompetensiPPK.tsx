@@ -10,6 +10,8 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface PPK {
   id: string;
   namaLengkap: string;
@@ -47,7 +49,9 @@ export default function KompetensiPPK() {
 
   const fetchPPKs = async () => {
     try {
-      const response = await fetch('/api/ppk');
+      const response = await fetch(`${API_BASE_URL}/api/ppk`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setPpks(data);
@@ -73,14 +77,16 @@ export default function KompetensiPPK() {
 
       let response;
       if (editingPPK) {
-        response = await fetch(`/api/ppk/${editingPPK.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/ppk/${editingPPK.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(ppkData),
         });
       } else {
-        response = await fetch('/api/ppk', {
+        response = await fetch(`${API_BASE_URL}/api/ppk`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(ppkData),
         });
@@ -118,8 +124,9 @@ export default function KompetensiPPK() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus PPK ini?')) {
       try {
-        const response = await fetch(`/api/ppk/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/ppk/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchPPKs();

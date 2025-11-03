@@ -25,6 +25,8 @@ interface Vendor {
   createdAt: string;
 }
 
+const API_BASE_URL = 'http://localhost:3001';
+
 export default function VendorPenyedia() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,9 @@ export default function VendorPenyedia() {
 
   const fetchVendors = async () => {
     try {
-      const response = await fetch('/api/vendor');
+      const response = await fetch(`${API_BASE_URL}/api/vendor`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setVendors(data);
@@ -74,14 +78,16 @@ export default function VendorPenyedia() {
 
       let response;
       if (editingVendor) {
-        response = await fetch(`/api/vendor/${editingVendor.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/vendor/${editingVendor.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(vendorData),
         });
       } else {
-        response = await fetch('/api/vendor', {
+        response = await fetch(`${API_BASE_URL}/api/vendor`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(vendorData),
         });
@@ -118,8 +124,9 @@ export default function VendorPenyedia() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus vendor ini?')) {
       try {
-        const response = await fetch(`/api/vendor/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/vendor/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchVendors();

@@ -23,6 +23,8 @@ interface Proyek {
   updatedAt: string;
 }
 
+const API_BASE_URL = 'http://localhost:3001';
+
 export default function PUPR() {
   const [proyek, setProyek] = useState<Proyek[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,9 @@ export default function PUPR() {
 
   const fetchProyek = async () => {
     try {
-      const response = await fetch('/api/proyek-pupr');
+      const response = await fetch(`${API_BASE_URL}/api/proyek-pupr`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setProyek(data);
@@ -72,14 +76,16 @@ export default function PUPR() {
 
       let response;
       if (editingProyek) {
-        response = await fetch(`/api/proyek-pupr/${editingProyek.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/proyek-pupr/${editingProyek.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(proyekData),
         });
       } else {
-        response = await fetch('/api/proyek-pupr', {
+        response = await fetch(`${API_BASE_URL}/api/proyek-pupr`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(proyekData),
         });
@@ -111,8 +117,9 @@ export default function PUPR() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus proyek ini?')) {
       try {
-        const response = await fetch(`/api/proyek-pupr/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/proyek-pupr/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchProyek();

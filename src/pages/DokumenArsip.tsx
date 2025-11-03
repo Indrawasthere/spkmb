@@ -10,6 +10,8 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface Dokumen {
   id: string;
   namaDokumen: string;
@@ -26,6 +28,7 @@ interface Dokumen {
 
 export default function DokumenArsip() {
   const [dokumens, setDokumens] = useState<Dokumen[]>([]);
+  const [pakets, setPakets] = useState<Paket[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterJenis, setFilterJenis] = useState("all");
@@ -39,6 +42,13 @@ export default function DokumenArsip() {
 
   const { isOpen, openModal, closeModal } = useModal();
 
+  interface Paket {
+    id: string;
+    kodePaket: string;
+    namaPaket: string;
+    status: string;
+  }
+
   // Fetch dokumen data from API
   useEffect(() => {
     fetchDokumens();
@@ -46,7 +56,9 @@ export default function DokumenArsip() {
 
   const fetchDokumens = async () => {
     try {
-      const response = await fetch('/api/dokumen');
+      const response = await fetch(`${API_BASE_URL}/api/dokumen`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setDokumens(data);
@@ -75,13 +87,15 @@ export default function DokumenArsip() {
 
       let response;
       if (editingDokumen) {
-        response = await fetch(`/api/dokumen/${editingDokumen.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/dokumen/${editingDokumen.id}`, {
           method: 'PUT',
+          credentials: 'include',
           body: formDataToSend,
         });
       } else {
-        response = await fetch('/api/dokumen', {
+        response = await fetch(`${API_BASE_URL}/api/dokumen/upload`, {
           method: 'POST',
+          credentials: 'include',
           body: formDataToSend,
         });
       }
@@ -115,8 +129,9 @@ export default function DokumenArsip() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus dokumen ini?')) {
       try {
-        const response = await fetch(`/api/dokumen/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/dokumen/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchDokumens();

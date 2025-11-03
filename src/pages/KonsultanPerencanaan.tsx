@@ -10,6 +10,8 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface Konsultan {
   id: string;
   namaVendor: string;
@@ -47,7 +49,9 @@ export default function KonsultanPerencanaan() {
 
   const fetchKonsultan = async () => {
     try {
-      const response = await fetch('/api/vendor?jenis=KONSULTAN_PERENCANAAN');
+      const response = await fetch(`${API_BASE_URL}/api/vendor?jenis=KONSULTAN_PERENCANAAN`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setKonsultan(data);
@@ -72,14 +76,16 @@ export default function KonsultanPerencanaan() {
 
       let response;
       if (editingKonsultan) {
-        response = await fetch(`/api/vendor/${editingKonsultan.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/vendor/${editingKonsultan.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(konsultanData),
         });
       } else {
-        response = await fetch('/api/vendor', {
+        response = await fetch(`${API_BASE_URL}/api/vendor`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(konsultanData),
         });
@@ -115,8 +121,9 @@ export default function KonsultanPerencanaan() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus konsultan ini?')) {
       try {
-        const response = await fetch(`/api/vendor/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/vendor/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchKonsultan();

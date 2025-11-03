@@ -11,10 +11,12 @@ import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface Temuan {
   id: string;
   nomorTemuan: string;
-  paketId: string;
+  paketId: string | null;
   jenisTemuan: string;
   deskripsi: string;
   tingkatKeparahan: "RENDAH" | "SEDANG" | "TINGGI" | "KRITIS";
@@ -33,7 +35,7 @@ export default function BPKP() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [formData, setFormData] = useState({
     nomorTemuan: "",
-    paketId: "",
+    paketId: "" as string | null,
     jenisTemuan: "",
     deskripsi: "",
     tingkatKeparahan: "" as Temuan["tingkatKeparahan"] | "",
@@ -51,7 +53,9 @@ export default function BPKP() {
 
   const fetchTemuans = async () => {
     try {
-      const response = await fetch('/api/temuan-bpkp');
+      const response = await fetch(`${API_BASE_URL}/api/temuan-bpkp`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setTemuans(data);
@@ -67,25 +71,26 @@ export default function BPKP() {
     try {
       const temuanData = {
         nomorTemuan: formData.nomorTemuan,
-        paketId: formData.paketId,
+        paketId: formData.paketId || null, // Allow null if no paket selected
         jenisTemuan: formData.jenisTemuan,
         deskripsi: formData.deskripsi,
         tingkatKeparahan: formData.tingkatKeparahan,
         auditor: formData.auditor,
         pic: formData.pic,
-        tanggal: new Date(),
       };
 
       let response;
       if (editingTemuan) {
-        response = await fetch(`/api/temuan-bpkp/${editingTemuan.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/temuan-bpkp/${editingTemuan.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(temuanData),
         });
       } else {
-        response = await fetch('/api/temuan-bpkp', {
+        response = await fetch(`${API_BASE_URL}/api/temuan-bpkp`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(temuanData),
         });
@@ -123,8 +128,9 @@ export default function BPKP() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus temuan ini?')) {
       try {
-        const response = await fetch(`/api/temuan-bpkp/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/temuan-bpkp/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchTemuans();
@@ -166,7 +172,7 @@ export default function BPKP() {
   const filteredTemuans = temuans.filter((temuan) => {
     const matchSearch =
       temuan.nomorTemuan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      temuan.paketId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (temuan.paketId && temuan.paketId.toLowerCase().includes(searchQuery.toLowerCase())) ||
       temuan.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFilter =
       filterStatus === "all" || temuan.status === filterStatus;
@@ -441,7 +447,7 @@ export default function BPKP() {
                 <Label>Kode Paket</Label>
                 <Input
                   type="text"
-                  value={formData.paketId}
+                  value={formData.paketId || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, paketId: e.target.value })
                   }
@@ -488,16 +494,29 @@ export default function BPKP() {
               />
             </div>
 
-            <div>
-              <Label>PIC (Person in Charge)</Label>
-              <Input
-                type="text"
-                value={formData.pic}
-                onChange={(e) =>
-                  setFormData({ ...formData, pic: e.target.value })
-                }
-                placeholder="Nama penanggung jawab"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Auditor</Label>
+                <Input
+                  type="text"
+                  value={formData.auditor}
+                  onChange={(e) =>
+                    setFormData({ ...formData, auditor: e.target.value })
+                  }
+                  placeholder="Nama auditor"
+                />
+              </div>
+              <div>
+                <Label>PIC (Person in Charge)</Label>
+                <Input
+                  type="text"
+                  value={formData.pic}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pic: e.target.value })
+                  }
+                  placeholder="Nama penanggung jawab"
+                />
+              </div>
             </div>
           </div>
 

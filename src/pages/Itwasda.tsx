@@ -11,6 +11,8 @@ import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
 
+const API_BASE_URL = 'http://localhost:3001';
+
 interface LaporanItwasda {
   id: string;
   nomorLaporan: string;
@@ -51,7 +53,9 @@ export default function Itwasda() {
 
   const fetchLaporan = async () => {
     try {
-      const response = await fetch('/api/laporan-itwasda');
+      const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setLaporan(data);
@@ -78,14 +82,16 @@ export default function Itwasda() {
 
       let response;
       if (editingLaporan) {
-        response = await fetch(`/api/laporan-itwasda/${editingLaporan.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${editingLaporan.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(laporanData),
         });
       } else {
-        response = await fetch('/api/laporan-itwasda', {
+        response = await fetch(`${API_BASE_URL}/api/laporan-itwasda`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(laporanData),
         });
@@ -123,8 +129,9 @@ export default function Itwasda() {
   const handleDelete = async (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus laporan ini?')) {
       try {
-        const response = await fetch(`/api/laporan-itwasda/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         });
         if (response.ok) {
           await fetchLaporan();
