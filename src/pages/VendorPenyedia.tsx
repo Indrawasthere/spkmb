@@ -25,7 +25,7 @@ interface Vendor {
   createdAt: string;
 }
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
 
 export default function VendorPenyedia() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -371,7 +371,13 @@ export default function VendorPenyedia() {
       </div>
 
       {/* Modal Form */}
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
+      <Modal
+        isOpen={isOpen}
+        onClose={closeModal}
+        size="2xl"
+        title={editingVendor ? "" : ""}
+        showHeader={true}
+      >
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
             {editingVendor ? 'Edit Vendor' : 'Tambah Vendor Baru'}

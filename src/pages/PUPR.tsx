@@ -3,6 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
+import DatePicker from "react-datepicker";
 import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
@@ -23,7 +24,7 @@ interface Proyek {
   updatedAt: string;
 }
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = "https://4bnmj0s4-3001.asse.devtunnels.ms";
 
 export default function PUPR() {
   const [proyek, setProyek] = useState<Proyek[]>([]);
@@ -50,14 +51,14 @@ export default function PUPR() {
   const fetchProyek = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/proyek-pupr`, {
-        credentials: 'include',
+        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
         setProyek(data);
       }
     } catch (error) {
-      console.error('Error fetching proyek:', error);
+      console.error("Error fetching proyek:", error);
     } finally {
       setLoading(false);
     }
@@ -68,7 +69,7 @@ export default function PUPR() {
       const proyekData = {
         namaProyek: formData.namaProyek,
         lokasi: formData.lokasi,
-        anggaran: parseFloat(formData.anggaran.replace(/[^\d]/g, '')) || 0,
+        anggaran: parseFloat(formData.anggaran.replace(/[^\d]/g, "")) || 0,
         kontraktor: formData.kontraktor,
         tanggalMulai: new Date(formData.tanggalMulai),
         tanggalSelesai: new Date(formData.tanggalSelesai),
@@ -76,17 +77,20 @@ export default function PUPR() {
 
       let response;
       if (editingProyek) {
-        response = await fetch(`${API_BASE_URL}/api/proyek-pupr/${editingProyek.id}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(proyekData),
-        });
+        response = await fetch(
+          `${API_BASE_URL}/api/proyek-pupr/${editingProyek.id}`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(proyekData),
+          }
+        );
       } else {
         response = await fetch(`${API_BASE_URL}/api/proyek-pupr`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(proyekData),
         });
       }
@@ -97,7 +101,7 @@ export default function PUPR() {
         resetForm();
       }
     } catch (error) {
-      console.error('Error saving proyek:', error);
+      console.error("Error saving proyek:", error);
     }
   };
 
@@ -108,24 +112,24 @@ export default function PUPR() {
       lokasi: proyek.lokasi,
       anggaran: proyek.anggaran.toString(),
       kontraktor: proyek.kontraktor,
-      tanggalMulai: proyek.tanggalMulai.split('T')[0],
-      tanggalSelesai: proyek.tanggalSelesai.split('T')[0],
+      tanggalMulai: proyek.tanggalMulai.split("T")[0],
+      tanggalSelesai: proyek.tanggalSelesai.split("T")[0],
     });
     openModal();
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus proyek ini?')) {
+    if (confirm("Apakah Anda yakin ingin menghapus proyek ini?")) {
       try {
         const response = await fetch(`${API_BASE_URL}/api/proyek-pupr/${id}`, {
-          method: 'DELETE',
-          credentials: 'include',
+          method: "DELETE",
+          credentials: "include",
         });
         if (response.ok) {
           await fetchProyek();
         }
       } catch (error) {
-        console.error('Error deleting proyek:', error);
+        console.error("Error deleting proyek:", error);
       }
     }
   };
@@ -195,7 +199,12 @@ export default function PUPR() {
     },
     {
       label: "Total Anggaran",
-      value: proyek.length > 0 ? `Rp ${(proyek.reduce((sum, p) => sum + p.anggaran, 0) / 1000000000000).toFixed(2)}T` : "Rp 0T",
+      value:
+        proyek.length > 0
+          ? `Rp ${(
+              proyek.reduce((sum, p) => sum + p.anggaran, 0) / 1000000000000
+            ).toFixed(2)}T`
+          : "Rp 0T",
       color: "text-blue-light-500",
     },
   ];
@@ -319,7 +328,7 @@ export default function PUPR() {
                       {p.lokasi}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      Rp {p.anggaran.toLocaleString('id-ID')}
+                      Rp {p.anggaran.toLocaleString("id-ID")}
                     </td>
                     <td className="px-6 py-4">
                       <Badge size="sm" color={getStatusColor(p.status)}>
@@ -380,10 +389,16 @@ export default function PUPR() {
       </div>
 
       {/* Modal Form */}
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
-        <div className="p-6">
+      <Modal
+        isOpen={isOpen}
+        onClose={closeModal}
+        size="2xl"
+        title={editingProyek ? "" : ""}
+        showHeader={true}
+      >
+        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingProyek ? 'Edit Proyek' : 'Tambah Proyek Baru'}
+            {editingProyek ? "Edit Proyek" : "Tambah Proyek Baru"}
           </h3>
 
           <div className="space-y-4">
@@ -439,22 +454,47 @@ export default function PUPR() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Tanggal Mulai</Label>
-                <Input
-                  type="date"
-                  value={formData.tanggalMulai}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tanggalMulai: e.target.value })
+                <DatePicker
+                  selected={
+                    formData.tanggalMulai
+                      ? new Date(formData.tanggalMulai)
+                      : null
                   }
+                  onChange={(date: Date | null) =>
+                    setFormData({
+                      ...formData,
+                      tanggalMulai: date
+                        ? date.toISOString().split("T")[0]
+                        : "",
+                    })
+                  }
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Pilih tanggal mulai"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  calendarClassName="!bg-white dark:!bg-gray-800 dark:!text-gray-200 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
                 />
               </div>
+
               <div>
                 <Label>Tanggal Selesai</Label>
-                <Input
-                  type="date"
-                  value={formData.tanggalSelesai}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tanggalSelesai: e.target.value })
+                <DatePicker
+                  selected={
+                    formData.tanggalSelesai
+                      ? new Date(formData.tanggalSelesai)
+                      : null
                   }
+                  onChange={(date: Date | null) =>
+                    setFormData({
+                      ...formData,
+                      tanggalSelesai: date
+                        ? date.toISOString().split("T")[0]
+                        : "",
+                    })
+                  }
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Pilih tanggal selesai"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  calendarClassName="!bg-white dark:!bg-gray-800 dark:!text-gray-200 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
                 />
               </div>
             </div>

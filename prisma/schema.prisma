@@ -23,7 +23,8 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  auditLogs AuditLog[]
+  auditLogs  AuditLog[]
+  proyekPUPR ProyekPUPR[]
 
   @@map("users")
 }
@@ -55,22 +56,22 @@ model AuditLog {
 
 // Manajemen Paket
 model Paket {
-  id          String     @id @default(cuid())
-  kodePaket   String     @unique
-  namaPaket   String
-  jenisPaket  String
-  nilaiPaket  Float
+  id              String      @id @default(cuid())
+  kodePaket       String      @unique
+  namaPaket       String
+  jenisPaket      String
+  nilaiPaket      Float
   metodePengadaan String
-  status      PaketStatus @default(DRAFT)
-  tanggalBuat DateTime   @default(now())
-  tanggalUpdate DateTime @updatedAt
-  createdBy   String
-  updatedBy   String?
+  status          PaketStatus @default(DRAFT)
+  tanggalBuat     DateTime    @default(now())
+  tanggalUpdate   DateTime    @updatedAt
+  createdBy       String
+  updatedBy       String?
 
   // Relations
-  dokumen     Dokumen[]
-  laporan     LaporanItwasda[]
-  temuanBPKP  TemuanBPKP[]
+  dokumen    Dokumen[]
+  laporan    LaporanItwasda[]
+  temuanBPKP TemuanBPKP[]
 
   @@map("paket")
 }
@@ -85,78 +86,80 @@ enum PaketStatus {
 
 // Dokumen & Arsip
 model Dokumen {
-  id          String      @id @default(cuid())
-  paketId     String?
-  namaDokumen String
+  id           String   @id @default(cuid())
+  paketId      String?
+  namaDokumen  String
   jenisDokumen String
-  filePath    String
-  fileSize    Int
-  mimeType    String
-  uploadedBy  String
-  uploadedAt  DateTime    @default(now())
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  uploadedBy   String
+  uploadedAt   DateTime @default(now())
 
   // Relations
-  paket Paket? @relation(fields: [paketId], references: [id], onDelete: Cascade)
-  laporanItwasda LaporanItwasda? @relation(fields: [laporanItwasdaId], references: [id], onDelete: Cascade)
-  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  ppk PPK? @relation(fields: [ppkId], references: [id], onDelete: Cascade)
-  monitoring Monitoring? @relation(fields: [monitoringId], references: [id], onDelete: Cascade)
+  paket           Paket?           @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  laporanItwasda  LaporanItwasda?  @relation(fields: [laporanItwasdaId], references: [id], onDelete: Cascade)
+  vendor          Vendor?          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  ppk             PPK?             @relation(fields: [ppkId], references: [id], onDelete: Cascade)
+  monitoring      Monitoring?      @relation(fields: [monitoringId], references: [id], onDelete: Cascade)
   laporanAnalisis LaporanAnalisis? @relation(fields: [laporanAnalisisId], references: [id], onDelete: Cascade)
-  temuanBPKP TemuanBPKP? @relation(fields: [temuanBPKPId], references: [id], onDelete: Cascade)
+  temuanBPKP      TemuanBPKP?      @relation(fields: [temuanBPKPId], references: [id], onDelete: Cascade)
+  proyekPUPR      ProyekPUPR?      @relation(fields: [proyekPUPRId], references: [id], onDelete: Cascade)
 
   // Foreign keys
-  laporanItwasdaId String?
-  vendorId String?
-  ppkId String?
-  monitoringId String?
+  laporanItwasdaId  String?
+  vendorId          String?
+  ppkId             String?
+  monitoringId      String?
   laporanAnalisisId String?
-  temuanBPKPId String?
+  temuanBPKPId      String?
+  proyekPUPRId      String?
 
   @@map("dokumen")
 }
 
 // Pengawasan & Audit
 model LaporanItwasda {
-  id            String           @id @default(cuid())
-  nomorLaporan  String           @unique
-  paketId       String?
-  jenisLaporan  String
-  deskripsi     String
+  id               String         @id @default(cuid())
+  nomorLaporan     String         @unique
+  paketId          String?
+  jenisLaporan     String
+  deskripsi        String
   tingkatKeparahan KeparahanLevel
-  status        LaporanStatus    @default(BARU)
-  tanggal       DateTime
-  auditor       String
-  pic           String
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  status           LaporanStatus  @default(BARU)
+  tanggal          DateTime
+  auditor          String
+  pic              String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   // Relations
   paket Paket? @relation(fields: [paketId], references: [id], onDelete: Cascade)
 
   // Relations
-  dokumen     Dokumen[]
+  dokumen Dokumen[]
 
   @@map("laporan_itwasda")
 }
 
 // BPKP Temuan
 model TemuanBPKP {
-  id            String           @id @default(cuid())
-  nomorTemuan   String           @unique
-  paketId       String?
-  jenisTemuan   String
-  deskripsi     String
+  id               String         @id @default(cuid())
+  nomorTemuan      String         @unique
+  paketId          String?
+  jenisTemuan      String
+  deskripsi        String
   tingkatKeparahan KeparahanLevel
-  status        LaporanStatus    @default(BARU)
-  tanggal       DateTime         @default(now())
-  auditor       String
-  pic           String
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  status           LaporanStatus  @default(BARU)
+  tanggal          DateTime       @default(now())
+  auditor          String
+  pic              String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   // Relations
-  paket Paket? @relation(fields: [paketId], references: [id], onDelete: Cascade)
-  dokumen     Dokumen[]
+  paket   Paket?    @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  dokumen Dokumen[]
 
   @@map("temuan_bpkp")
 }
@@ -177,21 +180,21 @@ enum LaporanStatus {
 
 // Vendor / Penyedia
 model Vendor {
-  id          String     @id @default(cuid())
-  namaVendor  String
-  jenisVendor VendorType
-  nomorIzin   String     @unique
+  id           String       @id @default(cuid())
+  namaVendor   String
+  jenisVendor  VendorType
+  nomorIzin    String       @unique
   spesialisasi String?
-  jumlahProyek Int       @default(0)
-  rating      Float?     @default(0)
-  status      VendorStatus @default(AKTIF)
-  kontak      String?
-  alamat      String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  jumlahProyek Int          @default(0)
+  rating       Float?       @default(0)
+  status       VendorStatus @default(AKTIF)
+  kontak       String?
+  alamat       String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   // Relations
-  dokumen     Dokumen[]
+  dokumen Dokumen[]
 
   @@map("vendor")
 }
@@ -210,20 +213,20 @@ enum VendorStatus {
 
 // Kompetensi PPK
 model PPK {
-  id          String     @id @default(cuid())
+  id          String    @id @default(cuid())
   namaLengkap String
-  nip         String     @unique
+  nip         String    @unique
   jabatan     String
   unitKerja   String
-  kompetensi  Json       // Store kompetensi as JSON
-  sertifikasi Json       // Store sertifikasi as JSON
-  pengalaman  Int        @default(0)
-  status      PPKStatus  @default(AKTIF)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  kompetensi  Json // Store kompetensi as JSON
+  sertifikasi Json // Store sertifikasi as JSON
+  pengalaman  Int       @default(0)
+  status      PPKStatus @default(AKTIF)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
-  dokumen     Dokumen[]
+  dokumen Dokumen[]
 
   @@map("ppk")
 }
@@ -236,21 +239,21 @@ enum PPKStatus {
 
 // Monitoring & Evaluasi
 model Monitoring {
-  id          String           @id @default(cuid())
-  paketId     String?
-  jenisMonitoring String
-  periode     String
-  status      MonitoringStatus @default(ON_TRACK)
-  progress    Int              @default(0)
-  issues      String?
-  rekomendasi String?
+  id                String           @id @default(cuid())
+  paketId           String?
+  jenisMonitoring   String
+  periode           String
+  status            MonitoringStatus @default(ON_TRACK)
+  progress          Int              @default(0)
+  issues            String?
+  rekomendasi       String?
   tanggalMonitoring DateTime
-  monitoredBy String
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  monitoredBy       String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   // Relations
-  dokumen     Dokumen[]
+  dokumen Dokumen[]
 
   @@map("monitoring")
 }
@@ -264,19 +267,47 @@ enum MonitoringStatus {
 
 // Laporan & Analisis
 model LaporanAnalisis {
-  id          String           @id @default(cuid())
+  id           String   @id @default(cuid())
   jenisLaporan String
-  periode     String
-  data        Json             // Store analysis data as JSON
-  kesimpulan  String
-  rekomendasi String?
-  generatedBy String
-  generatedAt DateTime         @default(now())
+  periode      String
+  data         Json // Store analysis data as JSON
+  kesimpulan   String
+  rekomendasi  String?
+  generatedBy  String
+  generatedAt  DateTime @default(now())
 
   // Relations
-  dokumen     Dokumen[]
+  dokumen Dokumen[]
 
   @@map("laporan_analisis")
+}
+
+model ProyekPUPR {
+  id             String       @id @default(cuid())
+  namaProyek     String
+  lokasi         String
+  anggaran       Float
+  kontraktor     String?
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime
+  status         ProyekStatus @default(PERENCANAAN)
+  progress       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  createdBy String?
+  user      User?     @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  dokumen   Dokumen[]
+
+  @@map("proyek_pupr")
+}
+
+enum ProyekStatus {
+  PERENCANAAN
+  PELAKSANAAN
+  SELESAI
+  DITUNDA
 }
 
 // Pengaturan & Hak Akses
@@ -284,7 +315,7 @@ model Role {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
-  permissions Json     // Store permissions as JSON
+  permissions Json // Store permissions as JSON
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

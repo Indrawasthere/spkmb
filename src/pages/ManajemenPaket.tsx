@@ -35,12 +35,20 @@ interface Dokumen {
   uploadedAt: string;
 }
 
-const API_BASE_URL = 'http://localhost:3001'; // Ganti sesuai port backend Anda
+interface FormErrors {
+  kodePaket?: string;
+  namaPaket?: string;
+  jenisPaket?: string;
+  nilaiPaket?: string;
+  metodePengadaan?: string;
+}
+
+const API_BASE_URL = "https://4bnmj0s4-3001.asse.devtunnels.ms";
 
 export default function ManajemenPaket() {
   const { user } = useAuth();
   const [pakets, setPakets] = useState<Paket[]>([]);
-
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     kodePaket: "",
@@ -50,67 +58,79 @@ export default function ManajemenPaket() {
     metodePengadaan: "",
     status: "DRAFT" as Paket["status"],
   });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [formDokumen, setFormDokumen] = useState<{
     [key: string]: File | null;
   }>({
     "KAK/RAB": null,
     "Spesifikasi Teknis": null,
-    "Kontrak": null,
-    "Timeline": null,
+    Kontrak: null,
+    Timeline: null,
     "Syarat Khusus": null,
   });
   const [editingPaket, setEditingPaket] = useState<Paket | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
 
-  // Fetch paket data from API
   useEffect(() => {
     fetchPakets();
   }, []);
 
   const fetchPakets = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/paket`, {
-        credentials: 'include',
+        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
         setPakets(data);
       }
     } catch (error) {
-      console.error('Error fetching paket:', error);
+      console.error("Error fetching paket:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Form validation
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+
+    if (!formData.kodePaket.trim()) {
+      errors.kodePaket = "Kode paket wajib diisi";
+    }
+
+    if (!formData.namaPaket.trim()) {
+      errors.namaPaket = "Nama paket wajib diisi";
+    }
+
+    if (!formData.jenisPaket) {
+      errors.jenisPaket = "Jenis paket wajib dipilih";
+    }
+
+    const nilai = parseFloat(formData.nilaiPaket.replace(/[^\d]/g, ""));
+    if (isNaN(nilai) || nilai <= 0) {
+      errors.nilaiPaket = "Nilai paket harus berupa angka positif";
+    }
+
+    if (!formData.metodePengadaan) {
+      errors.metodePengadaan = "Metode pengadaan wajib dipilih";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
     try {
-      // Form validation
-      if (!formData.kodePaket.trim()) {
-        alert('Kode paket wajib diisi');
-        return;
-      }
-      if (!formData.namaPaket.trim()) {
-        alert('Nama paket wajib diisi');
-        return;
-      }
-      if (!formData.jenisPaket) {
-        alert('Jenis paket wajib dipilih');
-        return;
-      }
-      if (!formData.metodePengadaan) {
-        alert('Metode pengadaan wajib dipilih');
-        return;
-      }
-
-      // Validasi nilaiPaket supaya parseFloat tidak error
-      const nilai = parseFloat(formData.nilaiPaket.replace(/[^\d]/g, ''));
-      if (isNaN(nilai) || nilai <= 0) {
-        alert('Nilai paket harus berupa angka positif yang valid');
-        return;
-      }
-
-      // Status management: Default to DRAFT for new paket, or keep current for edit
-      const status = editingPaket ? formData.status : 'DRAFT';
+      const nilai = parseFloat(formData.nilaiPaket.replace(/[^\d]/g, ""));
+      const status = editingPaket ? formData.status : "DRAFT";
 
       const paketData = {
         kodePaket: formData.kodePaket.trim(),
@@ -119,22 +139,22 @@ export default function ManajemenPaket() {
         nilaiPaket: nilai,
         metodePengadaan: formData.metodePengadaan,
         status: status,
-        createdBy: user?.id || '',
+        createdBy: user?.id || "",
       };
 
       let response;
       if (editingPaket) {
         response = await fetch(`${API_BASE_URL}/api/paket/${editingPaket.id}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...paketData, updatedBy: user?.id }),
         });
       } else {
         response = await fetch(`${API_BASE_URL}/api/paket`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(paketData),
         });
       }
@@ -143,7 +163,7 @@ export default function ManajemenPaket() {
         const result = await response.json();
         const paketId = editingPaket ? editingPaket.id : result.id;
 
-        // Only upload documents if creating new paket
+        // Upload documents if creating new paket
         if (!editingPaket) {
           await uploadDokumenPaket(paketId);
         }
@@ -151,20 +171,16 @@ export default function ManajemenPaket() {
         await fetchPakets();
         closeModal();
         resetForm();
-        alert('Paket berhasil disimpan!');
+        alert("Paket berhasil disimpan!");
       } else {
-        let errorMsg;
-        try {
-          const errorJSON = await response.json();
-          errorMsg = errorJSON.error || JSON.stringify(errorJSON);
-        } catch {
-          errorMsg = await response.text();
-        }
-        alert('Gagal menyimpan paket: ' + errorMsg);
+        const errorData = await response.json();
+        alert("Gagal menyimpan paket: " + (errorData.error || "Unknown error"));
       }
     } catch (error) {
-      console.error('Error saving paket:', error);
-      alert('Terjadi kesalahan saat menyimpan paket');
+      console.error("Error saving paket:", error);
+      alert("Terjadi kesalahan saat menyimpan paket");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -175,13 +191,13 @@ export default function ManajemenPaket() {
       if (file) {
         try {
           const formDataToSend = new FormData();
-          formDataToSend.append('paketId', paketId);
-          formDataToSend.append('jenisDokumen', key);
-          formDataToSend.append('file', file);
+          formDataToSend.append("paketId", paketId);
+          formDataToSend.append("jenisDokumen", key);
+          formDataToSend.append("file", file);
 
           await fetch(`${API_BASE_URL}/api/dokumen/upload`, {
-            method: 'POST',
-            credentials: 'include',
+            method: "POST",
+            credentials: "include",
             body: formDataToSend,
           });
         } catch (error) {
@@ -201,33 +217,31 @@ export default function ManajemenPaket() {
       metodePengadaan: paket.metodePengadaan,
       status: paket.status,
     });
+    setFormErrors({});
     openModal();
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus paket ini?')) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/paket/${id}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-        if (response.ok) {
-          await fetchPakets();
-          alert('Paket berhasil dihapus!');
-        } else {
-          let errorMsg;
-          try {
-            const errorJSON = await response.json();
-            errorMsg = JSON.stringify(errorJSON);
-          } catch {
-            errorMsg = await response.text();
-          }
-          alert('Gagal menghapus paket: ' + errorMsg);
-        }
-      } catch (error) {
-        console.error('Error deleting paket:', error);
-        alert('Terjadi kesalahan saat menghapus paket');
+    if (!confirm("Apakah Anda yakin ingin menghapus paket ini?")) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/paket/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (response.ok) {
+        await fetchPakets();
+        alert("Paket berhasil dihapus!");
+      } else {
+        const errorData = await response.json();
+        alert("Gagal menghapus paket: " + (errorData.error || "Unknown error"));
       }
+    } catch (error) {
+      console.error("Error deleting paket:", error);
+      alert("Terjadi kesalahan saat menghapus paket");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -245,33 +259,36 @@ export default function ManajemenPaket() {
 
   const handleFileUpload = async () => {
     if (!uploadFormData.file || !uploadFormData.jenisDokumen) {
-      alert('Pilih file dan jenis dokumen');
+      alert("Pilih file dan jenis dokumen");
       return;
     }
 
+    setLoading(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('paketId', selectedPaketId);
-      formDataToSend.append('jenisDokumen', uploadFormData.jenisDokumen);
-      formDataToSend.append('file', uploadFormData.file);
+      formDataToSend.append("paketId", selectedPaketId);
+      formDataToSend.append("jenisDokumen", uploadFormData.jenisDokumen);
+      formDataToSend.append("file", uploadFormData.file);
 
       const response = await fetch(`${API_BASE_URL}/api/dokumen/upload`, {
-        method: 'POST',
-        credentials: 'include',
+        method: "POST",
+        credentials: "include",
         body: formDataToSend,
       });
 
       if (response.ok) {
-        alert('Dokumen berhasil diupload');
+        alert("Dokumen berhasil diupload");
         setUploadModalOpen(false);
         setUploadFormData({ jenisDokumen: "", file: null });
-        fetchPakets(); // Refresh data
+        fetchPakets();
       } else {
-        alert('Gagal upload dokumen');
+        alert("Gagal upload dokumen");
       }
     } catch (error) {
-      console.error('Error uploading dokumen:', error);
-      alert('Terjadi kesalahan saat upload');
+      console.error("Error uploading dokumen:", error);
+      alert("Terjadi kesalahan saat upload");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -294,11 +311,17 @@ export default function ManajemenPaket() {
     setFormDokumen({
       "KAK/RAB": null,
       "Spesifikasi Teknis": null,
-      "Kontrak": null,
-      "Timeline": null,
+      Kontrak: null,
+      Timeline: null,
       "Syarat Khusus": null,
     });
+    setFormErrors({});
     setEditingPaket(null);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    openModal();
   };
 
   const filteredPakets = pakets.filter(
@@ -325,6 +348,23 @@ export default function ManajemenPaket() {
     }
   };
 
+  const getStatusLabel = (status: Paket["status"]) => {
+    switch (status) {
+      case "DRAFT":
+        return "Perencanaan";
+      case "PUBLISHED":
+        return "Dipublikasi";
+      case "ON_PROGRESS":
+        return "Proses";
+      case "COMPLETED":
+        return "Selesai";
+      case "CANCELLED":
+        return "Batal";
+      default:
+        return status;
+    }
+  };
+
   const metodeOptions = [
     { value: "E-Lelang", label: "E-Lelang" },
     { value: "Tender", label: "Tender" },
@@ -334,9 +374,17 @@ export default function ManajemenPaket() {
 
   const statusOptions = [
     { value: "DRAFT", label: "Perencanaan" },
+    { value: "PUBLISHED", label: "Dipublikasi" },
     { value: "ON_PROGRESS", label: "Proses" },
     { value: "COMPLETED", label: "Selesai" },
     { value: "CANCELLED", label: "Batal" },
+  ];
+
+  const jenisPaketOptions = [
+    { value: "Konstruksi", label: "Konstruksi" },
+    { value: "Barang", label: "Barang" },
+    { value: "Jasa Konsultansi", label: "Jasa Konsultansi" },
+    { value: "Jasa Lainnya", label: "Jasa Lainnya" },
   ];
 
   return (
@@ -362,7 +410,8 @@ export default function ManajemenPaket() {
             size="md"
             variant="primary"
             startIcon={<PlusIcon />}
-            onClick={openModal}
+            onClick={openAddModal}
+            disabled={loading}
           >
             Tambah Paket
           </Button>
@@ -370,134 +419,149 @@ export default function ManajemenPaket() {
 
         {/* Search and Filter */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari paket..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder="Cari paket..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-96"
+          />
         </div>
 
         {/* Table */}
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Kode Paket
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nama Paket
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nilai
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Jenis
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Metode
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Tanggal
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Dokumen
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredPakets.map((paket) => (
-                  <tr
-                    key={paket.id}
-                    className="hover:bg-gray-50 dark:hover:bg-white/5"
-                  >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                      {paket.kodePaket}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {paket.namaPaket}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      Rp {paket.nilaiPaket.toLocaleString('id-ID')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {paket.jenisPaket}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {paket.metodePengadaan}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(paket.status)}>
-                        {paket.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {new Date(paket.tanggalBuat).toLocaleDateString('id-ID')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      <div className="space-y-1">
-                        <span className="text-xs">
-                          Dokumen terkait: {paket.dokumen?.length || 0} file
-                        </span>
-                        {paket.dokumen && paket.dokumen.length > 0 && (
-                          <button className="text-blue-600 hover:text-blue-900 text-xs">
-                            Lihat Dokumen
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <button
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                        onClick={() => handleEdit(paket)}
-                      >
-                        <PencilIcon className="size-5" />
-                      </button>
-                      <button
-                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
-                        onClick={() => handleUpload(paket.id)}
-                      >
-                        Upload
-                      </button>
-                      {user?.role === 'operator' && (
-                        <button
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          onClick={() => handleDelete(paket.id)}
-                        >
-                          <TrashBinIcon className="size-5" />
-                        </button>
-                      )}
-                    </td>
+          {loading ? (
+            <div className="p-6 text-center">Loading...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Kode Paket
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Nama Paket
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Nilai
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Jenis
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Metode
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Tanggal
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Dokumen
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                      Aksi
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {filteredPakets.map((paket) => (
+                    <tr
+                      key={paket.id}
+                      className="hover:bg-gray-50 dark:hover:bg-white/5"
+                    >
+                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
+                        {paket.kodePaket}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                        {paket.namaPaket}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                        Rp {paket.nilaiPaket.toLocaleString("id-ID")}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                        {paket.jenisPaket}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                        {paket.metodePengadaan}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge size="sm" color={getStatusColor(paket.status)}>
+                          {getStatusLabel(paket.status)}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                        {new Date(paket.tanggalBuat).toLocaleDateString(
+                          "id-ID"
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
+                        <div className="space-y-1">
+                          <span className="text-xs">
+                            Dokumen: {paket.dokumen?.length || 0} file
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        <div className="flex gap-2">
+                          <button
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+                            onClick={() => handleEdit(paket)}
+                            disabled={loading}
+                          >
+                            <PencilIcon className="size-5" />
+                          </button>
+                          <button
+                            className="text-green-600 hover:text-green-900 dark:text-green-400"
+                            onClick={() => handleUpload(paket.id)}
+                            disabled={loading}
+                          >
+                            Upload
+                          </button>
+                          {user?.role === "ADMIN" && (
+                            <button
+                              className="text-red-600 hover:text-red-900 dark:text-red-400"
+                              onClick={() => handleDelete(paket.id)}
+                              disabled={loading}
+                            >
+                              <TrashBinIcon className="size-5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Modal Form */}
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
-        <div className="p-6">
-          <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingPaket ? 'Edit Paket Pengadaan' : 'Tambah Paket Pengadaan'}
-          </h3>
+      <Modal
+        isOpen={isOpen}
+        onClose={closeModal}
+        size="2xl"
+        title={editingPaket ? "" : ""}
+        showHeader={true}
+      >
+        {/* === WRAPPER: GRID UNTUK LAYOUT HEADER-BODY-FOOTER === */}
+        <div className="flex flex-col h-[80vh]">
+          {/* === HEADER (tetap di atas) === */}
+          <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-3">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+              {editingPaket ? "Edit Paket Pengadaan" : "Tambah Paket Pengadaan"}
+            </h3>
+          </div>
 
-          <div className="space-y-4">
+          {/* === BODY (scrollable) === */}
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Kode Paket</Label>
+                <Label>Kode Paket *</Label>
                 <Input
                   type="text"
                   value={formData.kodePaket}
@@ -505,10 +569,12 @@ export default function ManajemenPaket() {
                     setFormData({ ...formData, kodePaket: e.target.value })
                   }
                   placeholder="PKT-2024-XXX"
+                  error={!!formErrors.kodePaket}
+                  hint={formErrors.kodePaket}
                 />
               </div>
               <div>
-                <Label>Nilai Paket</Label>
+                <Label>Nilai Paket *</Label>
                 <Input
                   type="text"
                   value={formData.nilaiPaket}
@@ -516,12 +582,14 @@ export default function ManajemenPaket() {
                     setFormData({ ...formData, nilaiPaket: e.target.value })
                   }
                   placeholder="Rp 0"
+                  error={!!formErrors.nilaiPaket}
+                  hint={formErrors.nilaiPaket}
                 />
               </div>
             </div>
 
             <div>
-              <Label>Nama Paket</Label>
+              <Label>Nama Paket *</Label>
               <Input
                 type="text"
                 value={formData.namaPaket}
@@ -529,208 +597,177 @@ export default function ManajemenPaket() {
                   setFormData({ ...formData, namaPaket: e.target.value })
                 }
                 placeholder="Masukkan nama paket"
+                error={!!formErrors.namaPaket}
+                hint={formErrors.namaPaket}
               />
             </div>
 
-            <div>
-              <Label>Jenis Paket</Label>
-              <Select
-                options={[
-                  { value: "Konstruksi", label: "Konstruksi" },
-                  { value: "Barang", label: "Barang" },
-                  { value: "Jasa Konsultansi", label: "Jasa Konsultansi" },
-                  { value: "Jasa Lainnya", label: "Jasa Lainnya" },
-                ]}
-                placeholder="Pilih jenis paket"
-                onChange={(value) =>
-                  setFormData({ ...formData, jenisPaket: value })
-                }
-                defaultValue={formData.jenisPaket}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label>Metode Pengadaan</Label>
+                <Label>Jenis Paket *</Label>
+                <Select
+                  options={jenisPaketOptions}
+                  placeholder="Pilih jenis paket"
+                  onChange={(value) =>
+                    setFormData({ ...formData, jenisPaket: value })
+                  }
+                  value={formData.jenisPaket}
+                />
+                {formErrors.jenisPaket && (
+                  <p className="mt-1 text-xs text-error-500">
+                    {formErrors.jenisPaket}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Metode Pengadaan *</Label>
                 <Select
                   options={metodeOptions}
                   placeholder="Pilih metode"
                   onChange={(value) =>
                     setFormData({ ...formData, metodePengadaan: value })
                   }
-                  defaultValue={formData.metodePengadaan}
+                  value={formData.metodePengadaan}
                 />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select
-                  options={statusOptions}
-                  placeholder="Pilih status"
-                  onChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      status: value as Paket["status"],
-                    })
-                  }
-                  defaultValue={formData.status}
-                />
+                {formErrors.metodePengadaan && (
+                  <p className="mt-1 text-xs text-error-500">
+                    {formErrors.metodePengadaan}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Upload Dokumen Section */}
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-800 dark:text-white/90 mb-4">
-                Upload Dokumen Paket
-              </h4>
-              <div className="space-y-4">
+            {editingPaket && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label>KAK/RAB</Label>
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setFormDokumen({ ...formDokumen, "KAK/RAB": file });
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xlsx,.csv"
-                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <Label>Spesifikasi Teknis</Label>
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setFormDokumen({ ...formDokumen, "Spesifikasi Teknis": file });
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xlsx,.csv"
-                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <Label>Kontrak</Label>
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setFormDokumen({ ...formDokumen, "Kontrak": file });
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xlsx,.csv"
-                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <Label>Timeline</Label>
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setFormDokumen({ ...formDokumen, "Timeline": file });
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xlsx,.csv"
-                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <Label>Syarat Khusus</Label>
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setFormDokumen({ ...formDokumen, "Syarat Khusus": file });
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xlsx,.csv"
-                    className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                  <Label>Status</Label>
+                  <Select
+                    options={statusOptions}
+                    placeholder="Pilih status"
+                    onChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        status: value as Paket["status"],
+                      })
+                    }
+                    value={formData.status}
                   />
                 </div>
               </div>
-              <p className="mt-2 text-xs text-gray-500">
-                Format yang didukung: PDF, DOC, DOCX, XLSX, CSV (Max 10MB per file)
-              </p>
-            </div>
+            )}
+
+            {!editingPaket && (
+              <div className="border-t pt-4">
+                <h4 className="text-lg font-medium text-gray-800 dark:text-white/90 mb-4">
+                  Upload Dokumen Paket (Optional)
+                </h4>
+                <div className="space-y-4">
+                  {Object.keys(formDokumen).map((key) => (
+                    <div key={key}>
+                      <Label>{key}</Label>
+                      <input
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file)
+                            setFormDokumen({ ...formDokumen, [key]: file });
+                        }}
+                        accept=".pdf,.doc,.docx,.xlsx,.csv"
+                        className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Format: PDF, DOC, DOCX, XLSX, CSV (Max 10MB per file)
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={closeModal}>
+          {/* === FOOTER (tetap di bawah) === */}
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 pt-4 mt-4 flex justify-end gap-3 bg-white dark:bg-gray-900">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={closeModal}
+              disabled={loading}
+            >
               Batal
             </Button>
-            <Button size="sm" variant="primary" onClick={handleSubmit}>
-              Simpan Paket
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? "Menyimpan..." : "Simpan Paket"}
             </Button>
           </div>
         </div>
       </Modal>
 
       {/* Upload Modal */}
-      <Modal isOpen={uploadModalOpen} onClose={() => setUploadModalOpen(false)} className="max-w-md m-4">
-        <div className="p-6">
-          <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            Upload Dokumen Paket
-          </h3>
-
-          <div className="space-y-4">
-            <div>
-              <Label>Jenis Dokumen</Label>
-              <Select
-                options={[
-                  { value: "KAK/RAB", label: "KAK/RAB" },
-                  { value: "Spesifikasi Teknis", label: "Spesifikasi Teknis" },
-                  { value: "Kontrak", label: "Kontrak" },
-                  { value: "Timeline", label: "Timeline" },
-                  { value: "Syarat Khusus", label: "Syarat Khusus" },
-                  { value: "Lainnya", label: "Lainnya" },
-                ]}
-                placeholder="Pilih jenis dokumen"
-                value={uploadFormData.jenisDokumen}
-                onChange={(value) =>
-                  setUploadFormData({ ...uploadFormData, jenisDokumen: value })
-                }
-              />
-            </div>
-
-            <div>
-              <Label>File Dokumen</Label>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                accept=".pdf,.doc,.docx,.xlsx,.csv"
-                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Format yang didukung: PDF, DOC, DOCX, XLSX, CSV (Max 10MB)
-              </p>
-            </div>
+      <Modal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        size="md"
+        title="Upload Dokumen Paket"
+        showHeader={true}
+      >
+        <div className="space-y-4">
+          <div>
+            <Label>Jenis Dokumen</Label>
+            <Select
+              options={[
+                { value: "KAK/RAB", label: "KAK/RAB" },
+                { value: "Spesifikasi Teknis", label: "Spesifikasi Teknis" },
+                { value: "Kontrak", label: "Kontrak" },
+                { value: "Timeline", label: "Timeline" },
+                { value: "Syarat Khusus", label: "Syarat Khusus" },
+                { value: "Lainnya", label: "Lainnya" },
+              ]}
+              placeholder="Pilih jenis dokumen"
+              onChange={(value) =>
+                setUploadFormData({ ...uploadFormData, jenisDokumen: value })
+              }
+            />
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setUploadModalOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button size="sm" variant="primary" onClick={handleFileUpload}>
-              Upload Dokumen
-            </Button>
+          <div>
+            <Label>File Dokumen</Label>
+            <input
+              type="file"
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.xlsx,.csv"
+              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Format: PDF, DOC, DOCX, XLSX, CSV (Max 10MB)
+            </p>
           </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setUploadModalOpen(false)}
+            disabled={loading}
+          >
+            Batal
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={handleFileUpload}
+            disabled={loading}
+          >
+            {loading ? "Uploading..." : "Upload Dokumen"}
+          </Button>
         </div>
       </Modal>
     </>
   );
 }
-

@@ -12,7 +12,7 @@ import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
 
 interface Temuan {
   id: string;
@@ -449,7 +449,13 @@ export default function PengawasanAudit() {
       </div>
 
       {/* Modal Form */}
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
+      <Modal
+        isOpen={isOpen}
+        onClose={closeModal}
+        size="2xl"
+        title={editingTemuan ? "" : ""}
+        showHeader={true}
+      >
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
             {editingTemuan ? 'Edit Temuan Audit' : 'Tambah Temuan Audit'}

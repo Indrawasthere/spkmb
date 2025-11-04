@@ -313,7 +313,8 @@ export default function PengaturanAkses() {
       </div>
 
       {/* Modal Form */}
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
+      <Modal isOpen={isOpen} onClose={closeModal} size="2xl"
+              showHeader={true}>
         <div className="p-6">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
             Tambah User

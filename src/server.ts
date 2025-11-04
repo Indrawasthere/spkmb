@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import expressListEndpoints from 'express-list-endpoints';
-import { prisma } from './lib/prisma';
+import { prisma } from './lib/prisma.ts';
 import path from 'path';
 import fs from 'fs';
 
@@ -30,22 +30,66 @@ app.use(helmet({
   },
 }));
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://sipakat-bpj.com',
+  'https://*.ngrok-free.app',
+  'https://*asse.devtunnels.ms' 
+];
+
 // Allow credentials and set specific origin for CORS
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'https://sipakat-bpj.com' : 'http://localhost:5173',
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://localhost:5173',
+      /\.devtunnels\.ms$/,
+      /\.ngrok-free\.app$/,
+      'https://sipakat-bpj.com'
+    ];
+    if (!origin) return callback(null, true);
+    const isAllowed = allowedOrigins.some(pattern =>
+      pattern instanceof RegExp ? pattern.test(origin) : origin === pattern
+    );
+    if (isAllowed) callback(null, true);
+    else {
+      console.warn(`❌ Blocked by CORS: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   exposedHeaders: ['set-cookie']
 }));
 
+// Handle forwarded requests from tunnels
+app.set('trust proxy', true);
+
 app.use(cookieParser());
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Configure multer for file uploads
-const storage = multer.memoryStorage();
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer to store files in uploads/
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2)}${ext}`;
+    cb(null, uniqueName);
+  },
+});
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
@@ -128,8 +172,8 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -168,8 +212,8 @@ app.post('/api/auth/register', async (req, res) => {
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -208,8 +252,8 @@ app.get('/api/auth/me', async (req, res) => {
     const newToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
     res.cookie('token', newToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -601,88 +645,148 @@ app.delete('/api/temuan-bpkp/:id', authenticateToken, authorizeRoles('admin'), a
   }
 });
 
-// Proyek PUPR routes (using Paket model with jenisPaket filter)
+// === PROYEK PUPR ROUTES ===
 app.get('/api/proyek-pupr', authenticateToken, async (req, res) => {
   try {
-    const proyek = await prisma.paket.findMany({
-      where: { jenisPaket: 'PUPR' },
-      include: { dokumen: true, laporan: true },
-      orderBy: { tanggalBuat: 'desc' },
+    const { search, status, sort } = req.query;
+
+    const proyek = await prisma.proyekPUPR.findMany({
+      where: {
+        AND: [
+          search
+            ? {
+                OR: [
+                  { namaProyek: { contains: String(search), mode: 'insensitive' } },
+                  { lokasi: { contains: String(search), mode: 'insensitive' } },
+                  { kontraktor: { contains: String(search), mode: 'insensitive' } },
+                ],
+              }
+            : {},
+          status ? { status: String(status).toUpperCase() } : {},
+        ],
+      },
+      orderBy: {
+        createdAt: sort === 'asc' ? 'asc' : 'desc',
+      },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
     });
+
     res.json(proyek);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch proyek pupr' });
+    console.error('Error fetching proyek:', error);
+    res.status(500).json({ error: 'Failed to fetch proyek PUPR' });
   }
 });
 
 app.get('/api/proyek-pupr/:id', authenticateToken, async (req, res) => {
   try {
-    const proyek = await prisma.paket.findUnique({
+    const proyek = await prisma.proyekPUPR.findUnique({
       where: { id: req.params.id },
-      include: { dokumen: true, laporan: true },
+      include: {
+        dokumen: true,
+        user: { select: { firstName: true, lastName: true } },
+      },
     });
-    if (!proyek) return res.status(404).json({ error: 'Proyek not found' });
+
+    if (!proyek) {
+      return res.status(404).json({ error: 'Proyek not found' });
+    }
+
     res.json(proyek);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch proyek' });
+    console.error('Error fetching proyek detail:', error);
+    res.status(500).json({ error: 'Failed to fetch proyek detail' });
   }
 });
 
 app.post('/api/proyek-pupr', authenticateToken, async (req, res) => {
   try {
-    const { kodePaket, namaPaket, nilaiPaket, metodePengadaan } = req.body;
-    if (!kodePaket || !namaPaket || !nilaiPaket || !metodePengadaan) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const {
+      namaProyek,
+      lokasi,
+      anggaran,
+      kontraktor,
+      tanggalMulai,
+      tanggalSelesai,
+    } = req.body;
+
+    // Validasi input
+    if (!namaProyek || !lokasi || !anggaran || !tanggalMulai || !tanggalSelesai) {
+      return res.status(400).json({ error: 'All required fields must be provided.' });
     }
 
-    const proyek = await prisma.paket.create({
+    const proyek = await prisma.proyekPUPR.create({
       data: {
-        kodePaket,
-        namaPaket,
-        jenisPaket: 'PUPR',
-        nilaiPaket: parseFloat(nilaiPaket),
-        metodePengadaan,
+        namaProyek,
+        lokasi,
+        anggaran: parseFloat(anggaran),
+        kontraktor: kontraktor || null,
+        tanggalMulai: new Date(tanggalMulai),
+        tanggalSelesai: new Date(tanggalSelesai),
         createdBy: req.user.id,
       },
     });
-    res.json(proyek);
+
+    res.status(201).json(proyek);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create proyek pupr' });
+    console.error('Error creating proyek:', error);
+    res.status(500).json({ error: 'Failed to create proyek PUPR' });
   }
 });
 
 app.put('/api/proyek-pupr/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { kodePaket, namaPaket, nilaiPaket, metodePengadaan, status } = req.body;
+    const {
+      namaProyek,
+      lokasi,
+      anggaran,
+      kontraktor,
+      tanggalMulai,
+      tanggalSelesai,
+      status,
+      progress,
+    } = req.body;
 
-    const proyek = await prisma.paket.update({
+    const proyek = await prisma.proyekPUPR.update({
       where: { id },
       data: {
-        kodePaket,
-        namaPaket,
-        nilaiPaket: parseFloat(nilaiPaket),
-        metodePengadaan,
-        status,
-        updatedBy: req.user.id,
-        tanggalUpdate: new Date(),
+        namaProyek,
+        lokasi,
+        anggaran: anggaran ? parseFloat(anggaran) : undefined,
+        kontraktor,
+        tanggalMulai: tanggalMulai ? new Date(tanggalMulai) : undefined,
+        tanggalSelesai: tanggalSelesai ? new Date(tanggalSelesai) : undefined,
+        status: status ? String(status).toUpperCase() : undefined,
+        progress: progress ? parseInt(progress) : undefined,
+        updatedAt: new Date(),
       },
     });
+
     res.json(proyek);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update proyek pupr' });
+    console.error('Error updating proyek:', error);
+    res.status(500).json({ error: 'Failed to update proyek PUPR' });
   }
 });
 
 app.delete('/api/proyek-pupr/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.paket.delete({ where: { id } });
-    res.json({ message: 'Proyek PUPR deleted successfully' });
+
+    // Hapus proyek beserta dokumennya
+    await prisma.dokumen.deleteMany({ where: { proyekPUPRId: id } });
+    await prisma.proyekPUPR.delete({ where: { id } });
+
+    res.json({ message: 'Proyek PUPR and related documents deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete proyek pupr' });
+    console.error('Error deleting proyek:', error);
+    res.status(500).json({ error: 'Failed to delete proyek PUPR' });
   }
 });
+
 
 // Vendor routes
 app.get('/api/vendor', authenticateToken, async (req, res) => {
@@ -1009,17 +1113,34 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// --- Delete Dokumen + Remove Physical File ---
 app.delete('/api/dokumen/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+
+    const dokumen = await prisma.dokumen.findUnique({ where: { id } });
+    if (!dokumen) return res.status(404).json({ error: 'Dokumen not found' });
+
+    // Delete physical file if exists
+    const filePath = path.join(process.cwd(), dokumen.filePath);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`🗑️ Deleted file: ${filePath}`);
+    }
+
+    // Delete record from DB
     await prisma.dokumen.delete({ where: { id } });
-    res.json({ message: 'Dokumen deleted successfully' });
+
+    res.json({ message: 'Dokumen deleted successfully (file removed too)' });
   } catch (error) {
+    console.error('Delete dokumen error:', error);
     res.status(500).json({ error: 'Failed to delete dokumen' });
   }
 });
 
+
 // Upload dokumen dengan file handling
+// --- Upload Dokumen Route ---
 app.post('/api/dokumen/upload', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const { paketId, jenisDokumen } = req.body;
@@ -1033,40 +1154,30 @@ app.post('/api/dokumen/upload', authenticateToken, upload.single('file'), async 
       return res.status(400).json({ error: 'Paket ID and jenis dokumen are required' });
     }
 
-    // Generate unique filename
-    const fileExtension = path.extname(file.originalname);
-    const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}${fileExtension}`;
+    const publicPath = `/uploads/${file.filename}`;
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    // Save file to disk
-    const filePath = path.join(uploadsDir, uniqueFilename);
-    fs.writeFileSync(filePath, file.buffer);
-
-    // Save to database
-        // Save to database
     const dokumen = await prisma.dokumen.create({
       data: {
         paketId,
         namaDokumen: file.originalname,
         jenisDokumen,
-        filePath: `/uploads/${uniqueFilename}`,
+        filePath: publicPath,
         fileSize: file.size,
         mimeType: file.mimetype,
         uploadedBy: req.user.id,
       },
     });
 
-    res.json(dokumen);
+    res.json({
+      message: 'Dokumen berhasil diupload',
+      dokumen,
+    });
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ error: 'Failed to upload dokumen' });
   }
 });
+
 
 // Laporan Analisis routes
 app.get('/api/laporan-analisis', authenticateToken, async (req, res) => {
@@ -1388,6 +1499,7 @@ app.use((req, res) => {
 
 // Serve static files from the React app build directory
 app.use(express.static('dist'));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Catch all handler: send back React's index.html file for any non-API routes
 app.use((req, res) => {
@@ -1396,6 +1508,7 @@ app.use((req, res) => {
 
 // Start server
 app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`📂 Upload directory: ${path.join(process.cwd(), 'uploads')}`);
   console.log(`🚀 SIP-KPBJ API server running on port ${PORT}`);
 });
 

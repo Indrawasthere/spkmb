@@ -3,7 +3,7 @@ import PageMeta from "../../components/common/PageMeta";
 import { useAuth } from "../../context/AuthContext";
 import Badge from "../../components/ui/badge/Badge";
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
 
 interface DashboardStats {
   paket: number;

@@ -10,7 +10,7 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
 
 interface PPK {
   id: string;
@@ -308,8 +308,12 @@ export default function KompetensiPPK() {
       </div>
 
       {/* Modal Form */}
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-2xl m-4">
-        <div className="p-6">
+      <Modal isOpen={isOpen}
+        onClose={closeModal}
+        size="2xl"
+        title={editingPPK ? "" : ""}
+        showHeader={true}>
+        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
             {editingPPK ? 'Edit PPK' : 'Tambah PPK'}
           </h3>

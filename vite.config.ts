@@ -18,9 +18,16 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    allowedHosts: [
+      'localhost',
+    '127.0.0.1',
+    '.ngrok-free.app',
+    '.asse.devtunnels.ms', // biar semua URL ngrok boleh
+    '.loca.lt',        // biar LocalTunnel juga boleh
+    ],
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://4bnmj0s4-3001.asse.devtunnels.ms',
         changeOrigin: true,
         secure: false,
         ws: true,
