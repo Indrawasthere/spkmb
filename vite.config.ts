@@ -27,7 +27,7 @@ export default defineConfig({
     ],
     proxy: {
       '/api': {
-        target: 'https://4bnmj0s4-3001.asse.devtunnels.ms',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
         ws: true,

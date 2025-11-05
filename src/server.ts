@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -194,7 +194,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, role, isActive } = req.body;
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ error: 'All fields are required.' });
     }
@@ -206,7 +206,14 @@ app.post('/api/auth/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, firstName, lastName },
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role: role || 'USER',
+        isActive: isActive !== undefined ? isActive : true
+      },
     });
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
@@ -283,7 +290,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // User management routes (protected)
-app.get('/api/users', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+app.get('/api/users', authenticateToken, authorizeRoles('admin', 'user'), async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -331,14 +338,51 @@ app.post('/api/users', authenticateToken, authorizeRoles('admin'), async (req, r
   }
 });
 
-app.put('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, firstName, lastName, role, isActive } = req.body;
+    const { email, firstName, lastName, role, isActive, password } = req.body;
+
+    // Check if user is updating their own account or is admin
+    const isSelfUpdate = req.user.id === id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isSelfUpdate && !isAdmin) {
+      return res.status(403).json({ error: 'Access denied. You can only update your own account.' });
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+
+    // Fields that anyone can update (for self-update)
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (email !== undefined) updateData.email = email;
+
+    // Password update (only for self-update)
+    if (password && isSelfUpdate) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    // Admin-only fields
+    if (isAdmin) {
+      if (role !== undefined) updateData.role = role;
+      if (isActive !== undefined) updateData.isActive = isActive;
+    }
+
+    // Check if email is already taken by another user
+    if (email) {
+      const existingUser = await prisma.user.findFirst({
+        where: { email, NOT: { id } },
+      });
+      if (existingUser) {
+        return res.status(400).json({ error: 'Email already in use' });
+      }
+    }
 
     const user = await prisma.user.update({
       where: { id },
-      data: { email, firstName, lastName, role, isActive },
+      data: updateData,
     });
 
     res.json({
@@ -350,6 +394,7 @@ app.put('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (req
       isActive: user.isActive,
     });
   } catch (error) {
+    console.error('Update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -390,11 +435,25 @@ app.get('/api/paket/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/paket', authenticateToken, async (req, res) => {
+app.post('/api/paket', authenticateToken, upload.single('dokumenKontrak'), async (req, res) => {
   try {
-    const { kodePaket, namaPaket, jenisPaket, nilaiPaket, metodePengadaan, createdBy } = req.body;
+    const { kodePaket, namaPaket, jenisPaket, nilaiPaket, metodePengadaan, tanggalMulai, tanggalSelesai } = req.body;
     if (!kodePaket || !namaPaket || !jenisPaket || !nilaiPaket || !metodePengadaan) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const file = req.file;
+    let dokumenKontrak = null;
+    if (file) {
+      dokumenKontrak = `/uploads/${file.filename}`;
+    }
+
+    const tanggalMulaiDate = tanggalMulai ? new Date(tanggalMulai) : null;
+    const tanggalSelesaiDate = tanggalSelesai ? new Date(tanggalSelesai) : null;
+    let lamaProyek = null;
+    if (tanggalMulaiDate && tanggalSelesaiDate) {
+      const diffTime = Math.abs(tanggalSelesaiDate.getTime() - tanggalMulaiDate.getTime());
+      lamaProyek = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
     const paket = await prisma.paket.create({
@@ -404,6 +463,10 @@ app.post('/api/paket', authenticateToken, async (req, res) => {
         jenisPaket,
         nilaiPaket: parseFloat(nilaiPaket),
         metodePengadaan,
+        tanggalMulai: tanggalMulaiDate,
+        tanggalSelesai: tanggalSelesaiDate,
+        lamaProyek,
+        dokumenKontrak,
         createdBy: req.user.id,
       },
     });
@@ -413,7 +476,7 @@ app.post('/api/paket', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/paket/:id', authenticateToken, async (req, res) => {
+app.put('/api/paket/:id', authenticateToken, upload.single('dokumenKontrak'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -423,6 +486,8 @@ app.put('/api/paket/:id', authenticateToken, async (req, res) => {
       nilaiPaket,
       metodePengadaan,
       status,
+      tanggalMulai,
+      tanggalSelesai,
     } = req.body;
 
     // Validasi input wajib
@@ -438,6 +503,20 @@ app.put('/api/paket/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid or missing fields in request body' });
     }
 
+    const tanggalMulaiDate = tanggalMulai ? new Date(tanggalMulai) : undefined;
+    const tanggalSelesaiDate = tanggalSelesai ? new Date(tanggalSelesai) : undefined;
+    let lamaProyek = undefined;
+    if (tanggalMulaiDate && tanggalSelesaiDate) {
+      const diffTime = Math.abs(tanggalSelesaiDate.getTime() - tanggalMulaiDate.getTime());
+      lamaProyek = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    const file = req.file;
+    let dokumenKontrak = undefined;
+    if (file) {
+      dokumenKontrak = `/uploads/${file.filename}`;
+    }
+
     // Update paket di database
     const paket = await prisma.paket.update({
       where: { id },
@@ -447,7 +526,11 @@ app.put('/api/paket/:id', authenticateToken, async (req, res) => {
         jenisPaket,
         nilaiPaket: parseFloat(nilaiPaket),
         metodePengadaan,
-        status: status || undefined, // jika status tidak ada, jangan update field ini
+        status: status || undefined,
+        tanggalMulai: tanggalMulaiDate,
+        tanggalSelesai: tanggalSelesaiDate,
+        lamaProyek,
+        dokumenKontrak,
         updatedBy: req.user.id,
         tanggalUpdate: new Date(),
       },
@@ -522,10 +605,16 @@ app.post('/api/laporan-itwasda', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/laporan-itwasda/:id', authenticateToken, async (req, res) => {
+app.put('/api/laporan-itwasda/:id', authenticateToken, upload.single('filePath'), async (req, res) => {
   try {
     const { id } = req.params;
     const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKeparahan, status, auditor, pic } = req.body;
+
+    const file = req.file;
+    let filePath = undefined;
+    if (file) {
+      filePath = `/uploads/${file.filename}`;
+    }
 
     const laporan = await prisma.laporanItwasda.update({
       where: { id },
@@ -538,6 +627,7 @@ app.put('/api/laporan-itwasda/:id', authenticateToken, async (req, res) => {
         status,
         auditor,
         pic,
+        filePath,
         updatedAt: new Date(),
       },
     });
@@ -610,10 +700,16 @@ app.post('/api/temuan-bpkp', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/temuan-bpkp/:id', authenticateToken, async (req, res) => {
+app.put('/api/temuan-bpkp/:id', authenticateToken, upload.single('filePath'), async (req, res) => {
   try {
     const { id } = req.params;
     const { nomorTemuan, paketId, jenisTemuan, deskripsi, tingkatKeparahan, status, auditor, pic } = req.body;
+
+    const file = req.file;
+    let filePath = undefined;
+    if (file) {
+      filePath = `/uploads/${file.filename}`;
+    }
 
     const temuan = await prisma.temuanBPKP.update({
       where: { id },
@@ -626,6 +722,7 @@ app.put('/api/temuan-bpkp/:id', authenticateToken, async (req, res) => {
         status,
         auditor,
         pic,
+        filePath,
         updatedAt: new Date(),
       },
     });
@@ -736,7 +833,7 @@ app.post('/api/proyek-pupr', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/proyek-pupr/:id', authenticateToken, async (req, res) => {
+app.put('/api/proyek-pupr/:id', authenticateToken, upload.single('dokumenCatatan'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -748,7 +845,14 @@ app.put('/api/proyek-pupr/:id', authenticateToken, async (req, res) => {
       tanggalSelesai,
       status,
       progress,
+      deskripsiCatatan,
     } = req.body;
+
+    const file = req.file;
+    let dokumenCatatan = undefined;
+    if (file) {
+      dokumenCatatan = `/uploads/${file.filename}`;
+    }
 
     const proyek = await prisma.proyekPUPR.update({
       where: { id },
@@ -761,6 +865,8 @@ app.put('/api/proyek-pupr/:id', authenticateToken, async (req, res) => {
         tanggalSelesai: tanggalSelesai ? new Date(tanggalSelesai) : undefined,
         status: status ? String(status).toUpperCase() : undefined,
         progress: progress ? parseInt(progress) : undefined,
+        deskripsiCatatan,
+        dokumenCatatan,
         updatedAt: new Date(),
       },
     });
@@ -836,7 +942,30 @@ app.post('/api/vendor', authenticateToken, async (req, res) => {
 app.put('/api/vendor/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { namaVendor, jenisVendor, nomorIzin, spesialisasi, kontak, alamat, status } = req.body;
+    const {
+      namaVendor,
+      jenisVendor,
+      nomorIzin,
+      spesialisasi,
+      kontak,
+      alamat,
+      status,
+      paketId,
+      noKontrak,
+      deskripsi,
+      dokumenDED,
+      lamaKontrak,
+      namaProyek,
+      deskripsiLaporan,
+      dokumenLaporan,
+      deskripsiProgress,
+      uploadDokumen,
+      uploadFoto,
+    } = req.body;
+
+    // Auto-set warningTemuan based on some logic, e.g., if there are related temuan
+    const relatedTemuan = await prisma.temuanBPKP.findMany({ where: { paketId } });
+    const warningTemuan = relatedTemuan.length > 0;
 
     const vendor = await prisma.vendor.update({
       where: { id },
@@ -848,6 +977,18 @@ app.put('/api/vendor/:id', authenticateToken, async (req, res) => {
         kontak,
         alamat,
         status,
+        paketId,
+        noKontrak,
+        deskripsi,
+        dokumenDED,
+        lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : undefined,
+        warningTemuan,
+        namaProyek,
+        deskripsiLaporan,
+        dokumenLaporan,
+        deskripsiProgress,
+        uploadDokumen,
+        uploadFoto,
         updatedAt: new Date(),
       },
     });
@@ -1377,11 +1518,12 @@ app.delete('/api/permissions/:id', authenticateToken, authorizeRoles('admin'), a
 // Dashboard/Analytics routes (new)
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   try {
-    const [paketCount, laporanCount, vendorCount, ppkCount] = await Promise.all([
+    const [paketCount, laporanCount, vendorCount, ppkCount, pengaduanCount] = await Promise.all([
       prisma.paket.count(),
       prisma.laporanItwasda.count(),
       prisma.vendor.count(),
       prisma.pPK.count(),
+      prisma.pengaduan.count(),
     ]);
 
     res.json({
@@ -1389,9 +1531,86 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
       laporan: laporanCount,
       vendor: vendorCount,
       ppk: ppkCount,
+      pengaduan: pengaduanCount,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+});
+
+// Pengaduan routes
+app.get('/api/pengaduan', authenticateToken, async (req, res) => {
+  try {
+    const pengaduan = await prisma.pengaduan.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(pengaduan);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch pengaduan' });
+  }
+});
+
+app.get('/api/pengaduan/:id', authenticateToken, async (req, res) => {
+  try {
+    const pengaduan = await prisma.pengaduan.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!pengaduan) return res.status(404).json({ error: 'Pengaduan not found' });
+    res.json(pengaduan);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch pengaduan' });
+  }
+});
+
+app.post('/api/pengaduan', authenticateToken, async (req, res) => {
+  try {
+    const { judul, isi, status, pelapor } = req.body;
+    if (!judul || !isi) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const pengaduan = await prisma.pengaduan.create({
+      data: {
+        judul,
+        isi,
+        status: status || 'BARU',
+        pelapor: pelapor || req.user.firstName + ' ' + req.user.lastName,
+      },
+    });
+    res.json(pengaduan);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create pengaduan' });
+  }
+});
+
+app.put('/api/pengaduan/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { judul, isi, status, pelapor } = req.body;
+
+    const pengaduan = await prisma.pengaduan.update({
+      where: { id },
+      data: {
+        judul,
+        isi,
+        status,
+        pelapor,
+        updatedAt: new Date(),
+      },
+    });
+    res.json(pengaduan);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update pengaduan' });
+  }
+});
+
+app.delete('/api/pengaduan/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.pengaduan.delete({ where: { id } });
+    res.json({ message: 'Pengaduan deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete pengaduan' });
   }
 });
 

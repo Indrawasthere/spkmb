@@ -11,7 +11,7 @@ import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import TextArea from "../components/form/input/TextArea";
 
-const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
+const API_BASE_URL = 'http://localhost:3001';
 
 interface LaporanAnalisis {
   id: string;

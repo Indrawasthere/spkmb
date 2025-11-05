@@ -13,7 +13,7 @@ import Select from "../components/form/Select";
 import BarChartOne from "../components/charts/bar/BarChartOne";
 import LineChartOne from "../components/charts/line/LineChartOne";
 
-const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
+const API_BASE_URL = 'http://localhost:3001';
 
 interface Monitoring {
   id: string;

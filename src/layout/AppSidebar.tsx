@@ -338,6 +338,22 @@ const AppSidebar: React.FC = () => {
         </nav>
         {/* {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null} */}
       </div>
+
+      {/* Button to external link */}
+      <div className="mt-auto mb-4">
+        <a
+          href="https://spse.inaproc.id/polri"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+        >
+          {isExpanded || isHovered || isMobileOpen ? (
+            "SPSE POLRI"
+          ) : (
+            "SPSE"
+          )}
+        </a>
+      </div>
     </aside>
   );
 };

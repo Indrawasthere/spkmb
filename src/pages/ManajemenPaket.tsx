@@ -21,7 +21,46 @@ interface Paket {
   status: "DRAFT" | "PUBLISHED" | "ON_PROGRESS" | "COMPLETED" | "CANCELLED";
   tanggalBuat: string;
   createdBy: string;
+  tanggalMulai?: string;
+  tanggalSelesai?: string;
+  lamaProyek?: number;
+  dokumenKontrak?: string;
   dokumen?: Dokumen[];
+  ppkData?: PPKData[];
+  vendors?: Vendor[];
+}
+
+interface PPKData {
+  id: string;
+  paketId: string;
+  namaPPK: string;
+  noSertifikasi: string;
+  jumlahAnggaran: number;
+  lamaProyek: number;
+  realisasiTermin1?: number;
+  realisasiTermin2?: number;
+  realisasiTermin3?: number;
+  realisasiTermin4?: number;
+  PHO?: string;
+  FHO?: string;
+}
+
+interface Vendor {
+  id: string;
+  namaVendor: string;
+  jenisVendor: string;
+  paketId?: string;
+  noKontrak?: string;
+  deskripsi?: string;
+  dokumenDED?: string;
+  lamaKontrak?: number;
+  warningTemuan?: boolean;
+  namaProyek?: string;
+  deskripsiLaporan?: string;
+  dokumenLaporan?: string;
+  deskripsiProgress?: string;
+  uploadDokumen?: string;
+  uploadFoto?: string;
 }
 
 interface Dokumen {
@@ -43,7 +82,7 @@ interface FormErrors {
   metodePengadaan?: string;
 }
 
-const API_BASE_URL = "https://4bnmj0s4-3001.asse.devtunnels.ms";
+const API_BASE_URL = "http://localhost:3001";
 
 export default function ManajemenPaket() {
   const { user } = useAuth();
@@ -57,7 +96,28 @@ export default function ManajemenPaket() {
     nilaiPaket: "",
     metodePengadaan: "",
     status: "DRAFT" as Paket["status"],
+    tanggalMulai: "",
+    tanggalSelesai: "",
+    lamaProyek: "",
+    dokumenKontrak: null as File | null,
   });
+
+  // Auto-calculate lamaProyek when tanggalMulai or tanggalSelesai changes
+  useEffect(() => {
+    if (formData.tanggalMulai && formData.tanggalSelesai) {
+      const startDate = new Date(formData.tanggalMulai);
+      const endDate = new Date(formData.tanggalSelesai);
+      if (endDate > startDate) {
+        const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setFormData(prev => ({ ...prev, lamaProyek: diffDays.toString() }));
+      } else {
+        setFormData(prev => ({ ...prev, lamaProyek: "" }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, lamaProyek: "" }));
+    }
+  }, [formData.tanggalMulai, formData.tanggalSelesai]);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [formDokumen, setFormDokumen] = useState<{
     [key: string]: File | null;
@@ -140,15 +200,28 @@ export default function ManajemenPaket() {
         metodePengadaan: formData.metodePengadaan,
         status: status,
         createdBy: user?.id || "",
+        tanggalMulai: formData.tanggalMulai || undefined,
+        tanggalSelesai: formData.tanggalSelesai || undefined,
+        lamaProyek: formData.lamaProyek ? parseInt(formData.lamaProyek) : undefined,
       };
 
       let response;
       if (editingPaket) {
+        // For edit, use FormData to handle file upload
+        const formDataToSend = new FormData();
+        Object.entries(paketData).forEach(([key, value]) => {
+          if (value !== undefined) {
+            formDataToSend.append(key, value.toString());
+          }
+        });
+        if (formData.dokumenKontrak) {
+          formDataToSend.append("dokumenKontrak", formData.dokumenKontrak);
+        }
+
         response = await fetch(`${API_BASE_URL}/api/paket/${editingPaket.id}`, {
           method: "PUT",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...paketData, updatedBy: user?.id }),
+          body: formDataToSend,
         });
       } else {
         response = await fetch(`${API_BASE_URL}/api/paket`, {
@@ -216,6 +289,10 @@ export default function ManajemenPaket() {
       nilaiPaket: paket.nilaiPaket.toString(),
       metodePengadaan: paket.metodePengadaan,
       status: paket.status,
+      tanggalMulai: paket.tanggalMulai || "",
+      tanggalSelesai: paket.tanggalSelesai || "",
+      lamaProyek: paket.lamaProyek?.toString() || "",
+      dokumenKontrak: null,
     });
     setFormErrors({});
     openModal();
@@ -307,6 +384,10 @@ export default function ManajemenPaket() {
       nilaiPaket: "",
       metodePengadaan: "",
       status: "DRAFT",
+      tanggalMulai: "",
+      tanggalSelesai: "",
+      lamaProyek: "",
+      dokumenKontrak: null,
     });
     setFormDokumen({
       "KAK/RAB": null,
@@ -611,7 +692,7 @@ export default function ManajemenPaket() {
                   onChange={(value) =>
                     setFormData({ ...formData, jenisPaket: value })
                   }
-                  value={formData.jenisPaket}
+                  defaultValue={formData.jenisPaket}
                 />
                 {formErrors.jenisPaket && (
                   <p className="mt-1 text-xs text-error-500">
@@ -628,7 +709,7 @@ export default function ManajemenPaket() {
                   onChange={(value) =>
                     setFormData({ ...formData, metodePengadaan: value })
                   }
-                  value={formData.metodePengadaan}
+                  defaultValue={formData.metodePengadaan}
                 />
                 {formErrors.metodePengadaan && (
                   <p className="mt-1 text-xs text-error-500">
@@ -637,6 +718,72 @@ export default function ManajemenPaket() {
                 )}
               </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <Label>Tanggal Mulai</Label>
+                <Input
+                  type="date"
+                  value={formData.tanggalMulai}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tanggalMulai: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Tanggal Selesai</Label>
+                <Input
+                  type="date"
+                  value={formData.tanggalSelesai}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tanggalSelesai: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Lama Proyek (hari)</Label>
+                <Input
+                  type="number"
+                  value={formData.lamaProyek}
+                  placeholder="Otomatis dihitung"
+                  disabled
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Dokumen Kontrak</Label>
+              <input
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setFormData({ ...formData, dokumenKontrak: file });
+                }}
+                accept=".pdf,.doc,.docx"
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Format: PDF, DOC, DOCX (Max 10MB)
+              </p>
+            </div>
+
+            {editingPaket && (
+              <div>
+                <Label>Upload Dokumen Kontrak</Label>
+                <input
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setFormData({ ...formData, dokumenKontrak: file });
+                  }}
+                  accept=".pdf,.doc,.docx"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Upload dokumen kontrak baru jika perlu (Max 10MB)
+                </p>
+              </div>
+            )}
 
             {editingPaket && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

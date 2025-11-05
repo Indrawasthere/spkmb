@@ -11,7 +11,7 @@ import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
 
-const API_BASE_URL = "https://4bnmj0s4-3001.asse.devtunnels.ms";
+const API_BASE_URL = "http://localhost:3001";
 
 interface Temuan {
   id: string;
@@ -24,6 +24,7 @@ interface Temuan {
   tanggal: string;
   auditor: string;
   pic: string;
+  filePath?: string;
   createdAt: string;
   updatedAt: string;
   paket?: {
@@ -282,8 +283,48 @@ export default function BPKP() {
     }
   };
 
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedTemuanId, setSelectedTemuanId] = useState<string>("");
+  const [uploadFormData, setUploadFormData] = useState({
+    file: null as File | null,
+  });
+
   const handleUpload = (id: string) => {
-    alert(`Upload dokumen untuk temuan ${id}`);
+    setSelectedTemuanId(id);
+    setUploadModalOpen(true);
+  };
+
+  const handleFileUpload = async () => {
+    if (!uploadFormData.file) {
+      alert("Pilih file dokumen");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("file", uploadFormData.file);
+
+      const response = await fetch(`${API_BASE_URL}/api/temuan-bpkp/${selectedTemuanId}/upload`, {
+        method: "PUT",
+        credentials: "include",
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        alert("Dokumen berhasil diupload");
+        setUploadModalOpen(false);
+        setUploadFormData({ file: null });
+        fetchTemuans();
+      } else {
+        alert("Gagal upload dokumen");
+      }
+    } catch (error) {
+      console.error("Error uploading dokumen:", error);
+      alert("Terjadi kesalahan saat upload");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -758,6 +799,39 @@ export default function BPKP() {
               disabled={loading}
             >
               {loading ? "Menyimpan..." : "Simpan Temuan"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Upload Modal */}
+      <Modal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        size="md"
+        title="Upload Dokumen Temuan"
+        showHeader={true}
+      >
+        <div className="px-6 py-4 space-y-4">
+          <div>
+            <Label>File Dokumen *</Label>
+            <input
+              type="file"
+              onChange={(e) => setUploadFormData({ file: e.target.files?.[0] || null })}
+              accept=".pdf,.doc,.docx,.xlsx,.csv,.jpg,.jpeg,.png"
+              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Format: PDF, DOC, DOCX, XLSX, CSV, JPG, PNG (Max 10MB)
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button size="sm" variant="outline" onClick={() => setUploadModalOpen(false)} disabled={loading}>
+              Batal
+            </Button>
+            <Button size="sm" variant="primary" onClick={handleFileUpload} disabled={loading}>
+              {loading ? 'Uploading...' : 'Upload'}
             </Button>
           </div>
         </div>

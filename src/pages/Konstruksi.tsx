@@ -9,7 +9,7 @@ import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 
-const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
+const API_BASE_URL = 'http://localhost:3001';
 
 interface Kontraktor {
   id: string;

@@ -20,11 +20,28 @@ interface Proyek {
   kontraktor: string;
   tanggalMulai: string;
   tanggalSelesai: string;
+  deskripsiCatatan?: string;
+  dokumenCatatan?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-const API_BASE_URL = "https://4bnmj0s4-3001.asse.devtunnels.ms";
+const API_BASE_URL = "http://localhost:3001";
+
+// Utility function to format currency in Rupiah
+const formatCurrency = (amount: number): string => {
+  if (amount >= 1000000000000) {
+    return `Rp ${(amount / 1000000000000).toFixed(2)}T`;
+  } else if (amount >= 1000000000) {
+    return `Rp ${(amount / 1000000000).toFixed(2)}M`;
+  } else if (amount >= 1000000) {
+    return `Rp ${(amount / 1000000).toFixed(2)}Jt`;
+  } else if (amount >= 1000) {
+    return `Rp ${(amount / 1000).toFixed(0)}Rb`;
+  } else {
+    return `Rp ${amount.toLocaleString("id-ID")}`;
+  }
+};
 
 export default function PUPR() {
   const [proyek, setProyek] = useState<Proyek[]>([]);
@@ -38,6 +55,8 @@ export default function PUPR() {
     kontraktor: "",
     tanggalMulai: "",
     tanggalSelesai: "",
+    deskripsiCatatan: "",
+    dokumenCatatan: null as File | null,
   });
   const [editingProyek, setEditingProyek] = useState<Proyek | null>(null);
 
@@ -73,6 +92,7 @@ export default function PUPR() {
         kontraktor: formData.kontraktor,
         tanggalMulai: new Date(formData.tanggalMulai),
         tanggalSelesai: new Date(formData.tanggalSelesai),
+        deskripsiCatatan: formData.deskripsiCatatan,
       };
 
       let response;
@@ -110,10 +130,12 @@ export default function PUPR() {
     setFormData({
       namaProyek: proyek.namaProyek,
       lokasi: proyek.lokasi,
-      anggaran: proyek.anggaran.toString(),
+      anggaran: formatCurrency(proyek.anggaran),
       kontraktor: proyek.kontraktor,
       tanggalMulai: proyek.tanggalMulai.split("T")[0],
       tanggalSelesai: proyek.tanggalSelesai.split("T")[0],
+      deskripsiCatatan: proyek.deskripsiCatatan || "",
+      dokumenCatatan: null,
     });
     openModal();
   };
@@ -147,6 +169,8 @@ export default function PUPR() {
       kontraktor: "",
       tanggalMulai: "",
       tanggalSelesai: "",
+      deskripsiCatatan: "",
+      dokumenCatatan: null,
     });
     setEditingProyek(null);
   };
@@ -199,12 +223,7 @@ export default function PUPR() {
     },
     {
       label: "Total Anggaran",
-      value:
-        proyek.length > 0
-          ? `Rp ${(
-              proyek.reduce((sum, p) => sum + p.anggaran, 0) / 1000000000000
-            ).toFixed(2)}T`
-          : "Rp 0T",
+      value: formatCurrency(proyek.reduce((sum, p) => sum + p.anggaran, 0)),
       color: "text-blue-light-500",
     },
   ];
@@ -431,10 +450,12 @@ export default function PUPR() {
                 <Input
                   type="text"
                   value={formData.anggaran}
-                  onChange={(e) =>
-                    setFormData({ ...formData, anggaran: e.target.value })
-                  }
-                  placeholder="Rp XXX"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, "");
+                    const formatted = formatCurrency(parseInt(value) || 0);
+                    setFormData({ ...formData, anggaran: formatted });
+                  }}
+                  placeholder="Rp 0"
                 />
               </div>
             </div>
@@ -497,6 +518,34 @@ export default function PUPR() {
                   calendarClassName="!bg-white dark:!bg-gray-800 dark:!text-gray-200 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label>Deskripsi Catatan</Label>
+              <textarea
+                value={formData.deskripsiCatatan}
+                onChange={(e) =>
+                  setFormData({ ...formData, deskripsiCatatan: e.target.value })
+                }
+                placeholder="Deskripsi catatan proyek..."
+                rows={3}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              />
+            </div>
+
+            <div>
+              <Label>Dokumen Catatan</Label>
+              <input
+                type="file"
+                onChange={(e) =>
+                  setFormData({ ...formData, dokumenCatatan: e.target.files?.[0] || null })
+                }
+                accept=".pdf,.doc,.docx,.xlsx,.csv,.jpg,.jpeg,.png"
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Format: PDF, DOC, DOCX, XLSX, CSV, JPG, PNG (Max 10MB)
+              </p>
             </div>
           </div>
 

@@ -67,11 +67,17 @@ model Paket {
   tanggalUpdate   DateTime    @updatedAt
   createdBy       String
   updatedBy       String?
+  tanggalMulai    DateTime?
+  tanggalSelesai  DateTime?
+  lamaProyek      Int?
+  dokumenKontrak  String?
 
   // Relations
   dokumen    Dokumen[]
   laporan    LaporanItwasda[]
   temuanBPKP TemuanBPKP[]
+  ppkData    PPKData[]
+  vendors    Vendor[]
 
   @@map("paket")
 }
@@ -84,17 +90,24 @@ enum PaketStatus {
   CANCELLED
 }
 
+enum DokumenJenis {
+  JAMINAN_UANG_MUKA
+  JAMINAN_PELAKSANAAN
+  JAMINAN_PEMELIHARAAN
+  // Add other existing types if any
+}
+
 // Dokumen & Arsip
 model Dokumen {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   paketId      String?
   namaDokumen  String
-  jenisDokumen String
+  jenisDokumen DokumenJenis
   filePath     String
   fileSize     Int
   mimeType     String
   uploadedBy   String
-  uploadedAt   DateTime @default(now())
+  uploadedAt   DateTime      @default(now())
 
   // Relations
   paket           Paket?           @relation(fields: [paketId], references: [id], onDelete: Cascade)
@@ -130,6 +143,7 @@ model LaporanItwasda {
   tanggal          DateTime
   auditor          String
   pic              String
+  filePath         String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -154,6 +168,7 @@ model TemuanBPKP {
   tanggal          DateTime       @default(now())
   auditor          String
   pic              String
+  filePath         String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -180,20 +195,33 @@ enum LaporanStatus {
 
 // Vendor / Penyedia
 model Vendor {
-  id           String       @id @default(cuid())
-  namaVendor   String
-  jenisVendor  VendorType
-  nomorIzin    String       @unique
-  spesialisasi String?
-  jumlahProyek Int          @default(0)
-  rating       Float?       @default(0)
-  status       VendorStatus @default(AKTIF)
-  kontak       String?
-  alamat       String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  namaVendor      String
+  jenisVendor     VendorType
+  nomorIzin       String       @unique
+  spesialisasi    String?
+  jumlahProyek    Int          @default(0)
+  rating          Float?       @default(0)
+  status          VendorStatus @default(AKTIF)
+  kontak          String?
+  alamat          String?
+  paketId         String?
+  noKontrak       String?
+  deskripsi       String?
+  dokumenDED      String?
+  lamaKontrak     Int?
+  warningTemuan   Boolean?     @default(false)
+  namaProyek      String?
+  deskripsiLaporan String?
+  dokumenLaporan  String?
+  deskripsiProgress String?
+  uploadDokumen   String?
+  uploadFoto      String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   // Relations
+  paket   Paket?    @relation(fields: [paketId], references: [id], onDelete: Cascade)
   dokumen Dokumen[]
 
   @@map("vendor")
@@ -283,17 +311,19 @@ model LaporanAnalisis {
 }
 
 model ProyekPUPR {
-  id             String       @id @default(cuid())
-  namaProyek     String
-  lokasi         String
-  anggaran       Float
-  kontraktor     String?
-  tanggalMulai   DateTime
-  tanggalSelesai DateTime
-  status         ProyekStatus @default(PERENCANAAN)
-  progress       Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                String       @id @default(cuid())
+  namaProyek        String
+  lokasi            String
+  anggaran          Float
+  kontraktor        String?
+  tanggalMulai      DateTime
+  tanggalSelesai    DateTime
+  status            ProyekStatus @default(PERENCANAAN)
+  progress          Int          @default(0)
+  deskripsiCatatan  String?
+  dokumenCatatan    String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   // Relations
   createdBy String?
@@ -301,6 +331,48 @@ model ProyekPUPR {
   dokumen   Dokumen[]
 
   @@map("proyek_pupr")
+}
+
+model PPKData {
+  id               String   @id @default(cuid())
+  paketId          String
+  namaPPK          String
+  noSertifikasi    String
+  jumlahAnggaran   Float
+  lamaProyek       Int
+  realisasiTermin1 Float?
+  realisasiTermin2 Float?
+  realisasiTermin3 Float?
+  realisasiTermin4 Float?
+  PHO              DateTime?
+  FHO              DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  paket Paket @relation(fields: [paketId], references: [id], onDelete: Cascade)
+
+  @@map("ppk_data")
+}
+
+model Pengaduan {
+  id        String      @id @default(cuid())
+  judul     String
+  isi       String
+  status    PengaduanStatus @default(BARU)
+  tanggal   DateTime    @default(now())
+  pelapor   String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("pengaduan")
+}
+
+enum PengaduanStatus {
+  BARU
+  DIPROSES
+  SELESAI
+  DITOLAK
 }
 
 enum ProyekStatus {

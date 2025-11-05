@@ -10,7 +10,7 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 
-const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
+const API_BASE_URL = 'http://localhost:3001';
 
 interface Dokumen {
   id: string;
@@ -314,6 +314,9 @@ export default function DokumenArsip() {
     { value: "Spesifikasi Teknis", label: "Spesifikasi Teknis" },
     { value: "Timeline", label: "Timeline Pekerjaan" },
     { value: "Syarat Khusus", label: "Syarat Khusus" },
+    { value: "JAMINAN_UANG_MUKA", label: "Jaminan Uang Muka" },
+    { value: "JAMINAN_PELAKSANAAN", label: "Jaminan Pelaksanaan" },
+    { value: "JAMINAN_PEMELIHARAAN", label: "Jaminan Pemeliharaan" },
   ];
 
   const paketOptions = eligiblePakets.map(paket => ({
@@ -420,6 +423,9 @@ export default function DokumenArsip() {
                 <option value="Laporan Kemajuan">Laporan Kemajuan</option>
                 <option value="KAK/RAB">KAK/RAB</option>
                 <option value="Spesifikasi Teknis">Spesifikasi Teknis</option>
+                <option value="JAMINAN_UANG_MUKA">Jaminan Uang Muka</option>
+                <option value="JAMINAN_PELAKSANAAN">Jaminan Pelaksanaan</option>
+                <option value="JAMINAN_PEMELIHARAAN">Jaminan Pemeliharaan</option>
               </select>
             </div>
           </div>

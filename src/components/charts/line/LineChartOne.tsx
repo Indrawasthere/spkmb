@@ -102,12 +102,12 @@ export default function LineChartOne() {
 
   const series = [
     {
-      name: "Sales",
-      data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
+      name: "Paket Diawasi",
+      data: [85, 92, 78, 88, 95, 82, 90, 105, 118, 112, 125, 120],
     },
     {
-      name: "Revenue",
-      data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+      name: "Temuan Audit",
+      data: [12, 8, 15, 10, 18, 14, 22, 25, 20, 28, 30, 26],
     },
   ];
   return (

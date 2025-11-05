@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
@@ -10,126 +10,137 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 
+
 interface User {
   id: string;
-  nama: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  role: "Admin" | "PPK" | "Auditor" | "Viewer";
-  status: "Aktif" | "Nonaktif";
-  lastLogin: string;
+  role: "ADMIN" | "USER" | "AUDITOR" | "MANAGER";
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLogin?: string;
 }
 
-// Dummy data users
-const initialUsers: User[] = [
-  {
-    id: "1",
-    nama: "Admin Sistem",
-    email: "admin@sistem.go.id",
-    role: "Admin",
-    status: "Aktif",
-    lastLogin: "15 Jan 2024, 10:30",
-  },
-  {
-    id: "2",
-    nama: "Ahmad PPK",
-    email: "ahmad.ppk@sistem.go.id",
-    role: "PPK",
-    status: "Aktif",
-    lastLogin: "14 Jan 2024, 14:20",
-  },
-  {
-    id: "3",
-    nama: "Siti Auditor",
-    email: "siti.auditor@sistem.go.id",
-    role: "Auditor",
-    status: "Aktif",
-    lastLogin: "13 Jan 2024, 09:15",
-  },
-  {
-    id: "4",
-    nama: "Budi Viewer",
-    email: "budi.viewer@sistem.go.id",
-    role: "Viewer",
-    status: "Nonaktif",
-    lastLogin: "10 Jan 2024, 16:45",
-  },
-];
-
 export default function PengaturanAkses() {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
-    nama: "",
+    firstName: "",
+    lastName: "",
     email: "",
+    password: "",
     role: "" as User["role"] | "",
-    status: "" as User["status"] | "",
+    isActive: true,
   });
 
   const { isOpen, openModal, closeModal } = useModal();
 
-  const handleSubmit = () => {
-    const newUser: User = {
-      id: Date.now().toString(),
-      nama: formData.nama,
-      email: formData.email,
-      role: formData.role || "Viewer",
-      status: formData.status || "Aktif",
-      lastLogin: "Belum pernah login",
+  // Fetch users from API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/users', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
     };
 
-    setUsers([newUser, ...users]);
-    closeModal();
-    setFormData({
-      nama: "",
-      email: "",
-      role: "",
-      status: "",
-    });
+    fetchUsers();
+  }, []);
+
+  const handleSubmit = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role: formData.role,
+          isActive: formData.isActive,
+        }),
+      });
+
+      if (response.ok) {
+        const newUser = await response.json();
+        setUsers([newUser, ...users]);
+        closeModal();
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          role: "",
+          isActive: true,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create user:', error);
+    }
   };
 
   const filteredUsers = users.filter(
     (user) =>
-      user.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getRoleColor = (role: User["role"]) => {
     switch (role) {
-      case "Admin":
+      case "ADMIN":
         return "error";
-      case "PPK":
+      case "MANAGER":
         return "warning";
-      case "Auditor":
+      case "AUDITOR":
         return "info";
-      case "Viewer":
+      case "USER":
         return "light";
       default:
         return "light";
     }
   };
 
-  const getStatusColor = (status: User["status"]) => {
-    switch (status) {
-      case "Aktif":
-        return "success";
-      case "Nonaktif":
-        return "error";
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? "success" : "error";
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'Administrator';
+      case 'USER':
+        return 'User';
+      case 'AUDITOR':
+        return 'Auditor';
+      case 'MANAGER':
+        return 'Manager';
       default:
-        return "light";
+        return role;
     }
   };
 
   const roleOptions = [
-    { value: "Admin", label: "Admin Sistem" },
-    { value: "PPK", label: "PPK" },
-    { value: "Auditor", label: "Auditor" },
-    { value: "Viewer", label: "Viewer" },
+    { value: "ADMIN", label: "Administrator" },
+    { value: "MANAGER", label: "Manager" },
+    { value: "AUDITOR", label: "Auditor" },
+    { value: "USER", label: "User" },
   ];
 
   const statusOptions = [
-    { value: "Aktif", label: "Aktif" },
-    { value: "Nonaktif", label: "Nonaktif" },
+    { value: "true", label: "Aktif" },
+    { value: "false", label: "Nonaktif" },
   ];
 
   return (
@@ -217,7 +228,7 @@ export default function PengaturanAkses() {
                         <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                           <UserIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                         </div>
-                        {user.nama}
+                        {`${user.firstName} ${user.lastName}`}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
@@ -225,12 +236,12 @@ export default function PengaturanAkses() {
                     </td>
                     <td className="px-6 py-4">
                       <Badge size="sm" color={getRoleColor(user.role)}>
-                        {user.role}
+                        {getRoleDisplayName(user.role)}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(user.status)}>
-                        {user.status}
+                      <Badge size="sm" color={getStatusColor(user.isActive)}>
+                        {user.isActive ? "Aktif" : "Nonaktif"}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
@@ -321,16 +332,29 @@ export default function PengaturanAkses() {
           </h3>
 
           <div className="space-y-4">
-            <div>
-              <Label>Nama Lengkap</Label>
-              <Input
-                type="text"
-                value={formData.nama}
-                onChange={(e) =>
-                  setFormData({ ...formData, nama: e.target.value })
-                }
-                placeholder="Masukkan nama lengkap"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Nama Depan</Label>
+                <Input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, firstName: e.target.value })
+                  }
+                  placeholder="Masukkan nama depan"
+                />
+              </div>
+              <div>
+                <Label>Nama Belakang</Label>
+                <Input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  placeholder="Masukkan nama belakang"
+                />
+              </div>
             </div>
 
             <div>
@@ -342,6 +366,18 @@ export default function PengaturanAkses() {
                   setFormData({ ...formData, email: e.target.value })
                 }
                 placeholder="user@sistem.go.id"
+              />
+            </div>
+
+            <div>
+              <Label>Password</Label>
+              <Input
+                type="password"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                placeholder="Masukkan password"
               />
             </div>
 
@@ -364,7 +400,7 @@ export default function PengaturanAkses() {
                   onChange={(value) =>
                     setFormData({
                       ...formData,
-                      status: value as User["status"],
+                      isActive: value === "true",
                     })
                   }
                 />

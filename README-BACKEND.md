@@ -36,6 +36,33 @@ CREATE USER sipkpuser WITH PASSWORD 'mypassword';
 GRANT ALL PRIVILEGES ON DATABASE sipkpdb TO sipkpuser;
 ```
 
+#### Option C: Manual Setup with Existing PostgreSQL Installation
+
+If PostgreSQL is already installed but not accessible via command line:
+
+```bash
+# Navigate to PostgreSQL bin directory (adjust path based on your PostgreSQL version)
+cd "C:\Program Files\PostgreSQL\15\bin"  # For PostgreSQL 15 on Windows
+
+# Create database (run as postgres user)
+& "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -h localhost -p 5432 -c "CREATE DATABASE spkmb;"
+
+# Create user with password
+& "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -h localhost -p 5432 -c "CREATE USER spkmb_admin WITH PASSWORD 'admin123';"
+
+# Grant privileges
+& "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -h localhost -p 5432 -c "GRANT ALL PRIVILEGES ON DATABASE spkmb TO spkmb_admin;"
+
+# Change database owner
+& "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -h localhost -p 5432 -c "ALTER DATABASE spkmb OWNER TO spkmb_admin;"
+
+# Verify connection
+& "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U spkmb_admin -d spkmb -h localhost -p 5432 -c "SELECT version();"
+
+# List tables after migration
+& "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U spkmb_admin -d spkmb -h localhost -p 5432 -c "\dt"
+```
+
 ### 3. Environment Configuration
 
 Copy `.env` file and update database URL:

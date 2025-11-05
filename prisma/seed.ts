@@ -200,7 +200,7 @@ async function main() {
     await prisma.dokumen.create({
       data: {
         namaDokumen: 'RAB Pembangunan Jalan Desa ABC',
-        jenisDokumen: 'RAB',
+        jenisDokumen: 'JAMINAN_UANG_MUKA',
         filePath: '/uploads/rab-pkg-2024-001.pdf',
         fileSize: 1024000,
         mimeType: 'application/pdf',
@@ -215,7 +215,7 @@ async function main() {
     await prisma.dokumen.create({
       data: {
         namaDokumen: 'Kontrak Pengadaan ATK',
-        jenisDokumen: 'Kontrak',
+        jenisDokumen: 'JAMINAN_PELAKSANAAN',
         filePath: '/uploads/kontrak-pkg-2024-002.pdf',
         fileSize: 512000,
         mimeType: 'application/pdf',

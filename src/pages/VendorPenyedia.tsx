@@ -22,10 +22,22 @@ interface Vendor {
   status: "AKTIF" | "NON_AKTIF" | "SUSPENDED";
   kontak: string | null;
   alamat: string | null;
+  paketId?: string;
+  noKontrak?: string;
+  deskripsi?: string;
+  dokumenDED?: string;
+  lamaKontrak?: number;
+  warningTemuan?: boolean;
+  namaProyek?: string;
+  deskripsiLaporan?: string;
+  dokumenLaporan?: string;
+  deskripsiProgress?: string;
+  uploadDokumen?: string;
+  uploadFoto?: string;
   createdAt: string;
 }
 
-const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
+const API_BASE_URL = 'http://localhost:3001';
 
 export default function VendorPenyedia() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -39,6 +51,17 @@ export default function VendorPenyedia() {
     spesialisasi: "",
     kontak: "",
     alamat: "",
+    paketId: "",
+    noKontrak: "",
+    deskripsi: "",
+    dokumenDED: null as File | null,
+    lamaKontrak: "",
+    namaProyek: "",
+    deskripsiLaporan: "",
+    dokumenLaporan: null as File | null,
+    deskripsiProgress: "",
+    uploadDokumen: null as File | null,
+    uploadFoto: null as File | null,
   });
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
@@ -67,29 +90,38 @@ export default function VendorPenyedia() {
 
   const handleSubmit = async () => {
     try {
-      const vendorData = {
-        namaVendor: formData.namaVendor,
-        jenisVendor: formData.jenisVendor,
-        nomorIzin: formData.nomorIzin,
-        spesialisasi: formData.spesialisasi || null,
-        kontak: formData.kontak || null,
-        alamat: formData.alamat || null,
-      };
+      const formDataToSend = new FormData();
+      formDataToSend.append('namaVendor', formData.namaVendor);
+      formDataToSend.append('jenisVendor', formData.jenisVendor);
+      formDataToSend.append('nomorIzin', formData.nomorIzin);
+      formDataToSend.append('spesialisasi', formData.spesialisasi || '');
+      formDataToSend.append('kontak', formData.kontak || '');
+      formDataToSend.append('alamat', formData.alamat || '');
+      formDataToSend.append('paketId', formData.paketId || '');
+      formDataToSend.append('noKontrak', formData.noKontrak || '');
+      formDataToSend.append('deskripsi', formData.deskripsi || '');
+      formDataToSend.append('lamaKontrak', formData.lamaKontrak || '');
+      formDataToSend.append('namaProyek', formData.namaProyek || '');
+      formDataToSend.append('deskripsiLaporan', formData.deskripsiLaporan || '');
+      formDataToSend.append('deskripsiProgress', formData.deskripsiProgress || '');
+
+      if (formData.dokumenDED) formDataToSend.append('dokumenDED', formData.dokumenDED);
+      if (formData.dokumenLaporan) formDataToSend.append('dokumenLaporan', formData.dokumenLaporan);
+      if (formData.uploadDokumen) formDataToSend.append('uploadDokumen', formData.uploadDokumen);
+      if (formData.uploadFoto) formDataToSend.append('uploadFoto', formData.uploadFoto);
 
       let response;
       if (editingVendor) {
         response = await fetch(`${API_BASE_URL}/api/vendor/${editingVendor.id}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(vendorData),
+          body: formDataToSend,
         });
       } else {
         response = await fetch(`${API_BASE_URL}/api/vendor`, {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(vendorData),
+          body: formDataToSend,
         });
       }
 
@@ -117,6 +149,17 @@ export default function VendorPenyedia() {
       spesialisasi: vendor.spesialisasi || "",
       kontak: vendor.kontak || "",
       alamat: vendor.alamat || "",
+      paketId: vendor.paketId || "",
+      noKontrak: vendor.noKontrak || "",
+      deskripsi: vendor.deskripsi || "",
+      dokumenDED: null,
+      lamaKontrak: vendor.lamaKontrak?.toString() || "",
+      namaProyek: vendor.namaProyek || "",
+      deskripsiLaporan: vendor.deskripsiLaporan || "",
+      dokumenLaporan: null,
+      deskripsiProgress: vendor.deskripsiProgress || "",
+      uploadDokumen: null,
+      uploadFoto: null,
     });
     openModal();
   };
@@ -150,6 +193,17 @@ export default function VendorPenyedia() {
       spesialisasi: "",
       kontak: "",
       alamat: "",
+      paketId: "",
+      noKontrak: "",
+      deskripsi: "",
+      dokumenDED: null,
+      lamaKontrak: "",
+      namaProyek: "",
+      deskripsiLaporan: "",
+      dokumenLaporan: null,
+      deskripsiProgress: "",
+      uploadDokumen: null,
+      uploadFoto: null,
     });
     setEditingVendor(null);
   };
@@ -355,9 +409,16 @@ export default function VendorPenyedia() {
                       {vendor.jumlahProyek} proyek
                     </td>
                     <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(vendor.status)}>
-                        {vendor.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge size="sm" color={getStatusColor(vendor.status)}>
+                          {vendor.status}
+                        </Badge>
+                        {vendor.warningTemuan && (
+                          <Badge size="sm" color="error">
+                            Warning
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                       {vendor.kontak}
@@ -457,6 +518,141 @@ export default function VendorPenyedia() {
                     setFormData({ ...formData, kontak: e.target.value })
                   }
                   placeholder="email@vendor.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Paket ID</Label>
+              <Input
+                type="text"
+                value={formData.paketId}
+                onChange={(e) =>
+                  setFormData({ ...formData, paketId: e.target.value })
+                }
+                placeholder="ID Paket terkait"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>No Kontrak</Label>
+                <Input
+                  type="text"
+                  value={formData.noKontrak}
+                  onChange={(e) =>
+                    setFormData({ ...formData, noKontrak: e.target.value })
+                  }
+                  placeholder="Nomor kontrak"
+                />
+              </div>
+              <div>
+                <Label>Lama Kontrak (bulan)</Label>
+                <Input
+                  type="number"
+                  value={formData.lamaKontrak}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lamaKontrak: e.target.value })
+                  }
+                  placeholder="Durasi kontrak"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Deskripsi</Label>
+              <textarea
+                className="w-full h-20 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.deskripsi}
+                onChange={(e) =>
+                  setFormData({ ...formData, deskripsi: e.target.value })
+                }
+                placeholder="Deskripsi vendor"
+              />
+            </div>
+
+            <div>
+              <Label>Nama Proyek</Label>
+              <Input
+                type="text"
+                value={formData.namaProyek}
+                onChange={(e) =>
+                  setFormData({ ...formData, namaProyek: e.target.value })
+                }
+                placeholder="Nama proyek terkait"
+              />
+            </div>
+
+            <div>
+              <Label>Deskripsi Laporan</Label>
+              <textarea
+                className="w-full h-20 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.deskripsiLaporan}
+                onChange={(e) =>
+                  setFormData({ ...formData, deskripsiLaporan: e.target.value })
+                }
+                placeholder="Deskripsi laporan"
+              />
+            </div>
+
+            <div>
+              <Label>Deskripsi Progress</Label>
+              <textarea
+                className="w-full h-20 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.deskripsiProgress}
+                onChange={(e) =>
+                  setFormData({ ...formData, deskripsiProgress: e.target.value })
+                }
+                placeholder="Deskripsi progress"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Dokumen DED</Label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) =>
+                    setFormData({ ...formData, dokumenDED: e.target.files?.[0] || null })
+                  }
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <Label>Dokumen Laporan</Label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) =>
+                    setFormData({ ...formData, dokumenLaporan: e.target.files?.[0] || null })
+                  }
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Upload Dokumen</Label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.png"
+                  onChange={(e) =>
+                    setFormData({ ...formData, uploadDokumen: e.target.files?.[0] || null })
+                  }
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <Label>Upload Foto</Label>
+                <input
+                  type="file"
+                  accept=".jpg,.png,.jpeg"
+                  onChange={(e) =>
+                    setFormData({ ...formData, uploadFoto: e.target.files?.[0] || null })
+                  }
+                  className="w-full p-2 border border-gray-300 rounded-lg"
                 />
               </div>
             </div>

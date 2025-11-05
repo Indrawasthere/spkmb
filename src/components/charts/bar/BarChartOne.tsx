@@ -83,8 +83,8 @@ export default function BarChartOne() {
   };
   const series = [
     {
-      name: "Sales",
-      data: [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112],
+      name: "Paket",
+      data: [12, 28, 15, 22, 18, 25, 31, 14, 19, 35, 27, 16],
     },
   ];
   return (

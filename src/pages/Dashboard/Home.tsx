@@ -2,14 +2,20 @@ import { useState, useEffect } from "react";
 import PageMeta from "../../components/common/PageMeta";
 import { useAuth } from "../../context/AuthContext";
 import Badge from "../../components/ui/badge/Badge";
+import PaketTrendChart from "../../components/charts/PaketTrendChart";
+import AnggaranChart from "../../components/charts/AnggaranChart";
+import VendorPerformanceChart from "../../components/charts/VendorPerformanceChart";
+import LaporanAnalyticsChart from "../../components/charts/LaporanAnalyticsChart";
+import { Assessment, TrendingUp, Business, Analytics } from "@mui/icons-material";
 
-const API_BASE_URL = 'https://4bnmj0s4-3001.asse.devtunnels.ms';
+const API_BASE_URL = 'http://localhost:3001';
 
 interface DashboardStats {
   paket: number;
   laporan: number;
   vendor: number;
   ppk: number;
+  pengaduan: number;
 }
 
 interface RecentActivity {
@@ -34,6 +40,7 @@ export default function Home() {
     laporan: 0,
     vendor: 0,
     ppk: 0,
+    pengaduan: 0,
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity>({
     recentPaket: [],
@@ -76,30 +83,30 @@ export default function Home() {
     {
       label: "Total Paket",
       value: stats.paket,
-      icon: "📦",
+      icon: <Assessment sx={{ fontSize: 24, color: '#3b82f6' }} />,
       color: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-100 dark:bg-blue-900/20",
+      bgColor: "bg-blue-50 dark:bg-blue-900/10",
     },
     {
       label: "Total Laporan Itwasda",
       value: stats.laporan,
-      icon: "📋",
+      icon: <Analytics sx={{ fontSize: 24, color: '#10b981' }} />,
       color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-100 dark:bg-green-900/20",
+      bgColor: "bg-green-50 dark:bg-green-900/10",
     },
     {
       label: "Total Vendor",
       value: stats.vendor,
-      icon: "🏢",
+      icon: <Business sx={{ fontSize: 24, color: '#8b5cf6' }} />,
       color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-100 dark:bg-purple-900/20",
+      bgColor: "bg-purple-50 dark:bg-purple-900/10",
     },
     {
       label: "Total PPK",
       value: stats.ppk,
-      icon: "👤",
+      icon: <TrendingUp sx={{ fontSize: 24, color: '#f59e0b' }} />,
       color: "text-orange-600 dark:text-orange-400",
-      bgColor: "bg-orange-100 dark:bg-orange-900/20",
+      bgColor: "bg-orange-50 dark:bg-orange-900/10",
     },
   ];
 
@@ -116,10 +123,11 @@ export default function Home() {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Sistem Pengawasan dan Pengendalian Pengadaan Barang/Jasa
         </p>
+        
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         {statsCards.map((stat, index) => (
           <div
             key={index}
@@ -140,6 +148,24 @@ export default function Home() {
             </div>
           </div>
         ))}
+        {/* Pengaduan Card */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Total Pengaduan
+              </p>
+              <p className="text-2xl font-bold text-gray-800 dark:text-white/90">
+                {loading ? "..." : stats.pengaduan}
+              </p>
+            </div>
+            <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/10 flex items-center justify-center">
+              <span className="text-red-600 dark:text-red-400">
+                <Assessment sx={{ fontSize: 24, color: '#ef4444' }} />
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Recent Activity */}
@@ -217,42 +243,43 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-        <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <button className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
-            <span className="text-2xl">📦</span>
-            <div>
-              <p className="font-medium text-gray-800 dark:text-white/90">Tambah Paket</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Buat paket baru</p>
-            </div>
-          </button>
-          <button className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
-            <span className="text-2xl">📋</span>
-            <div>
-              <p className="font-medium text-gray-800 dark:text-white/90">Laporan Itwasda</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Buat laporan audit</p>
-            </div>
-          </button>
-          <button className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
-            <span className="text-2xl">📊</span>
-            <div>
-              <p className="font-medium text-gray-800 dark:text-white/90">Monitoring</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Pantau progress</p>
-            </div>
-          </button>
-          <button className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
-            <span className="text-2xl">📈</span>
-            <div>
-              <p className="font-medium text-gray-800 dark:text-white/90">Laporan Analisis</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Generate report</p>
-            </div>
-          </button>
+      {/* Charts Section */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Paket Trend Chart */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
+            Trend Paket Bulanan
+          </h3>
+          <PaketTrendChart />
+        </div>
+
+        {/* Anggaran Chart */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <AnggaranChart />
         </div>
       </div>
+
+      {/* Additional Charts */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Vendor Performance Chart */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
+            Performa Vendor
+          </h3>
+          <VendorPerformanceChart />
+        </div>
+
+        {/* Laporan Analytics Chart */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
+            Analisis Laporan
+          </h3>
+          <LaporanAnalyticsChart />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { SidebarProvider, useSidebar } from "../context/SidebarContext";
 import { Outlet } from "react-router";
+import { motion } from "framer-motion";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
@@ -8,7 +9,12 @@ const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
 
   return (
-    <div className="min-h-screen xl:flex">
+    <motion.div
+      className="min-h-screen xl:flex"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
       <div>
         <AppSidebar />
         <Backdrop />
@@ -23,7 +29,7 @@ const LayoutContent: React.FC = () => {
           <Outlet />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
