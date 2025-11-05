@@ -15,7 +15,7 @@ interface AuthContextType {
   isLoading: boolean;
   user: User | null;
   userName: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => void;
   signup: (email: string, password: string, firstName: string, lastName: string) => Promise<boolean>;
 }
@@ -40,6 +40,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
+  // Idle timeout logic
+  useEffect(() => {
+    let idleTimer: NodeJS.Timeout;
+    const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+
+    const resetTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        console.log('Idle timeout reached, logging out...');
+        logout();
+      }, IDLE_TIMEOUT);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+
+    const handleActivity = () => {
+      resetTimer();
+    };
+
+    if (isAuthenticated) {
+      events.forEach(event => {
+        document.addEventListener(event, handleActivity, true);
+      });
+      resetTimer();
+    }
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleActivity, true);
+      });
+      clearTimeout(idleTimer);
+    };
+  }, [isAuthenticated]);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -52,10 +86,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         });
         console.log('Auth response status:', res.status); // Debug log
-        
+
         const data = await res.json();
         console.log('Auth response data:', data); // Debug log
-        
+
         if (data.user) {
           setIsAuthenticated(true);
           setUser(data.user);
@@ -80,13 +114,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
       });
 
       if (response.ok) {

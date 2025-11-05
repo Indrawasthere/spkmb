@@ -9,7 +9,10 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [generalError, setGeneralError] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   return (
@@ -19,8 +22,16 @@ export default function SignInForm() {
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
           <div className="mb-5 sm:mb-8">
+            <Link to="/" className="block mb-7">
+              <img
+                width={300}
+                height={45}
+                src="/images/logo/mpmi-logo.png"
+                alt="MPMI Logo"
+              />
+            </Link>
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
-              Selamat datang di Website SIP-KPBJ!
+              Selamat datang di Website Sipakat-BPJ
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Silakan masukkan email dan password Anda untuk masuk
@@ -31,32 +42,68 @@ export default function SignInForm() {
             </div>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              setError('');
-              const success = await login(email, password);
+              setEmailError('');
+              setPasswordError('');
+              setGeneralError('');
+
+              // Validation
+              let hasError = false;
+              if (!email.trim()) {
+                setEmailError("Email dibutuhkan");
+                hasError = true;
+              } else {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                  setEmailError("Invalid email format");
+                  hasError = true;
+                }
+              }
+              if (!password.trim()) {
+                setPasswordError("Kata sandi dibutuhkan");
+                hasError = true;
+              }
+              if (hasError) return;
+
+              const success = await login(email, password, rememberMe);
               if (success) {
                 navigate("/");
               } else {
-                setError("Invalid email or password");
+                setGeneralError("Invalid email atau kata sandi");
               }
             }}>
               <div className="space-y-4">
-                {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+                {generalError && <p className="text-red-500 text-sm mb-4">{generalError}</p>}
                 <div>
-                  <Input 
-                    className="border-blue-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg" 
-                    placeholder="Email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg ${emailError ? 'border-red-500' : ''}`}
+                    placeholder="Masukkan email Anda"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError('');
+                    }}
                   />
+                  {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
                 </div>
                 <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Password
+                  </label>
                   <div className="relative">
                     <Input
-                      className="border-blue-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg pr-10"
+                      id="password"
+                      className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg pr-10 ${passwordError ? 'border-red-500' : ''}`}
                       type={showPassword ? "text" : "password"}
-                      placeholder="Password"
+                      placeholder="Masukkan kata sandi Anda"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (passwordError) setPasswordError('');
+                      }}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -69,6 +116,19 @@ export default function SignInForm() {
                       )}
                     </span>
                   </div>
+                  {passwordError && <p className="text-red-500 text-sm mt-1">{passwordError}</p>}
+                </div>
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                    Ingat saya
+                  </label>
                 </div>
                 <div>
                   <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg" size="sm">

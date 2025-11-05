@@ -154,7 +154,7 @@ const authorizeRoles = (...roles) => {
 // Auth routes
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
@@ -169,12 +169,14 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: '7d' });
+    // Set cookie expiry based on rememberMe
+    const maxAge = rememberMe ? 6 * 24 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000; // 6 hours or 1 hour
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', { expiresIn: rememberMe ? '6h' : '1h' });
     res.cookie('token', token, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge,
     });
 
     res.json({

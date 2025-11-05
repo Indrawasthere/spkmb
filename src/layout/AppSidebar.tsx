@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
 import {
@@ -17,7 +17,6 @@ import {
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
   name: string;
@@ -50,6 +49,7 @@ const navItems: NavItem[] = [
       { name: "Itwasda", path: "/pengawasan-audit/itwasda" },
       { name: "BPKP", path: "/pengawasan-audit/bpkp" },
       { name: "PUPR", path: "/pengawasan-audit/pupr" },
+      { name: "PPK", path: "/pengawasan-audit/ppk" },
     ],
   },
   {
@@ -304,13 +304,21 @@ const AppSidebar: React.FC = () => {
       >
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
-            <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              SIP-KPBJ
-            </span>
+            <img
+              width={350}
+              height={50}
+              src="/images/logo/mpmi-logo.png"
+              alt="MPMI Logo"
+              className="h-auto max-h-24 object-contain"
+            />
           ) : (
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              SIP
-            </span>
+            <img
+              width={100}
+              height={16}
+              src="/images/logo/mpmi-logo.png"
+              alt="MPMI Logo"
+              className="h-auto max-h-8 object-contain"
+            />
           )}
         </Link>
       </div>
@@ -348,7 +356,7 @@ const AppSidebar: React.FC = () => {
           className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200"
         >
           {isExpanded || isHovered || isMobileOpen ? (
-            "SPSE POLRI"
+            "Klik untuk ke SPSE Polri"
           ) : (
             "SPSE"
           )}
