@@ -1,40 +1,12 @@
-import { useState, useCallback } from 'react';
-
-interface Toast {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-}
+import { toast } from '../components/ui/Toast';
 
 export const useToast = () => {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const addToast = useCallback((message: string, type: Toast['type'] = 'info') => {
-    const id = Date.now().toString();
-    const toast: Toast = { id, message, type };
-    setToasts(prev => [...prev, toast]);
-
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-      removeToast(id);
-    }, 5000);
-
-    return id;
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
-  const success = useCallback((message: string) => addToast(message, 'success'), [addToast]);
-  const error = useCallback((message: string) => addToast(message, 'error'), [addToast]);
-  const warning = useCallback((message: string) => addToast(message, 'warning'), [addToast]);
-  const info = useCallback((message: string) => addToast(message, 'info'), [addToast]);
+  const success = (message: string) => toast.success(message);
+  const error = (message: string) => toast.error(message);
+  const warning = (message: string) => toast(message, { icon: '⚠️' });
+  const info = (message: string) => toast(message);
 
   return {
-    toasts,
-    addToast,
-    removeToast,
     success,
     error,
     warning,

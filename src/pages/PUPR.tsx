@@ -9,6 +9,8 @@ import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
+import { DataTable } from "../components/common/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 interface Proyek {
   id: string;
@@ -46,8 +48,100 @@ const formatCurrency = (amount: number): string => {
 export default function PUPR() {
   const [proyek, setProyek] = useState<Proyek[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+
+  // Define table columns
+  const columns: ColumnDef<Proyek>[] = [
+    {
+      accessorKey: "namaProyek",
+      header: "Nama Proyek",
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium text-gray-800 dark:text-white/90">
+            {row.original.namaProyek}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {row.original.tanggalMulai.split("T")[0]} - {row.original.tanggalSelesai.split("T")[0]}
+          </p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "lokasi",
+      header: "Lokasi",
+    },
+    {
+      accessorKey: "anggaran",
+      header: "Anggaran",
+      cell: ({ row }) => (
+        <span className="font-medium">
+          {formatCurrency(row.original.anggaran)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge size="sm" color={getStatusColor(row.original.status)}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "progress",
+      header: "Progress",
+      cell: ({ row }) => (
+        <div className="flex items-center">
+          <div className="w-16 bg-gray-200 rounded-full h-2 mr-2 dark:bg-gray-700">
+            <div
+              className="bg-blue-600 h-2 rounded-full"
+              style={{ width: `${row.original.progress}%` }}
+            ></div>
+          </div>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {row.original.progress}%
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "kontraktor",
+      header: "Kontraktor",
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <button
+            className="text-green-600 hover:text-green-900 dark:text-green-400"
+            onClick={() => handleUpload(row.original.id)}
+            disabled={loading}
+            title="Upload"
+          >
+            Upload
+          </button>
+          <button
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+            onClick={() => handleEdit(row.original)}
+            disabled={loading}
+            title="Edit"
+          >
+            <PencilIcon className="size-5" />
+          </button>
+          <button
+            className="text-red-600 hover:text-red-900 dark:text-red-400"
+            onClick={() => handleDelete(row.original.id)}
+            disabled={loading}
+            title="Hapus"
+          >
+            <TrashBinIcon className="size-5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   const [formData, setFormData] = useState({
     namaProyek: "",
     lokasi: "",
@@ -175,20 +269,6 @@ export default function PUPR() {
     setEditingProyek(null);
   };
 
-  const openAddModal = () => {
-    resetForm();
-    openModal();
-  };
-
-  const filteredProyek = proyek.filter((p) => {
-    const matchSearch =
-      p.namaProyek.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.lokasi.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.kontraktor.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchFilter = filterStatus === "all" || p.status === filterStatus;
-    return matchSearch && matchFilter;
-  });
-
   const getStatusColor = (status: Proyek["status"]) => {
     switch (status) {
       case "SELESAI":
@@ -274,137 +354,13 @@ export default function PUPR() {
           </Button>
         </div>
 
-        {/* Search and Filter */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari proyek..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
-            <div className="flex gap-2">
-              <select
-                className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Semua Status</option>
-                <option value="Perencanaan">Perencanaan</option>
-                <option value="Pelaksanaan">Pelaksanaan</option>
-                <option value="Selesai">Selesai</option>
-                <option value="Ditunda">Ditunda</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nama Proyek
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Lokasi
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Anggaran
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Progress
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Dokumen
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredProyek.map((p) => (
-                  <tr
-                    key={p.id}
-                    className="hover:bg-gray-50 dark:hover:bg-white/5"
-                  >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                      <div>
-                        <p>{p.namaProyek}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {p.tanggalMulai} - {p.tanggalSelesai}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {p.lokasi}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      Rp {p.anggaran.toLocaleString("id-ID")}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(p.status)}>
-                        {p.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="w-16 bg-gray-200 rounded-full h-2 mr-2 dark:bg-gray-700">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${p.progress}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {p.progress}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {p.kontraktor}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {/* Placeholder untuk list dokumen */}
-                      <div className="space-y-1">
-                        <span className="text-xs">Dokumen terkait: 2 file</span>
-                        <button className="text-blue-600 hover:text-blue-900 text-xs">
-                          Lihat Dokumen
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <button
-                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
-                        onClick={() => handleUpload(p.id)}
-                      >
-                        Upload
-                      </button>
-                      <button
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                        onClick={() => handleEdit(p)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        onClick={() => handleDelete(p.id)}
-                      >
-                        Hapus
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* DataTable */}
+        <DataTable
+          columns={columns}
+          data={proyek}
+          searchPlaceholder="Cari proyek..."
+          loading={loading}
+        />
       </div>
 
       {/* Modal Form */}

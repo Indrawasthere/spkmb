@@ -3,12 +3,14 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
+import { PlusIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
-import Select from "../components/form/Select";
+import { DataTable } from "../components/common/DataTable";
+import { useToast } from "../hooks/useToast";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -29,7 +31,6 @@ interface Konsultan {
 export default function KonsultanPerencanaan() {
   const [konsultan, setKonsultan] = useState<Konsultan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [formData, setFormData] = useState({
     namaVendor: "",
@@ -39,8 +40,11 @@ export default function KonsultanPerencanaan() {
     alamat: "",
   });
   const [editingKonsultan, setEditingKonsultan] = useState<Konsultan | null>(null);
+  const [deletingKonsultan, setDeletingKonsultan] = useState<Konsultan | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   const { isOpen, openModal, closeModal } = useModal();
+  const { success: showSuccessToast, error: showErrorToast } = useToast();
 
   // Fetch konsultan data from API
   useEffect(() => {
@@ -118,24 +122,35 @@ export default function KonsultanPerencanaan() {
     openModal();
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus konsultan ini?')) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/vendor/${id}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-        if (response.ok) {
-          await fetchKonsultan();
-          alert('Konsultan berhasil dihapus!');
-        } else {
-          const errorText = await response.text();
-          alert('Gagal menghapus konsultan: ' + errorText);
-        }
-      } catch (error) {
-        console.error('Error deleting konsultan:', error);
-        alert('Terjadi kesalahan saat menghapus konsultan');
+  const handleDelete = (konsultan: Konsultan) => {
+    setDeletingKonsultan(konsultan);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingKonsultan) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/vendor/${deletingKonsultan.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        await fetchKonsultan();
+        showSuccessToast('Konsultan berhasil dihapus!');
+      } else {
+        const errorData = await response.json();
+        showErrorToast('Gagal menghapus konsultan: ' + (errorData.error || 'Unknown error'));
       }
+    } catch (error) {
+      console.error('Error deleting konsultan:', error);
+      showErrorToast('Terjadi kesalahan saat menghapus konsultan');
+    } finally {
+      setLoading(false);
+      setIsConfirmModalOpen(false);
+      setDeletingKonsultan(null);
     }
   };
 
@@ -155,19 +170,9 @@ export default function KonsultanPerencanaan() {
     setEditingKonsultan(null);
   };
 
-  const openAddModal = () => {
-    resetForm();
-    openModal();
-  };
 
-  const filteredKonsultan = konsultan.filter((k) => {
-    const matchSearch =
-      k.namaVendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.nomorIzin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (k.spesialisasi?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    const matchFilter = filterStatus === "all" || k.status === filterStatus;
-    return matchSearch && matchFilter;
-  });
+
+
 
   const getStatusColor = (status: Konsultan["status"]) => {
     switch (status) {
@@ -277,16 +282,9 @@ export default function KonsultanPerencanaan() {
           </Button>
         </div>
 
-        {/* Search and Filter */}
+        {/* Filter */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari konsultan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
             <div className="flex gap-2">
               <select
                 className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
@@ -294,107 +292,87 @@ export default function KonsultanPerencanaan() {
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
                 <option value="all">Semua Status</option>
-                <option value="Aktif">Aktif</option>
-                <option value="Nonaktif">Nonaktif</option>
-                <option value="Ditangguhkan">Ditangguhkan</option>
+                <option value="AKTIF">Aktif</option>
+                <option value="NON_AKTIF">Nonaktif</option>
+                <option value="SUSPENDED">Ditangguhkan</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nama Konsultan
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    No. Izin
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Spesialisasi
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Jumlah Proyek
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Rating
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Dokumen
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredKonsultan.map((k) => (
-                  <tr
-                    key={k.id}
-                    className="hover:bg-gray-50 dark:hover:bg-white/5"
+        {/* DataTable */}
+        <DataTable
+          data={filterStatus === "all" ? konsultan : konsultan.filter(k => k.status === filterStatus)}
+          columns={[
+            {
+              accessorKey: "namaVendor",
+              header: "Nama Konsultan",
+              cell: ({ row }) => (
+                <div>
+                  <p className="font-medium">{row.original.namaVendor}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {row.original.alamat}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              accessorKey: "nomorIzin",
+              header: "No. Izin",
+            },
+            {
+              accessorKey: "spesialisasi",
+              header: "Spesialisasi",
+            },
+            {
+              accessorKey: "jumlahProyek",
+              header: "Jumlah Proyek",
+              cell: ({ row }) => `${row.original.jumlahProyek} proyek`,
+            },
+            {
+              accessorKey: "rating",
+              header: "Rating",
+              cell: ({ row }) => renderStars(row.original.rating),
+            },
+            {
+              accessorKey: "status",
+              header: "Status",
+              cell: ({ row }) => (
+                <Badge size="sm" color={getStatusColor(row.original.status)}>
+                  {row.original.status}
+                </Badge>
+              ),
+            },
+            {
+              accessorKey: "actions",
+              header: "Aksi",
+              cell: ({ row }) => (
+                <div className="flex gap-2">
+                  <button
+                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                    onClick={() => handleUpload(row.original.id)}
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                      <div>
-                        <p>{k.namaVendor}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {k.alamat}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {k.nomorIzin}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {k.spesialisasi}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {k.jumlahProyek} proyek
-                    </td>
-                    <td className="px-6 py-4">{renderStars(k.rating)}</td>
-                    <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(k.status)}>
-                        {k.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {/* Placeholder untuk list dokumen */}
-                      <div className="space-y-1">
-                        <span className="text-xs">Dokumen terkait: 3 file</span>
-                        <button className="text-blue-600 hover:text-blue-900 text-xs">
-                          Lihat Dokumen
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <button
-                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
-                        onClick={() => handleUpload(k.id)}
-                      >
-                        Upload
-                      </button>
-                      <button
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                        onClick={() => handleEdit(k)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        onClick={() => handleDelete(k.id)}
-                      >
-                        Hapus
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    Upload
+                  </button>
+                  <button
+                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                    onClick={() => handleEdit(row.original)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                    onClick={() => handleDelete(row.original)}
+                  >
+                    <TrashBinIcon className="size-5" />
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+          loading={loading}
+          searchPlaceholder="Cari konsultan..."
+        />
       </div>
 
       {/* Modal Form */}
@@ -483,6 +461,18 @@ export default function KonsultanPerencanaan() {
           </div>
         </div>
       </Modal>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Konfirmasi Hapus"
+        message={`Apakah Anda yakin ingin menghapus konsultan "${deletingKonsultan?.namaVendor}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+      />
     </>
   );
 }

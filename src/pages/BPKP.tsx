@@ -10,6 +10,9 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
+import { DataTable } from "../components/common/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
+
 
 const API_BASE_URL = "http://localhost:3001";
 
@@ -64,8 +67,6 @@ export default function BPKP() {
   const [laporanItwasda, setLaporanItwasda] = useState<LaporanItwasda[]>([]);
   const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
   const [formData, setFormData] = useState({
     nomorTemuan: "",
     paketId: "" as string | null,
@@ -77,6 +78,121 @@ export default function BPKP() {
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [editingTemuan, setEditingTemuan] = useState<Temuan | null>(null);
+  const [filterStatus, setFilterStatus] = useState("all");
+
+  // Filter data based on status
+  const filteredTemuans = filterStatus === "all"
+    ? temuans
+    : temuans.filter((temuan) => temuan.status === filterStatus);
+
+  // Define table columns
+  const columns: ColumnDef<Temuan>[] = [
+    {
+      accessorKey: "nomorTemuan",
+      header: "No. Temuan",
+      cell: ({ row }) => (
+        <span className="font-medium text-gray-800 dark:text-white/90">
+          {row.original.nomorTemuan}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "paket",
+      header: "Paket",
+      cell: ({ row }) => (
+        <div className="text-sm text-gray-700 dark:text-gray-400">
+          {row.original.paket ? (
+            <div>
+              <p className="font-medium">
+                {row.original.paket.kodePaket}
+              </p>
+              <p className="text-xs text-gray-500">
+                {row.original.paket.namaPaket}
+              </p>
+            </div>
+          ) : (
+            <Badge size="sm" color="light">
+              Tidak terkait
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "jenisTemuan",
+      header: "Jenis",
+    },
+    {
+      accessorKey: "deskripsi",
+      header: "Deskripsi",
+      cell: ({ row }) => (
+        <span className="text-sm text-gray-700 dark:text-gray-400 max-w-xs truncate block">
+          {row.original.deskripsi}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "tingkatKualitasTemuan",
+      header: "Kualitas Temuan",
+      cell: ({ row }) => (
+        <Badge
+          size="sm"
+          color={getKualitasTemuanColor(row.original.tingkatKualitasTemuan)}
+        >
+          {row.original.tingkatKualitasTemuan}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge size="sm" color={getStatusColor(row.original.status)}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "auditor",
+      header: "Auditor",
+    },
+    {
+      accessorKey: "pic",
+      header: "PIC",
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <button
+            className="text-green-600 hover:text-green-900 dark:text-green-400"
+            onClick={() => handleUpload(row.original.id)}
+            disabled={loading}
+            title="Upload"
+          >
+            Upload
+          </button>
+          <button
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+            onClick={() => handleEdit(row.original)}
+            disabled={loading}
+            title="Edit"
+          >
+            <PencilIcon className="size-5" />
+          </button>
+          <button
+            className="text-red-600 hover:text-red-900 dark:text-red-400"
+            onClick={() => handleDelete(row.original.id)}
+            disabled={loading}
+            title="Hapus"
+          >
+            <TrashBinIcon className="size-5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   const { isOpen, openModal, closeModal } = useModal();
 
@@ -351,16 +467,7 @@ export default function BPKP() {
     openModal();
   };
 
-  const filteredTemuans = temuans.filter((temuan) => {
-    const matchSearch =
-      temuan.nomorTemuan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (temuan.paketId &&
-        temuan.paketId.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      temuan.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchFilter =
-      filterStatus === "all" || temuan.status === filterStatus;
-    return matchSearch && matchFilter;
-  });
+
 
   const getStatusColor = (status: Temuan["status"]) => {
     switch (status) {
@@ -497,16 +604,9 @@ export default function BPKP() {
           </Button>
         </div>
 
-        {/* Search and Filter */}
+        {/* Filter */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari temuan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
             <div className="flex gap-2">
               <select
                 className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
@@ -523,133 +623,13 @@ export default function BPKP() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          {loading ? (
-            <div className="p-6 text-center">Loading...</div>
-          ) : filteredTemuans.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
-              Tidak ada temuan ditemukan
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      No. Temuan
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Paket
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Jenis
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Deskripsi
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Kualitas Temuan
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Auditor
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      PIC
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {filteredTemuans.map((temuan) => (
-                    <tr
-                      key={temuan.id}
-                      className="hover:bg-gray-50 dark:hover:bg-white/5"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                        {temuan.nomorTemuan}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {temuan.paket ? (
-                          <div>
-                            <p className="font-medium">
-                              {temuan.paket.kodePaket}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {temuan.paket.namaPaket}
-                            </p>
-                          </div>
-                        ) : (
-                          <Badge size="sm" color="light">
-                            Tidak terkait
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {temuan.jenisTemuan}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400 max-w-xs truncate">
-                        {temuan.deskripsi}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge
-                          size="sm"
-                          color={getKualitasTemuanColor(temuan.tingkatKualitasTemuan)}
-                        >
-                          {temuan.tingkatKualitasTemuan}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge size="sm" color={getStatusColor(temuan.status)}>
-                          {temuan.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {temuan.auditor}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {temuan.pic}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        <div className="flex gap-2">
-                          <button
-                            className="text-green-600 hover:text-green-900 dark:text-green-400"
-                            onClick={() => handleUpload(temuan.id)}
-                            disabled={loading}
-                            title="Upload"
-                          >
-                            Upload
-                          </button>
-                          <button
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-                            onClick={() => handleEdit(temuan)}
-                            disabled={loading}
-                            title="Edit"
-                          >
-                            <PencilIcon className="size-5" />
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-900 dark:text-red-400"
-                            onClick={() => handleDelete(temuan.id)}
-                            disabled={loading}
-                            title="Hapus"
-                          >
-                            <TrashBinIcon className="size-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {/* DataTable */}
+        <DataTable
+          columns={columns}
+          data={filteredTemuans}
+          searchPlaceholder="Cari temuan..."
+          loading={loading}
+        />
       </div>
 
       {/* Modal Form */}

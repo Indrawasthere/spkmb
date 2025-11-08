@@ -3,11 +3,12 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
+import { PlusIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
+import { DataTable } from "../components/common/DataTable";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -28,7 +29,6 @@ interface Kontraktor {
 export default function Konstruksi() {
   const [kontraktor, setKontraktor] = useState<Kontraktor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [formData, setFormData] = useState({
     namaVendor: "",
@@ -154,19 +154,7 @@ export default function Konstruksi() {
     setEditingKontraktor(null);
   };
 
-  const openAddModal = () => {
-    resetForm();
-    openModal();
-  };
 
-  const filteredKontraktor = kontraktor.filter((k) => {
-    const matchSearch =
-      k.namaVendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.nomorIzin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (k.spesialisasi?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    const matchFilter = filterStatus === "all" || k.status === filterStatus;
-    return matchSearch && matchFilter;
-  });
 
   const getStatusColor = (status: Kontraktor["status"]) => {
     switch (status) {
@@ -276,130 +264,113 @@ export default function Konstruksi() {
           </Button>
         </div>
 
-        {/* Search and Filter */}
+        {/* Filter */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari kontraktor..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
-            <div className="flex gap-2">
-              <select
-                className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Semua Status</option>
-                <option value="Aktif">Aktif</option>
-                <option value="Nonaktif">Nonaktif</option>
-                <option value="Ditangguhkan">Ditangguhkan</option>
-              </select>
-            </div>
+          <div className="flex gap-2">
+            <select
+              className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="AKTIF">Aktif</option>
+              <option value="NON_AKTIF">Nonaktif</option>
+              <option value="SUSPENDED">Ditangguhkan</option>
+            </select>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nama Kontraktor
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    No. Izin
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Spesialisasi
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Jumlah Proyek
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Pendapatan
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Rating
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Dokumen
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredKontraktor.map((k) => (
-                  <tr
-                    key={k.id}
-                    className="hover:bg-gray-50 dark:hover:bg-white/5"
+        <DataTable
+          data={kontraktor.filter((k) => filterStatus === "all" || k.status === filterStatus)}
+          columns={[
+            {
+              header: "Nama Kontraktor",
+              accessorKey: "namaVendor",
+              cell: ({ row }) => (
+                <div>
+                  <p className="font-medium">{row.original.namaVendor}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {row.original.alamat}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              header: "No. Izin",
+              accessorKey: "nomorIzin",
+            },
+            {
+              header: "Spesialisasi",
+              accessorKey: "spesialisasi",
+            },
+            {
+              header: "Jumlah Proyek",
+              accessorKey: "jumlahProyek",
+              cell: ({ getValue }) => `${getValue()} proyek`,
+            },
+            {
+              header: "Pendapatan",
+              accessorKey: "pendapatan",
+              cell: () => "-",
+            },
+            {
+              header: "Rating",
+              accessorKey: "rating",
+              cell: ({ getValue }) => renderStars(getValue() as number | null),
+            },
+            {
+              header: "Status",
+              accessorKey: "status",
+              cell: ({ getValue }) => {
+                const status = getValue() as Kontraktor["status"];
+                return (
+                  <Badge size="sm" color={getStatusColor(status)}>
+                    {status}
+                  </Badge>
+                );
+              },
+            },
+            {
+              header: "Dokumen",
+              accessorKey: "dokumen",
+              cell: () => (
+                <div className="space-y-1">
+                  <span className="text-xs">Dokumen terkait: 5 file</span>
+                  <button className="text-blue-600 hover:text-blue-900 text-xs">
+                    Lihat Dokumen
+                  </button>
+                </div>
+              ),
+            },
+            {
+              header: "Aksi",
+              accessorKey: "actions",
+              cell: ({ row }) => (
+                <div className="flex gap-2">
+                  <button
+                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                    onClick={() => handleUpload(row.original.id)}
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                      <div>
-                        <p>{k.namaVendor}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {k.alamat}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {k.nomorIzin}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {k.spesialisasi}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {k.jumlahProyek} proyek
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      -
-                    </td>
-                    <td className="px-6 py-4">{renderStars(k.rating)}</td>
-                    <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(k.status)}>
-                        {k.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {/* Placeholder untuk list dokumen */}
-                      <div className="space-y-1">
-                        <span className="text-xs">Dokumen terkait: 5 file</span>
-                        <button className="text-blue-600 hover:text-blue-900 text-xs">
-                          Lihat Dokumen
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <button
-                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-3"
-                        onClick={() => handleUpload(k.id)}
-                      >
-                        Upload
-                      </button>
-                      <button
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                        onClick={() => handleEdit(k)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        onClick={() => handleDelete(k.id)}
-                      >
-                        Hapus
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    Upload
+                  </button>
+                  <button
+                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                    onClick={() => handleEdit(row.original)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                    onClick={() => handleDelete(row.original.id)}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+          loading={loading}
+        />
       </div>
 
       {/* Modal Form */}

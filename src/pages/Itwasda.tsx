@@ -10,6 +10,8 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
+import { DataTable } from "../components/common/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -56,8 +58,103 @@ export default function Itwasda() {
   const [pakets, setPakets] = useState<Paket[]>([]);
   const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Define table columns
+  const columns: ColumnDef<LaporanItwasda>[] = [
+    {
+      accessorKey: "nomorLaporan",
+      header: "No. Laporan",
+      cell: ({ row }) => (
+        <span className="font-medium text-gray-800 dark:text-white/90">
+          {row.original.nomorLaporan}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "paket",
+      header: "Paket",
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium">{row.original.paket?.kodePaket}</p>
+          <p className="text-xs text-gray-500">{row.original.paket?.namaPaket}</p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "jenisLaporan",
+      header: "Jenis",
+    },
+    {
+      accessorKey: "deskripsi",
+      header: "Deskripsi",
+      cell: ({ row }) => (
+        <span className="max-w-xs truncate block">{row.original.deskripsi}</span>
+      ),
+    },
+    {
+      accessorKey: "tingkatKualitasTemuan",
+      header: "Kualitas Temuan",
+      cell: ({ row }) => (
+        <Badge
+          size="sm"
+          color={getKualitasTemuanColor(row.original.tingkatKualitasTemuan)}
+        >
+          {row.original.tingkatKualitasTemuan}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge size="sm" color={getStatusColor(row.original.status)}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "auditor",
+      header: "Auditor",
+    },
+    {
+      accessorKey: "pic",
+      header: "PIC",
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <button
+            className="text-green-600 hover:text-green-900 dark:text-green-400"
+            onClick={() => handleUpload(row.original.id)}
+            disabled={loading}
+            title="Upload"
+          >
+            Upload
+          </button>
+          <button
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+            onClick={() => handleEdit(row.original)}
+            disabled={loading}
+            title="Edit"
+          >
+            <PencilIcon className="size-5" />
+          </button>
+          <button
+            className="text-red-600 hover:text-red-900 dark:text-red-400"
+            onClick={() => handleDelete(row.original.id)}
+            disabled={loading}
+            title="Hapus"
+          >
+            <TrashBinIcon className="size-5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   const [formData, setFormData] = useState({
     nomorLaporan: "",
     paketId: "",
@@ -159,7 +256,7 @@ export default function Itwasda() {
           errors.paketId = "Laporan hanya bisa dibuat untuk paket dengan status 'Pelaksanaan' atau 'Dipublikasi'";
         }
 
-        const hasExistingReport = laporan.some(l => l.paketId === formData.paketId && l.id !== editingLaporan?.id);
+        const hasExistingReport = laporan.some((l: LaporanItwasda) => l.paketId === formData.paketId && (!editingLaporan || l.id !== editingLaporan.id));
         if (hasExistingReport) {
           errors.paketId = "Paket ini sudah memiliki laporan Itwasda";
         }
@@ -307,9 +404,9 @@ export default function Itwasda() {
     setLoading(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append("file", uploadFormData.file);
+      formDataToSend.append("filePath", uploadFormData.file);
 
-      const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${selectedLaporanId}/upload`, {
+      const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${selectedLaporanId}`, {
         method: "PUT",
         credentials: "include",
         body: formDataToSend,
@@ -321,7 +418,8 @@ export default function Itwasda() {
         setUploadFormData({ file: null });
         fetchLaporan();
       } else {
-        alert("Gagal upload dokumen");
+        const errorData = await response.json();
+        alert("Gagal upload dokumen: " + (errorData.error || "Unknown error"));
       }
     } catch (error) {
       console.error("Error uploading dokumen:", error);
@@ -355,13 +453,8 @@ export default function Itwasda() {
   };
 
   const filteredLaporan: LaporanItwasda[] = laporan.filter((l) => {
-    const matchSearch =
-      l.nomorLaporan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (l.paket?.kodePaket || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (l.paket?.namaPaket || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFilter = filterStatus === "all" || l.status === filterStatus;
-    return matchSearch && matchFilter;
+    return matchFilter;
   });
 
   const getStatusColor = (status: LaporanItwasda["status"]) => {
@@ -494,149 +587,33 @@ export default function Itwasda() {
           </Button>
         </div>
 
-        {/* Search and Filter */}
+        {/* Filter */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari laporan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
-            <div className="flex gap-2">
-              <select
-                className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Semua Status</option>
-                <option value="BARU">Baru</option>
-                <option value="PROSES">Proses</option>
-                <option value="SELESAI">Selesai</option>
-                <option value="DITUNDA">Ditunda</option>
-              </select>
-            </div>
+          <div className="flex justify-end">
+            <select
+              className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="BARU">Baru</option>
+              <option value="PROSES">Proses</option>
+              <option value="SELESAI">Selesai</option>
+              <option value="DITUNDA">Ditunda</option>
+            </select>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          {loading ? (
-            <div className="p-6 text-center">Loading...</div>
-          ) : filteredLaporan.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
-              Tidak ada laporan ditemukan
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      No. Laporan
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Paket
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Jenis
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Deskripsi
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Kualitas Temuan
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Auditor
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      PIC
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {filteredLaporan.map((l) => (
-                    <tr
-                      key={l.id}
-                      className="hover:bg-gray-50 dark:hover:bg-white/5"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                        {l.nomorLaporan}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        <div>
-                          <p className="font-medium">{l.paket?.kodePaket}</p>
-                          <p className="text-xs text-gray-500">{l.paket?.namaPaket}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {l.jenisLaporan}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400 max-w-xs truncate">
-                        {l.deskripsi}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge
-                          size="sm"
-                          color={getKualitasTemuanColor(l.tingkatKualitasTemuan)}
-                        >
-                          {l.tingkatKualitasTemuan}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge size="sm" color={getStatusColor(l.status)}>
-                          {l.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {l.auditor}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {l.pic}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        <div className="flex gap-2">
-                          <button
-                            className="text-green-600 hover:text-green-900 dark:text-green-400"
-                            onClick={() => handleUpload(l.id)}
-                            disabled={loading}
-                            title="Upload"
-                          >
-                            Upload
-                          </button>
-                          <button
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-                            onClick={() => handleEdit(l)}
-                            disabled={loading}
-                            title="Edit"
-                          >
-                            <PencilIcon className="size-5" />
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-900 dark:text-red-400"
-                            onClick={() => handleDelete(l.id)}
-                            disabled={loading}
-                            title="Hapus"
-                          >
-                            <TrashBinIcon className="size-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {/* Data Table */}
+        {loading ? (
+          <div className="p-6 text-center">Loading...</div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={filteredLaporan}
+            searchPlaceholder="Cari laporan..."
+          />
+        )}
       </div>
 
       {/* Modal Form */}

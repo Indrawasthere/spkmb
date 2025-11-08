@@ -6,9 +6,15 @@ import Badge from "../components/ui/badge/Badge";
 import { PlusIcon, DownloadIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
+import { useToast } from "../hooks/useToast";
+
+
+import { DataTable } from "../components/common/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -36,11 +42,11 @@ interface Paket {
   status: "DRAFT" | "PUBLISHED" | "ON_PROGRESS" | "COMPLETED" | "CANCELLED";
 }
 
-interface FormErrors {
-  namaDokumen?: string;
-  jenisDokumen?: string;
-  paketId?: string;
-  file?: string;
+interface DokumenFormData {
+  namaDokumen: string;
+  jenisDokumen: string;
+  paketId: string;
+  file: File | null;
 }
 
 export default function DokumenArsip() {
@@ -48,18 +54,21 @@ export default function DokumenArsip() {
   const [pakets, setPakets] = useState<Paket[]>([]);
   const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [filterJenis, setFilterJenis] = useState("all");
-  const [formData, setFormData] = useState({
+  const [editingDokumen, setEditingDokumen] = useState<Dokumen | null>(null);
+  const [deletingDokumen, setDeletingDokumen] = useState<Dokumen | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  const [formData, setFormData] = useState<DokumenFormData>({
     namaDokumen: "",
     jenisDokumen: "",
     paketId: "",
-    file: null as File | null,
+    file: null,
   });
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [editingDokumen, setEditingDokumen] = useState<Dokumen | null>(null);
+  const [formErrors, setFormErrors] = useState<Partial<DokumenFormData>>({});
 
   const { isOpen, openModal, closeModal } = useModal();
+  const { success: showSuccessToast, error: showErrorToast } = useToast();
 
   useEffect(() => {
     fetchDokumens();
@@ -106,65 +115,29 @@ export default function DokumenArsip() {
     }
   };
 
-  // Form validation
-  const validateForm = (): boolean => {
-    const errors: FormErrors = {};
-    
-    if (!formData.namaDokumen.trim()) {
-      errors.namaDokumen = "Nama dokumen wajib diisi";
-    }
-    
-    if (!formData.jenisDokumen) {
-      errors.jenisDokumen = "Jenis dokumen wajib dipilih";
-    }
-    
-    if (!formData.paketId) {
-      errors.paketId = "Paket wajib dipilih";
-    }
-    
-    if (!editingDokumen && !formData.file) {
-      errors.file = "File dokumen wajib diupload";
-    }
-
-    // Validate paket status
-    if (formData.paketId) {
-      const selectedPaket = pakets.find(p => p.id === formData.paketId);
-      if (selectedPaket && selectedPaket.status !== 'ON_PROGRESS' && selectedPaket.status !== 'PUBLISHED') {
-        errors.paketId = "Dokumen hanya bisa diupload untuk paket dengan status 'Pelaksanaan' atau 'Dipublikasi'";
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+  const onSubmit = async (data: DokumenFormData) => {
     setLoading(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('paketId', formData.paketId);
-      formDataToSend.append('jenisDokumen', formData.jenisDokumen);
-      formDataToSend.append('namaDokumen', formData.namaDokumen);
-      
-      if (formData.file) {
-        formDataToSend.append('file', formData.file);
+      formDataToSend.append('paketId', data.paketId);
+      formDataToSend.append('jenisDokumen', data.jenisDokumen);
+      formDataToSend.append('namaDokumen', data.namaDokumen);
+
+      if (data.file) {
+        formDataToSend.append('file', data.file);
       }
 
       let response;
-      if (editingDokumen && !formData.file) {
+      if (editingDokumen && !data.file) {
         // Update without file
         response = await fetch(`${API_BASE_URL}/api/dokumen/${editingDokumen.id}`, {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            namaDokumen: formData.namaDokumen,
-            jenisDokumen: formData.jenisDokumen,
-            paketId: formData.paketId,
+            namaDokumen: data.namaDokumen,
+            jenisDokumen: data.jenisDokumen,
+            paketId: data.paketId,
           }),
         });
       } else {
@@ -180,14 +153,15 @@ export default function DokumenArsip() {
         await fetchDokumens();
         closeModal();
         resetForm();
-        alert('Dokumen berhasil disimpan!');
+        setEditingDokumen(null);
+        showSuccessToast('Dokumen berhasil disimpan!');
       } else {
         const errorData = await response.json();
-        alert('Gagal menyimpan dokumen: ' + (errorData.error || 'Unknown error'));
+        showErrorToast('Gagal menyimpan dokumen: ' + (errorData.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error saving dokumen:', error);
-      alert('Terjadi kesalahan saat menyimpan dokumen');
+      showErrorToast('Terjadi kesalahan saat menyimpan dokumen');
     } finally {
       setLoading(false);
     }
@@ -201,32 +175,43 @@ export default function DokumenArsip() {
       paketId: dokumen.paketId,
       file: null,
     });
-    setFormErrors({});
     openModal();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus dokumen ini?')) return;
+  const handleDelete = (dokumen: Dokumen) => {
+    setDeletingDokumen(dokumen);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingDokumen) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/dokumen/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/dokumen/${deletingDokumen.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
+
       if (response.ok) {
         await fetchDokumens();
-        alert('Dokumen berhasil dihapus!');
+        showSuccessToast('Dokumen berhasil dihapus!');
       } else {
         const errorData = await response.json();
-        alert('Gagal menghapus dokumen: ' + (errorData.error || 'Unknown error'));
+        showErrorToast('Gagal menghapus dokumen: ' + (errorData.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error deleting dokumen:', error);
-      alert('Terjadi kesalahan saat menghapus dokumen');
+      showErrorToast('Terjadi kesalahan saat menghapus dokumen');
     } finally {
       setLoading(false);
+      setIsConfirmModalOpen(false);
+      setDeletingDokumen(null);
     }
+  };
+
+  const handleSubmit = () => {
+    onSubmit(formData);
   };
 
   const handleDownload = (dokumen: Dokumen) => {
@@ -286,13 +271,9 @@ export default function DokumenArsip() {
   };
 
   const filteredDokumens = dokumens.filter((doc) => {
-    const matchSearch =
-      doc.namaDokumen.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.paket?.kodePaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.paket?.namaPaket.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFilter =
       filterJenis === "all" || doc.jenisDokumen === filterJenis;
-    return matchSearch && matchFilter;
+    return matchFilter;
   });
 
   const formatFileSize = (bytes: number) => {
@@ -302,6 +283,78 @@ export default function DokumenArsip() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  const columns: ColumnDef<Dokumen>[] = [
+    {
+      accessorKey: 'namaDokumen',
+      header: 'Nama Dokumen',
+      cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>
+    },
+    {
+      accessorKey: 'jenisDokumen',
+      header: 'Jenis Dokumen',
+      cell: ({ getValue }) => <Badge size="sm" color="info">{getValue() as string}</Badge>
+    },
+    {
+      accessorKey: 'paket',
+      header: 'Paket',
+      cell: ({ getValue }) => {
+        const paket = getValue() as Dokumen['paket'];
+        return (
+          <div>
+            <p className="font-medium">{paket?.kodePaket}</p>
+            <p className="text-xs text-gray-500">{paket?.namaPaket}</p>
+          </div>
+        );
+      }
+    },
+    {
+      accessorKey: 'fileSize',
+      header: 'Ukuran File',
+      cell: ({ getValue }) => formatFileSize(getValue() as number)
+    },
+    {
+      accessorKey: 'uploadedBy',
+      header: 'Upload By'
+    },
+    {
+      accessorKey: 'uploadedAt',
+      header: 'Upload Date',
+      cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString('id-ID')
+    },
+    {
+      id: 'actions',
+      header: 'Aksi',
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <button
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+            onClick={() => handleDownload(row.original)}
+            disabled={loading}
+            title="Download"
+          >
+            <DownloadIcon className="size-5" />
+          </button>
+          <button
+            className="text-green-600 hover:text-green-900 dark:text-green-400"
+            onClick={() => handleEdit(row.original)}
+            disabled={loading}
+            title="Edit"
+          >
+            <PencilIcon className="size-5" />
+          </button>
+          <button
+            className="text-red-600 hover:text-red-900 dark:text-red-400"
+            onClick={() => handleDelete(row.original)}
+            disabled={loading}
+            title="Delete"
+          >
+            <TrashBinIcon className="size-5" />
+          </button>
+        </div>
+      )
+    }
+  ];
 
   const jenisDokumenOptions = [
     { value: "TOR", label: "TOR (Terms of Reference)" },
@@ -399,16 +452,9 @@ export default function DokumenArsip() {
           </Button>
         </div>
 
-        {/* Search and Filter */}
+        {/* Filter */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari dokumen..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
             <div className="flex gap-2">
               <select
                 className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
@@ -431,106 +477,12 @@ export default function DokumenArsip() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          {loading ? (
-            <div className="p-6 text-center">Loading...</div>
-          ) : filteredDokumens.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
-              Tidak ada dokumen ditemukan
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Nama Dokumen
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Jenis Dokumen
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Paket
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Ukuran File
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Upload By
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Upload Date
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {filteredDokumens.map((doc) => (
-                    <tr
-                      key={doc.id}
-                      className="hover:bg-gray-50 dark:hover:bg-white/5"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                        {doc.namaDokumen}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        <Badge size="sm" color="info">
-                          {doc.jenisDokumen}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        <div>
-                          <p className="font-medium">{doc.paket?.kodePaket}</p>
-                          <p className="text-xs text-gray-500">{doc.paket?.namaPaket}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {formatFileSize(doc.fileSize)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {doc.uploadedBy}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {new Date(doc.uploadedAt).toLocaleDateString('id-ID')}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        <div className="flex gap-2">
-                          <button
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-                            onClick={() => handleDownload(doc)}
-                            disabled={loading}
-                            title="Download"
-                          >
-                            <DownloadIcon className="size-5" />
-                          </button>
-                          <button
-                            className="text-green-600 hover:text-green-900 dark:text-green-400"
-                            onClick={() => handleEdit(doc)}
-                            disabled={loading}
-                            title="Edit"
-                          >
-                            <PencilIcon className="size-5" />
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-900 dark:text-red-400"
-                            onClick={() => handleDelete(doc.id)}
-                            disabled={loading}
-                            title="Hapus"
-                          >
-                            <TrashBinIcon className="size-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {/* DataTable */}
+        <DataTable
+          columns={columns}
+          data={filteredDokumens}
+          loading={loading}
+        />
       </div>
 
       {/* Modal Form */}
@@ -569,7 +521,7 @@ export default function DokumenArsip() {
                 onChange={(value) =>
                   setFormData({ ...formData, jenisDokumen: value })
                 }
-                defaultValue={formData.jenisDokumen}
+                value={formData.jenisDokumen}
               />
               {formErrors.jenisDokumen && (
                 <p className="mt-1 text-xs text-error-500">{formErrors.jenisDokumen}</p>
@@ -584,7 +536,7 @@ export default function DokumenArsip() {
                 onChange={(value) =>
                   setFormData({ ...formData, paketId: value })
                 }
-                defaultValue={formData.paketId}
+                value={formData.paketId}
               />
               {formErrors.paketId && (
                 <p className="mt-1 text-xs text-error-500">{formErrors.paketId}</p>
@@ -626,6 +578,18 @@ export default function DokumenArsip() {
           </div>
         </div>
       </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Hapus Dokumen"
+        message={`Apakah Anda yakin ingin menghapus dokumen "${deletingDokumen?.namaDokumen}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        loading={loading}
+      />
     </>
   );
 }

@@ -1,59 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 
-interface ToastProps {
-  message: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  duration?: number;
-  onClose: () => void;
-}
-
-const Toast: React.FC<ToastProps> = ({ message, type, duration = 5000, onClose }) => {
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(onClose, 300); // Allow animation to complete
-    }, duration);
-
-    return () => clearTimeout(timer);
-  }, [duration, onClose]);
-
-  const getToastStyles = () => {
-    const baseStyles = "fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform";
-
-    switch (type) {
-      case 'success':
-        return `${baseStyles} bg-green-500 text-white`;
-      case 'error':
-        return `${baseStyles} bg-red-500 text-white`;
-      case 'warning':
-        return `${baseStyles} bg-yellow-500 text-white`;
-      case 'info':
-        return `${baseStyles} bg-blue-500 text-white`;
-      default:
-        return `${baseStyles} bg-gray-500 text-white`;
-    }
-  };
-
+export const ToastContainer = () => {
   return (
-    <div
-      className={`${getToastStyles()} ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{message}</span>
-        <button
-          onClick={() => {
-            setIsVisible(false);
-            setTimeout(onClose, 300);
-          }}
-          className="ml-4 text-white hover:text-gray-200 focus:outline-none"
-        >
-          ×
-        </button>
-      </div>
-    </div>
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        duration: 4000,
+        style: {
+          background: '#363636',
+          color: '#fff',
+        },
+        success: {
+          duration: 3000,
+          iconTheme: {
+            primary: '#10B981',
+            secondary: '#fff',
+          },
+        },
+        error: {
+          duration: 5000,
+          iconTheme: {
+            primary: '#EF4444',
+            secondary: '#fff',
+          },
+        },
+      }}
+    />
   );
 };
 
-export default Toast;
+export { toast };

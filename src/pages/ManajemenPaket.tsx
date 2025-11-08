@@ -10,6 +10,8 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 import { useAuth } from "../context/AuthContext";
+import { DataTable } from "../components/common/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 interface Paket {
   id: string;
@@ -89,7 +91,6 @@ export default function ManajemenPaket() {
   const { user } = useAuth();
   const [pakets, setPakets] = useState<Paket[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     kodePaket: "",
     kodeRUP: "",
@@ -409,12 +410,7 @@ export default function ManajemenPaket() {
     openModal();
   };
 
-  const filteredPakets = pakets.filter(
-    (paket) =>
-      paket.namaPaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      paket.kodePaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      paket.jenisPaket.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
 
   const getStatusColor = (status: Paket["status"]) => {
     switch (status) {
@@ -473,6 +469,92 @@ export default function ManajemenPaket() {
     { value: "Jasa Lainnya", label: "Jasa Lainnya" },
   ];
 
+  // Define table columns
+  const columns: ColumnDef<Paket>[] = [
+    {
+      accessorKey: "kodePaket",
+      header: "Kode Paket",
+      cell: ({ row }) => (
+        <span className="font-medium text-gray-800 dark:text-white/90">
+          {row.original.kodePaket}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "namaPaket",
+      header: "Nama Paket",
+    },
+    {
+      accessorKey: "nilaiPaket",
+      header: "Nilai",
+      cell: ({ row }) => `Rp ${row.original.nilaiPaket.toLocaleString("id-ID")}`,
+    },
+    {
+      accessorKey: "jenisPaket",
+      header: "Jenis",
+    },
+    {
+      accessorKey: "metodePengadaan",
+      header: "Metode",
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge size="sm" color={getStatusColor(row.original.status)}>
+          {getStatusLabel(row.original.status)}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "tanggalBuat",
+      header: "Tanggal",
+      cell: ({ row }) => new Date(row.original.tanggalBuat).toLocaleDateString("id-ID"),
+    },
+    {
+      accessorKey: "dokumen",
+      header: "Dokumen",
+      cell: ({ row }) => (
+        <div className="space-y-1">
+          <span className="text-xs">
+            Dokumen: {row.original.dokumen?.length || 0} file
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <button
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+            onClick={() => handleEdit(row.original)}
+            disabled={loading}
+          >
+            <PencilIcon className="size-5" />
+          </button>
+          <button
+            className="text-green-600 hover:text-green-900 dark:text-green-400"
+            onClick={() => handleUpload(row.original.id)}
+            disabled={loading}
+          >
+            Upload
+          </button>
+          {user?.role === "ADMIN" && (
+            <button
+              className="text-red-600 hover:text-red-900 dark:text-red-400"
+              onClick={() => handleDelete(row.original.id)}
+              disabled={loading}
+            >
+              <TrashBinIcon className="size-5" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <>
       <PageMeta
@@ -503,127 +585,16 @@ export default function ManajemenPaket() {
           </Button>
         </div>
 
-        {/* Search and Filter */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <Input
-            type="text"
-            placeholder="Cari paket..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-96"
+        {/* Data Table */}
+        {loading ? (
+          <div className="p-6 text-center">Loading...</div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={pakets}
+            searchPlaceholder="Cari paket..."
           />
-        </div>
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          {loading ? (
-            <div className="p-6 text-center">Loading...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Kode Paket
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Nama Paket
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Nilai
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Jenis
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Metode
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Tanggal
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Dokumen
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {filteredPakets.map((paket) => (
-                    <tr
-                      key={paket.id}
-                      className="hover:bg-gray-50 dark:hover:bg-white/5"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                        {paket.kodePaket}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {paket.namaPaket}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        Rp {paket.nilaiPaket.toLocaleString("id-ID")}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {paket.jenisPaket}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {paket.metodePengadaan}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge size="sm" color={getStatusColor(paket.status)}>
-                          {getStatusLabel(paket.status)}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {new Date(paket.tanggalBuat).toLocaleDateString(
-                          "id-ID"
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        <div className="space-y-1">
-                          <span className="text-xs">
-                            Dokumen: {paket.dokumen?.length || 0} file
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        <div className="flex gap-2">
-                          <button
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-                            onClick={() => handleEdit(paket)}
-                            disabled={loading}
-                          >
-                            <PencilIcon className="size-5" />
-                          </button>
-                          <button
-                            className="text-green-600 hover:text-green-900 dark:text-green-400"
-                            onClick={() => handleUpload(paket.id)}
-                            disabled={loading}
-                          >
-                            Upload
-                          </button>
-                          {user?.role === "ADMIN" && (
-                            <button
-                              className="text-red-600 hover:text-red-900 dark:text-red-400"
-                              onClick={() => handleDelete(paket.id)}
-                              disabled={loading}
-                            >
-                              <TrashBinIcon className="size-5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Modal Form */}

@@ -3,12 +3,14 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, UserIcon } from "../icons";
+import { PlusIcon, UserIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
+import { DataTable } from "../components/common/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 
 interface User {
@@ -131,6 +133,77 @@ export default function PengaturanAkses() {
     }
   };
 
+  // Define table columns
+  const columns: ColumnDef<User>[] = [
+    {
+      accessorKey: "firstName",
+      header: "Nama",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <UserIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+          </div>
+          <span className="font-medium text-gray-800 dark:text-white/90">
+            {`${row.original.firstName} ${row.original.lastName}`}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+      cell: ({ row }) => (
+        <Badge size="sm" color={getRoleColor(row.original.role)}>
+          {getRoleDisplayName(row.original.role)}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "isActive",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge size="sm" color={getStatusColor(row.original.isActive)}>
+          {row.original.isActive ? "Aktif" : "Nonaktif"}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "lastLogin",
+      header: "Last Login",
+      cell: ({ row }) => row.original.lastLogin || "-",
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <button
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+            onClick={() => {
+              // TODO: Implement edit functionality
+              console.log("Edit user:", row.original);
+            }}
+          >
+            <PencilIcon className="size-5" />
+          </button>
+          <button
+            className="text-red-600 hover:text-red-900 dark:text-red-400"
+            onClick={() => {
+              // TODO: Implement delete functionality
+              console.log("Delete user:", row.original);
+            }}
+          >
+            <TrashBinIcon className="size-5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   const roleOptions = [
     { value: "ADMIN", label: "Administrator" },
     { value: "MANAGER", label: "Manager" },
@@ -194,65 +267,12 @@ export default function PengaturanAkses() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Nama
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Email
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Role
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                    Last Login
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="hover:bg-gray-50 dark:hover:bg-white/5"
-                  >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                          <UserIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                        </div>
-                        {`${user.firstName} ${user.lastName}`}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge size="sm" color={getRoleColor(user.role)}>
-                        {getRoleDisplayName(user.role)}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge size="sm" color={getStatusColor(user.isActive)}>
-                        {user.isActive ? "Aktif" : "Nonaktif"}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                      {user.lastLogin}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* DataTable */}
+        <DataTable
+          columns={columns}
+          data={filteredUsers}
+          searchPlaceholder="Cari user..."
+        />
 
         {/* Role Matrix */}
         <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">

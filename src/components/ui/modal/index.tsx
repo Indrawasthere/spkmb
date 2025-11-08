@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import { X, Loader2 } from "lucide-react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface ModalProps {
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   title?: string;
   showHeader?: boolean;
+  loading?: boolean;
+  preventClose?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -22,13 +25,15 @@ export const Modal: React.FC<ModalProps> = ({
   size = "md",
   title,
   showHeader = true,
+  loading = false,
+  preventClose = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !preventClose) {
         onClose();
       }
     };
@@ -43,7 +48,7 @@ export const Modal: React.FC<ModalProps> = ({
     return () => {
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, preventClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,6 +76,12 @@ export const Modal: React.FC<ModalProps> = ({
     ? "w-full h-full rounded-none"
     : `relative w-full ${sizeClasses[size]} rounded-2xl bg-white shadow-2xl dark:bg-gray-900 border border-gray-200 dark:border-gray-700`;
 
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (!preventClose && e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop with blur */}
@@ -78,7 +89,7 @@ export const Modal: React.FC<ModalProps> = ({
         className={`fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 ${
           isAnimating ? "opacity-100" : "opacity-0"
         }`}
-        onClick={onClose}
+        onClick={handleBackdropClick}
       />
 
       {/* Modal Content */}
@@ -91,6 +102,13 @@ export const Modal: React.FC<ModalProps> = ({
         } ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 rounded-2xl">
+            <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          </div>
+        )}
+
         {/* Header */}
         {showHeader && (title || showCloseButton) && (
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
@@ -99,24 +117,13 @@ export const Modal: React.FC<ModalProps> = ({
                 {title}
               </h3>
             )}
-            {showCloseButton && (
+            {showCloseButton && !preventClose && (
               <button
                 onClick={onClose}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                disabled={loading}
               >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <X className="h-5 w-5" />
               </button>
             )}
           </div>

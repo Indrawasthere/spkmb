@@ -4,13 +4,28 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import expressListEndpoints from 'express-list-endpoints';
 import { prisma } from './lib/prisma.ts';
 import path from 'path';
 import fs from 'fs';
+
+// Extend Express Request interface
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        role: string;
+      };
+    }
+  }
+}
 
 // Load environment variables
 dotenv.config();
@@ -29,14 +44,6 @@ app.use(helmet({
     },
   },
 }));
-
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'https://sipakat-bpj.com',
-  'https://*.ngrok-free.app',
-  'https://*asse.devtunnels.ms' 
-];
 
 // Allow credentials and set specific origin for CORS
 app.use(cors({
@@ -114,7 +121,7 @@ const upload = multer({
 
 // Debug middleware to log all requests and cookies (only in development)
 if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     console.log('Request URL:', req.url);
     console.log('Cookies:', req.cookies);
     console.log('Headers:', req.headers);
@@ -123,27 +130,30 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Authentication middleware
-const authenticateToken = async (req, res, next) => {
+const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies?.token;
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret');
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (typeof decoded !== 'object' || !('userId' in decoded)) {
+      return res.status(403).json({ error: 'Invalid token.' });
+    }
+    const user = await prisma.user.findUnique({ where: { id: (decoded as JwtPayload).userId } });
     if (!user) {
       return res.status(401).json({ error: 'Invalid token.' });
     }
     req.user = user;
     next();
-  } catch (err) {
+  } catch {
     res.status(403).json({ error: 'Invalid token.' });
   }
 };
 
 // Role-based authorization middleware
-const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
+const authorizeRoles = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Access denied. Insufficient permissions.' });
     }
@@ -275,7 +285,7 @@ app.get('/api/auth/me', async (req, res) => {
         role: user.role
       }
     });
-  } catch (err) {
+  } catch {
     res.clearCookie('token');
     res.status(200).json({ user: null });
   }
@@ -289,6 +299,12 @@ app.post('/api/auth/logout', (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'SIP-KPBJ API is running', timestamp: new Date().toISOString() });
+});
+
+// Welcome endpoint
+app.get('/api/welcome', (req, res) => {
+  console.log(`Request received: ${req.method} ${req.path}`);
+  res.json({ message: 'Welcome to SIP-KPBJ API Service!' });
 });
 
 // User management routes (protected)
@@ -1000,7 +1016,7 @@ app.put('/api/vendor/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/vendor/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+app.delete('/api/vendor/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     await prisma.vendor.delete({ where: { id } });
@@ -1537,6 +1553,123 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+});
+
+// PPK Data routes
+app.get('/api/ppk-data', authenticateToken, async (req, res) => {
+  try {
+    const ppkData = await prisma.pPKData.findMany({
+      include: { paket: { select: { kodePaket: true, namaPaket: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(ppkData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch PPK data' });
+  }
+});
+
+app.get('/api/ppk-data/:id', authenticateToken, async (req, res) => {
+  try {
+    const ppkData = await prisma.pPKData.findUnique({
+      where: { id: req.params.id },
+      include: { paket: { select: { kodePaket: true, namaPaket: true } } },
+    });
+    if (!ppkData) return res.status(404).json({ error: 'PPK data not found' });
+    res.json(ppkData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch PPK data' });
+  }
+});
+
+app.post('/api/ppk-data', authenticateToken, async (req, res) => {
+  try {
+    const {
+      paketId,
+      namaPPK,
+      noSertifikasi,
+      jumlahAnggaran,
+      lamaProyek,
+      realisasiTermin1,
+      realisasiTermin2,
+      realisasiTermin3,
+      realisasiTermin4,
+      PHO,
+      FHO,
+    } = req.body;
+
+    if (!paketId || !namaPPK || !noSertifikasi || !jumlahAnggaran || !lamaProyek) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const ppkData = await prisma.pPKData.create({
+      data: {
+        paketId,
+        namaPPK,
+        noSertifikasi,
+        jumlahAnggaran: parseFloat(jumlahAnggaran),
+        lamaProyek: parseInt(lamaProyek),
+        realisasiTermin1: realisasiTermin1 ? parseFloat(realisasiTermin1) : null,
+        realisasiTermin2: realisasiTermin2 ? parseFloat(realisasiTermin2) : null,
+        realisasiTermin3: realisasiTermin3 ? parseFloat(realisasiTermin3) : null,
+        realisasiTermin4: realisasiTermin4 ? parseFloat(realisasiTermin4) : null,
+        PHO: PHO ? new Date(PHO) : null,
+        FHO: FHO ? new Date(FHO) : null,
+      },
+    });
+    res.json(ppkData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create PPK data' });
+  }
+});
+
+app.put('/api/ppk-data/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      paketId,
+      namaPPK,
+      noSertifikasi,
+      jumlahAnggaran,
+      lamaProyek,
+      realisasiTermin1,
+      realisasiTermin2,
+      realisasiTermin3,
+      realisasiTermin4,
+      PHO,
+      FHO,
+    } = req.body;
+
+    const ppkData = await prisma.pPKData.update({
+      where: { id },
+      data: {
+        paketId,
+        namaPPK,
+        noSertifikasi,
+        jumlahAnggaran: parseFloat(jumlahAnggaran),
+        lamaProyek: parseInt(lamaProyek),
+        realisasiTermin1: realisasiTermin1 ? parseFloat(realisasiTermin1) : null,
+        realisasiTermin2: realisasiTermin2 ? parseFloat(realisasiTermin2) : null,
+        realisasiTermin3: realisasiTermin3 ? parseFloat(realisasiTermin3) : null,
+        realisasiTermin4: realisasiTermin4 ? parseFloat(realisasiTermin4) : null,
+        PHO: PHO ? new Date(PHO) : null,
+        FHO: FHO ? new Date(FHO) : null,
+        updatedAt: new Date(),
+      },
+    });
+    res.json(ppkData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update PPK data' });
+  }
+});
+
+app.delete('/api/ppk-data/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.pPKData.delete({ where: { id } });
+    res.json({ message: 'PPK data deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete PPK data' });
   }
 });
 
