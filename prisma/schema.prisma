@@ -58,10 +58,11 @@ model AuditLog {
 model Paket {
   id              String      @id @default(cuid())
   kodePaket       String      @unique
+  kodeRUP         String?
   namaPaket       String
   jenisPaket      String
   nilaiPaket      Float
-  metodePengadaan String
+  metodePengadaan MetodePengadaan
   status          PaketStatus @default(DRAFT)
   tanggalBuat     DateTime    @default(now())
   tanggalUpdate   DateTime    @updatedAt
@@ -88,6 +89,14 @@ enum PaketStatus {
   ON_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum MetodePengadaan {
+  E_PURCHASING
+  SWAKELOLA
+  TENDER
+  PENUNJUKAN_LANGSUNG
+  SELEKSI
 }
 
 enum DokumenJenis {
@@ -133,19 +142,19 @@ model Dokumen {
 
 // Pengawasan & Audit
 model LaporanItwasda {
-  id               String         @id @default(cuid())
-  nomorLaporan     String         @unique
-  paketId          String?
-  jenisLaporan     String
-  deskripsi        String
-  tingkatKeparahan KeparahanLevel
-  status           LaporanStatus  @default(BARU)
-  tanggal          DateTime
-  auditor          String
-  pic              String
-  filePath         String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                     String               @id @default(cuid())
+  nomorLaporan           String               @unique
+  paketId                String?
+  jenisLaporan           String
+  deskripsi              String
+  tingkatKualitasTemuan  KualitasTemuanLevel
+  status                 LaporanStatus        @default(BARU)
+  tanggal                DateTime
+  auditor                String
+  pic                    String
+  filePath               String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   // Relations
   paket Paket? @relation(fields: [paketId], references: [id], onDelete: Cascade)
@@ -158,19 +167,19 @@ model LaporanItwasda {
 
 // BPKP Temuan
 model TemuanBPKP {
-  id               String         @id @default(cuid())
-  nomorTemuan      String         @unique
-  paketId          String?
-  jenisTemuan      String
-  deskripsi        String
-  tingkatKeparahan KeparahanLevel
-  status           LaporanStatus  @default(BARU)
-  tanggal          DateTime       @default(now())
-  auditor          String
-  pic              String
-  filePath         String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                     String               @id @default(cuid())
+  nomorTemuan            String               @unique
+  paketId                String?
+  jenisTemuan            String
+  deskripsi              String
+  tingkatKualitasTemuan  KualitasTemuanLevel
+  status                 LaporanStatus        @default(BARU)
+  tanggal                DateTime             @default(now())
+  auditor                String
+  pic                    String
+  filePath               String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   // Relations
   paket   Paket?    @relation(fields: [paketId], references: [id], onDelete: Cascade)
@@ -179,7 +188,7 @@ model TemuanBPKP {
   @@map("temuan_bpkp")
 }
 
-enum KeparahanLevel {
+enum KualitasTemuanLevel {
   RENDAH
   SEDANG
   TINGGI
@@ -311,19 +320,20 @@ model LaporanAnalisis {
 }
 
 model ProyekPUPR {
-  id                String       @id @default(cuid())
-  namaProyek        String
-  lokasi            String
-  anggaran          Float
-  kontraktor        String?
-  tanggalMulai      DateTime
-  tanggalSelesai    DateTime
-  status            ProyekStatus @default(PERENCANAAN)
-  progress          Int          @default(0)
-  deskripsiCatatan  String?
-  dokumenCatatan    String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                     String               @id @default(cuid())
+  namaProyek             String
+  lokasi                 String
+  anggaran               Float
+  kontraktor             String?
+  tanggalMulai           DateTime
+  tanggalSelesai         DateTime
+  status                 ProyekStatus         @default(PERENCANAAN)
+  progress               Int                  @default(0)
+  deskripsiCatatan       String?
+  dokumenCatatan         String?
+  tingkatKualitasTemuan  KualitasTemuanLevel?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   // Relations
   createdBy String?

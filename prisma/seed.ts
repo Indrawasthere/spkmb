@@ -138,10 +138,11 @@ async function main() {
     paket1 = await prisma.paket.create({
       data: {
         kodePaket: 'PKG-2024-001',
+        kodeRUP: 'RUP-2024-001',
         namaPaket: 'Pembangunan Jalan Desa ABC',
         jenisPaket: 'Konstruksi',
         nilaiPaket: 500000000, // 500 juta
-        metodePengadaan: 'Tender',
+        metodePengadaan: 'E_PURCHASING',
         createdBy: admin.id,
         status: 'DRAFT',
       },
@@ -153,10 +154,27 @@ async function main() {
     paket2 = await prisma.paket.create({
       data: {
         kodePaket: 'PKG-2024-002',
+        kodeRUP: 'RUP-2024-002',
         namaPaket: 'Pengadaan Alat Tulis Kantor',
         jenisPaket: 'Barang',
         nilaiPaket: 25000000, // 25 juta
-        metodePengadaan: 'Pengadaan Langsung',
+        metodePengadaan: 'PENUNJUKAN_LANGSUNG',
+        createdBy: user1.id,
+        status: 'ON_PROGRESS',
+      },
+    });
+  }
+
+  let paket3 = await prisma.paket.findUnique({ where: { kodePaket: 'PKG-2024-003' } });
+  if (!paket3) {
+    paket3 = await prisma.paket.create({
+      data: {
+        kodePaket: 'PKG-2024-003',
+        kodeRUP: 'RUP-2024-003',
+        namaPaket: 'Pembangunan Gedung Kantor',
+        jenisPaket: 'Konstruksi',
+        nilaiPaket: 1000000000, // 1 miliar
+        metodePengadaan: 'SWAKELOLA',
         createdBy: user1.id,
         status: 'ON_PROGRESS',
       },
@@ -234,7 +252,7 @@ async function main() {
         paketId: paket1.id,
         jenisLaporan: 'Temuan',
         deskripsi: 'Ditemukan ketidaksesuaian spesifikasi material pada pekerjaan pengaspalan',
-        tingkatKeparahan: 'SEDANG',
+        tingkatKualitasTemuan: 'SEDANG',
         auditor: 'Siti Nurhaliza',
         pic: 'Ahmad Sutrisno',
         tanggal: new Date('2024-10-15'),

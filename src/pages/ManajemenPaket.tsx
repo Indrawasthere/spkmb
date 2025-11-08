@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 interface Paket {
   id: string;
   kodePaket: string;
+  kodeRUP?: string;
   namaPaket: string;
   jenisPaket: string;
   nilaiPaket: number;
@@ -91,6 +92,7 @@ export default function ManajemenPaket() {
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     kodePaket: "",
+    kodeRUP: "",
     namaPaket: "",
     jenisPaket: "",
     nilaiPaket: "",
@@ -284,6 +286,7 @@ export default function ManajemenPaket() {
     setEditingPaket(paket);
     setFormData({
       kodePaket: paket.kodePaket,
+      kodeRUP: paket.kodeRUP || "",
       namaPaket: paket.namaPaket,
       jenisPaket: paket.jenisPaket,
       nilaiPaket: paket.nilaiPaket.toString(),
@@ -379,6 +382,7 @@ export default function ManajemenPaket() {
   const resetForm = () => {
     setFormData({
       kodePaket: "",
+      kodeRUP: "",
       namaPaket: "",
       jenisPaket: "",
       nilaiPaket: "",
@@ -447,10 +451,11 @@ export default function ManajemenPaket() {
   };
 
   const metodeOptions = [
-    { value: "E-Lelang", label: "E-Lelang" },
-    { value: "Tender", label: "Tender" },
-    { value: "Penunjukan Langsung", label: "Penunjukan Langsung" },
-    { value: "Seleksi", label: "Seleksi" },
+    { value: "E_PURCHASING", label: "E-Purchasing" },
+    { value: "SWAKELOLA", label: "Swakelola" },
+    { value: "TENDER", label: "Tender" },
+    { value: "PENUNJUKAN_LANGSUNG", label: "Penunjukan Langsung" },
+    { value: "SELEKSI", label: "Seleksi" },
   ];
 
   const statusOptions = [
@@ -640,7 +645,7 @@ export default function ManajemenPaket() {
 
           {/* === BODY (scrollable) === */}
           <div className="flex-1 overflow-y-auto pr-2 space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Kode Paket *</Label>
                 <Input
@@ -652,6 +657,17 @@ export default function ManajemenPaket() {
                   placeholder="PKT-2024-XXX"
                   error={!!formErrors.kodePaket}
                   hint={formErrors.kodePaket}
+                />
+              </div>
+              <div>
+                <Label>Kode RUP</Label>
+                <Input
+                  type="text"
+                  value={formData.kodeRUP}
+                  onChange={(e) =>
+                    setFormData({ ...formData, kodeRUP: e.target.value })
+                  }
+                  placeholder="RUP-2024-XXX"
                 />
               </div>
               <div>

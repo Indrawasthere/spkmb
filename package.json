@@ -34,7 +34,7 @@
         "@mui/icons-material": "^7.3.5",
         "@mui/material": "^7.3.5",
         "@ngrok/ngrok": "^1.5.2",
-        "@prisma/client": "^6.18.0",
+        "@prisma/client": "^6.19.0",
         "@react-jvectormap/core": "^1.0.4",
         "@react-jvectormap/world": "^1.1.2",
         "@tailwindcss/forms": "^0.5.10",
@@ -76,7 +76,6 @@
         "open": "^10.2.0",
         "pg": "^8.16.3",
         "postcss": "^8.5.6",
-        "prisma": "^6.18.0",
         "react": "^18.3.1",
         "react-apexcharts": "^1.8.0",
         "react-datepicker": "^8.8.0",
@@ -102,6 +101,7 @@
         "vite-plugin-svgr": "^4.5.0"
     },
     "devDependencies": {
+        "prisma": "^6.19.0",
         "ts-node": "^10.9.2"
     }
 }

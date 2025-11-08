@@ -19,7 +19,7 @@ interface LaporanItwasda {
   paketId: string;
   jenisLaporan: string;
   deskripsi: string;
-  tingkatKeparahan: "RENDAH" | "SEDANG" | "TINGGI" | "KRITIS";
+  tingkatKualitasTemuan: "RENDAH" | "SEDANG" | "TINGGI" | "KRITIS";
   status: "BARU" | "PROSES" | "SELESAI" | "DITUNDA";
   tanggal: string;
   auditor: string;
@@ -39,7 +39,6 @@ interface Paket {
   kodePaket: string;
   namaPaket: string;
   status: "DRAFT" | "PUBLISHED" | "ON_PROGRESS" | "COMPLETED" | "CANCELLED";
-  laporan?: LaporanItwasda[];
 }
 
 interface FormErrors {
@@ -47,7 +46,7 @@ interface FormErrors {
   paketId?: string;
   jenisLaporan?: string;
   deskripsi?: string;
-  tingkatKeparahan?: string;
+  tingkatKualitasTemuan?: string;
   auditor?: string;
   pic?: string;
 }
@@ -64,7 +63,7 @@ export default function Itwasda() {
     paketId: "",
     jenisLaporan: "",
     deskripsi: "",
-    tingkatKeparahan: "" as LaporanItwasda["tingkatKeparahan"] | "",
+    tingkatKualitasTemuan: "" as LaporanItwasda["tingkatKualitasTemuan"] | "",
     auditor: "",
     pic: "",
   });
@@ -123,31 +122,31 @@ export default function Itwasda() {
   // Form validation
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
-    
+
     if (!formData.nomorLaporan.trim()) {
       errors.nomorLaporan = "Nomor laporan wajib diisi";
     }
-    
+
     if (!formData.paketId) {
       errors.paketId = "Paket wajib dipilih";
     }
-    
+
     if (!formData.jenisLaporan) {
       errors.jenisLaporan = "Jenis laporan wajib dipilih";
     }
-    
+
     if (!formData.deskripsi.trim()) {
       errors.deskripsi = "Deskripsi wajib diisi";
     }
-    
-    if (!formData.tingkatKeparahan) {
-      errors.tingkatKeparahan = "Tingkat keparahan wajib dipilih";
+
+    if (!formData.tingkatKualitasTemuan) {
+      errors.tingkatKualitasTemuan = "Tingkat kualitas temuan wajib dipilih";
     }
-    
+
     if (!formData.auditor.trim()) {
       errors.auditor = "Nama auditor wajib diisi";
     }
-    
+
     if (!formData.pic.trim()) {
       errors.pic = "PIC wajib diisi";
     }
@@ -159,7 +158,7 @@ export default function Itwasda() {
         if (selectedPaket.status !== 'ON_PROGRESS' && selectedPaket.status !== 'PUBLISHED') {
           errors.paketId = "Laporan hanya bisa dibuat untuk paket dengan status 'Pelaksanaan' atau 'Dipublikasi'";
         }
-        
+
         const hasExistingReport = laporan.some(l => l.paketId === formData.paketId && l.id !== editingLaporan?.id);
         if (hasExistingReport) {
           errors.paketId = "Paket ini sudah memiliki laporan Itwasda";
@@ -183,7 +182,7 @@ export default function Itwasda() {
         paketId: formData.paketId,
         jenisLaporan: formData.jenisLaporan,
         deskripsi: formData.deskripsi.trim(),
-        tingkatKeparahan: formData.tingkatKeparahan,
+        tingkatKualitasTemuan: formData.tingkatKualitasTemuan,
         auditor: formData.auditor.trim(),
         pic: formData.pic.trim(),
         tanggal: new Date(),
@@ -255,7 +254,7 @@ export default function Itwasda() {
       paketId: laporan.paketId,
       jenisLaporan: laporan.jenisLaporan,
       deskripsi: laporan.deskripsi,
-      tingkatKeparahan: laporan.tingkatKeparahan,
+      tingkatKualitasTemuan: laporan.tingkatKualitasTemuan,
       auditor: laporan.auditor,
       pic: laporan.pic,
     });
@@ -338,7 +337,7 @@ export default function Itwasda() {
       paketId: "",
       jenisLaporan: "",
       deskripsi: "",
-      tingkatKeparahan: "",
+      tingkatKualitasTemuan: "",
       auditor: "",
       pic: "",
     });
@@ -355,11 +354,11 @@ export default function Itwasda() {
     openModal();
   };
 
-  const filteredLaporan = laporan.filter((l) => {
+  const filteredLaporan: LaporanItwasda[] = laporan.filter((l) => {
     const matchSearch =
       l.nomorLaporan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.paket?.kodePaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.paket?.namaPaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.paket?.kodePaket || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.paket?.namaPaket || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       l.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFilter = filterStatus === "all" || l.status === filterStatus;
     return matchSearch && matchFilter;
@@ -380,8 +379,8 @@ export default function Itwasda() {
     }
   };
 
-  const getKeparahanColor = (keparahan: LaporanItwasda["tingkatKeparahan"]) => {
-    switch (keparahan) {
+  const getKualitasTemuanColor = (kualitasTemuan: LaporanItwasda["tingkatKualitasTemuan"]) => {
+    switch (kualitasTemuan) {
       case "KRITIS":
         return "error";
       case "TINGGI":
@@ -547,7 +546,7 @@ export default function Itwasda() {
                       Deskripsi
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Keparahan
+                      Kualitas Temuan
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                       Status
@@ -587,9 +586,9 @@ export default function Itwasda() {
                       <td className="px-6 py-4">
                         <Badge
                           size="sm"
-                          color={getKeparahanColor(l.tingkatKeparahan)}
+                          color={getKualitasTemuanColor(l.tingkatKualitasTemuan)}
                         >
-                          {l.tingkatKeparahan}
+                          {l.tingkatKualitasTemuan}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
@@ -703,20 +702,20 @@ export default function Itwasda() {
                 )}
               </div>
               <div>
-                <Label>Tingkat Keparahan *</Label>
+                <Label>Tingkat Kualitas Temuan *</Label>
                 <Select
                   options={keparahanOptions}
-                  placeholder="Pilih keparahan"
+                  placeholder="Pilih kualitas temuan"
                   onChange={(value) =>
                     setFormData({
                       ...formData,
-                      tingkatKeparahan: value as LaporanItwasda["tingkatKeparahan"],
+                      tingkatKualitasTemuan: value as LaporanItwasda["tingkatKualitasTemuan"],
                     })
                   }
-                  defaultValue={formData.tingkatKeparahan}
+                  defaultValue={formData.tingkatKualitasTemuan}
                 />
-                {formErrors.tingkatKeparahan && (
-                  <p className="mt-1 text-xs text-error-500">{formErrors.tingkatKeparahan}</p>
+                {formErrors.tingkatKualitasTemuan && (
+                  <p className="mt-1 text-xs text-error-500">{formErrors.tingkatKualitasTemuan}</p>
                 )}
               </div>
             </div>

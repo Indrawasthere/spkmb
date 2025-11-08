@@ -19,7 +19,7 @@ interface Temuan {
   paketId: string | null;
   jenisTemuan: string;
   deskripsi: string;
-  tingkatKeparahan: "RENDAH" | "SEDANG" | "TINGGI" | "KRITIS";
+  tingkatKualitasTemuan: "RENDAH" | "SEDANG" | "TINGGI" | "KRITIS";
   status: "BARU" | "PROSES" | "SELESAI" | "DITUNDA";
   tanggal: string;
   auditor: string;
@@ -53,7 +53,7 @@ interface FormErrors {
   paketId?: string;
   jenisTemuan?: string;
   deskripsi?: string;
-  tingkatKeparahan?: string;
+  tingkatKualitasTemuan?: string;
   auditor?: string;
   pic?: string;
 }
@@ -71,7 +71,7 @@ export default function BPKP() {
     paketId: "" as string | null,
     jenisTemuan: "",
     deskripsi: "",
-    tingkatKeparahan: "" as Temuan["tingkatKeparahan"] | "",
+    tingkatKualitasTemuan: "" as Temuan["tingkatKualitasTemuan"] | "",
     auditor: "",
     pic: "",
   });
@@ -159,8 +159,8 @@ export default function BPKP() {
       errors.deskripsi = "Deskripsi wajib diisi";
     }
 
-    if (!formData.tingkatKeparahan) {
-      errors.tingkatKeparahan = "Tingkat keparahan wajib dipilih";
+    if (!formData.tingkatKualitasTemuan) {
+      errors.tingkatKualitasTemuan = "Tingkat kualitas temuan wajib dipilih";
     }
 
     if (!formData.auditor.trim()) {
@@ -198,7 +198,7 @@ export default function BPKP() {
         paketId: formData.paketId || null,
         jenisTemuan: formData.jenisTemuan,
         deskripsi: formData.deskripsi.trim(),
-        tingkatKeparahan: formData.tingkatKeparahan,
+        tingkatKualitasTemuan: formData.tingkatKualitasTemuan,
         auditor: formData.auditor.trim(),
         pic: formData.pic.trim(),
       };
@@ -249,7 +249,7 @@ export default function BPKP() {
       paketId: temuan.paketId,
       jenisTemuan: temuan.jenisTemuan,
       deskripsi: temuan.deskripsi,
-      tingkatKeparahan: temuan.tingkatKeparahan,
+      tingkatKualitasTemuan: temuan.tingkatKualitasTemuan,
       auditor: temuan.auditor,
       pic: temuan.pic,
     });
@@ -333,7 +333,7 @@ export default function BPKP() {
       paketId: "",
       jenisTemuan: "",
       deskripsi: "",
-      tingkatKeparahan: "",
+      tingkatKualitasTemuan: "",
       auditor: "",
       pic: "",
     });
@@ -377,8 +377,8 @@ export default function BPKP() {
     }
   };
 
-  const getKeparahanColor = (keparahan: Temuan["tingkatKeparahan"]) => {
-    switch (keparahan) {
+  const getKualitasTemuanColor = (kualitas: Temuan["tingkatKualitasTemuan"]) => {
+    switch (kualitas) {
       case "KRITIS":
         return "error";
       case "TINGGI":
@@ -549,7 +549,7 @@ export default function BPKP() {
                       Deskripsi
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Keparahan
+                      Kualitas Temuan
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
                       Status
@@ -599,9 +599,9 @@ export default function BPKP() {
                       <td className="px-6 py-4">
                         <Badge
                           size="sm"
-                          color={getKeparahanColor(temuan.tingkatKeparahan)}
+                          color={getKualitasTemuanColor(temuan.tingkatKualitasTemuan)}
                         >
-                          {temuan.tingkatKeparahan}
+                          {temuan.tingkatKualitasTemuan}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
@@ -719,21 +719,21 @@ export default function BPKP() {
                 )}
               </div>
               <div>
-                <Label>Tingkat Keparahan *</Label>
+                <Label>Tingkat Kualitas Temuan *</Label>
                 <Select
                   options={keparahanOptions}
-                  placeholder="Pilih keparahan"
+                  placeholder="Pilih tingkat kualitas"
                   onChange={(value) =>
                     setFormData({
                       ...formData,
-                      tingkatKeparahan: value as Temuan["tingkatKeparahan"],
+                      tingkatKualitasTemuan: value as Temuan["tingkatKualitasTemuan"],
                     })
                   }
-                  defaultValue={formData.tingkatKeparahan}
+                  defaultValue={formData.tingkatKualitasTemuan}
                 />
-                {formErrors.tingkatKeparahan && (
+                {formErrors.tingkatKualitasTemuan && (
                   <p className="mt-1 text-xs text-error-500">
-                    {formErrors.tingkatKeparahan}
+                    {formErrors.tingkatKualitasTemuan}
                   </p>
                 )}
               </div>
