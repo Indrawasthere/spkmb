@@ -19,6 +19,7 @@ import VendorPenyedia from "./pages/VendorPenyedia";
 import KonsultanPerencanaan from "./pages/KonsultanPerencanaan";
 import KonsultanPengawas from "./pages/KonsultanPengawas";
 import Konstruksi from "./pages/Konstruksi";
+import PPKData from "./pages/PPKData";
 import KompetensiPPK from "./pages/KompetensiPPK";
 import MonitoringEvaluasi from "./pages/MonitoringEvaluasi";
 import LaporanAnalisis from "./pages/LaporanAnalisis";
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="vendor-penyedia/konsultan-perencanaan" element={<KonsultanPerencanaan />} />
             <Route path="vendor-penyedia/konsultan-pengawas" element={<KonsultanPengawas />} />
             <Route path="vendor-penyedia/konstruksi" element={<Konstruksi />} />
+            <Route path="pengawasan-audit/ppk" element={<PPKData />} />
             <Route path="kompetensi-ppk" element={<KompetensiPPK />} />
             <Route path="monitoring-evaluasi" element={<MonitoringEvaluasi />} />
             <Route path="laporan-analisis" element={<LaporanAnalisis />} />

@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
-import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, PencilIcon, TrashBinIcon, TrendingUpIcon, DollarSignIcon, CalendarIcon } from "../icons";
+import { PlusIcon, PencilIcon, TrashBinIcon, CalenderIcon, DollarLineIcon, TrendingUp } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
@@ -45,7 +44,6 @@ interface Paket {
 export default function PPKData() {
   const [ppkData, setPpkData] = useState<PPKData[]>([]);
   const [pakets, setPakets] = useState<Paket[]>([]);
-  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     paketId: "",
     namaPPK: "",
@@ -82,8 +80,6 @@ export default function PPKData() {
     } catch (error) {
       console.error('Error fetching PPK data:', error);
       toast.error('Gagal memuat data PPK');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -300,29 +296,7 @@ export default function PPKData() {
     },
   ];
 
-  const exportToCSV = () => {
-    // Simple CSV export implementation
-    const headers = ['Nama PPK', 'Kode Paket', 'Nama Paket', 'No Sertifikasi', 'Jumlah Anggaran', 'Lama Proyek'];
-    const csvContent = [
-      headers.join(','),
-      ...ppkData.map(item => [
-        item.namaPPK,
-        item.paket?.kodePaket || '',
-        item.paket?.namaPaket || '',
-        item.noSertifikasi,
-        item.jumlahAnggaran,
-        item.lamaProyek
-      ].join(','))
-    ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ppk-data.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
 
   return (
     <>
@@ -344,7 +318,7 @@ export default function PPKData() {
                 <p className="text-blue-100 text-xs mt-2">Data PPK terdaftar</p>
               </div>
               <div className="bg-white/20 rounded-full p-4">
-                <CalendarIcon className="w-8 h-8" />
+                <CalenderIcon className="w-8 h-8" />
               </div>
             </div>
           </div>
@@ -357,7 +331,7 @@ export default function PPKData() {
                 <p className="text-green-100 text-xs mt-2">Nilai total proyek</p>
               </div>
               <div className="bg-white/20 rounded-full p-4">
-                <DollarSignIcon className="w-8 h-8" />
+                <DollarLineIcon className="w-8 h-8" />
               </div>
             </div>
           </div>
@@ -370,7 +344,7 @@ export default function PPKData() {
                 <p className="text-purple-100 text-xs mt-2">Realisasi termin</p>
               </div>
               <div className="bg-white/20 rounded-full p-4">
-                <TrendingUpIcon className="w-8 h-8" />
+                <TrendingUp className="w-8 h-8" />
               </div>
             </div>
           </div>
@@ -397,14 +371,11 @@ export default function PPKData() {
         </div>
 
         {/* Data Table */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <DataTable
-            columns={columns}
-            data={ppkData}
-            searchPlaceholder="Cari data PPK..."
-            onExport={exportToCSV}
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          data={ppkData}
+          searchPlaceholder="Cari data PPK..."
+        />
       </div>
 
       {/* Modal Form */}
@@ -418,16 +389,16 @@ export default function PPKData() {
             <div>
               <Label>Paket <span className="text-red-500">*</span></Label>
               <Select
+                options={[
+                  { value: "", label: "Pilih Paket" },
+                  ...pakets.map((paket) => ({
+                    value: paket.id,
+                    label: `${paket.kodePaket} - ${paket.namaPaket}`,
+                  })),
+                ]}
                 value={formData.paketId}
-                onChange={(e) => setFormData({ ...formData, paketId: e.target.value })}
-              >
-                <option value="">Pilih Paket</option>
-                {pakets.map((paket) => (
-                  <option key={paket.id} value={paket.id}>
-                    {paket.kodePaket} - {paket.namaPaket}
-                  </option>
-                ))}
-              </Select>
+                onChange={(value) => setFormData({ ...formData, paketId: value })}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

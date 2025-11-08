@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
       { name: "Konstruksi", path: "/vendor-penyedia/konstruksi" },
     ],
   },
+
   {
     icon: <UserCircleIcon />,
     name: "Kompetensi PPK",

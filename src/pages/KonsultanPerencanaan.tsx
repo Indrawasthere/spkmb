@@ -3,7 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, TrashBinIcon } from "../icons";
+import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
@@ -42,6 +42,9 @@ export default function KonsultanPerencanaan() {
   const [editingKonsultan, setEditingKonsultan] = useState<Konsultan | null>(null);
   const [deletingKonsultan, setDeletingKonsultan] = useState<Konsultan | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadingKonsultan, setUploadingKonsultan] = useState<Konsultan | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
   const { success: showSuccessToast, error: showErrorToast } = useToast();
@@ -67,7 +70,33 @@ export default function KonsultanPerencanaan() {
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.namaVendor.trim()) {
+      newErrors.namaVendor = "Nama konsultan wajib diisi";
+    }
+    if (!formData.nomorIzin.trim()) {
+      newErrors.nomorIzin = "Nomor izin wajib diisi";
+    }
+    if (!formData.alamat.trim()) {
+      newErrors.alamat = "Alamat wajib diisi";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      showErrorToast("Mohon lengkapi semua field yang wajib diisi");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const konsultanData = {
         namaVendor: formData.namaVendor,
@@ -99,14 +128,16 @@ export default function KonsultanPerencanaan() {
         await fetchKonsultan();
         closeModal();
         resetForm();
-        alert('Konsultan berhasil disimpan!');
+        showSuccessToast(editingKonsultan ? 'Konsultan berhasil diperbarui!' : 'Konsultan berhasil ditambahkan!');
       } else {
-        const errorText = await response.text();
-        alert('Gagal menyimpan konsultan: ' + errorText);
+        const errorData = await response.json();
+        showErrorToast('Gagal menyimpan konsultan: ' + (errorData.error || 'Terjadi kesalahan'));
       }
     } catch (error) {
       console.error('Error saving konsultan:', error);
-      alert('Terjadi kesalahan saat menyimpan konsultan');
+      showErrorToast('Terjadi kesalahan saat menyimpan konsultan');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -154,9 +185,9 @@ export default function KonsultanPerencanaan() {
     }
   };
 
-  const handleUpload = (id: string) => {
-    // Placeholder untuk modal upload
-    alert(`Upload dokumen untuk konsultan ${id}`);
+  const handleUpload = (konsultan: Konsultan) => {
+    setUploadingKonsultan(konsultan);
+    setIsUploadModalOpen(true);
   };
 
   const resetForm = () => {
@@ -169,10 +200,6 @@ export default function KonsultanPerencanaan() {
     });
     setEditingKonsultan(null);
   };
-
-
-
-
 
   const getStatusColor = (status: Konsultan["status"]) => {
     switch (status) {
@@ -350,7 +377,7 @@ export default function KonsultanPerencanaan() {
                 <div className="flex gap-2">
                   <button
                     className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                    onClick={() => handleUpload(row.original.id)}
+                    onClick={() => handleUpload(row.original)}
                   >
                     Upload
                   </button>
@@ -358,7 +385,7 @@ export default function KonsultanPerencanaan() {
                     className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                     onClick={() => handleEdit(row.original)}
                   >
-                    Edit
+                    <PencilIcon className="size-4" />
                   </button>
                   <button
                     className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
@@ -390,7 +417,7 @@ export default function KonsultanPerencanaan() {
 
           <div className="space-y-4">
             <div>
-              <Label>Nama Konsultan</Label>
+              <Label>Nama Konsultan *</Label>
               <Input
                 type="text"
                 value={formData.namaVendor}
@@ -398,12 +425,14 @@ export default function KonsultanPerencanaan() {
                   setFormData({ ...formData, namaVendor: e.target.value })
                 }
                 placeholder="PT/CV Nama Konsultan"
+                error={!!errors.namaVendor}
+                hint={errors.namaVendor}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Nomor Izin</Label>
+                <Label>Nomor Izin *</Label>
                 <Input
                   type="text"
                   value={formData.nomorIzin}
@@ -411,6 +440,8 @@ export default function KonsultanPerencanaan() {
                     setFormData({ ...formData, nomorIzin: e.target.value })
                   }
                   placeholder="IUJK-XXX/2024"
+                  error={!!errors.nomorIzin}
+                  hint={errors.nomorIzin}
                 />
               </div>
               <div>
@@ -427,7 +458,7 @@ export default function KonsultanPerencanaan() {
             </div>
 
             <div>
-              <Label>Alamat</Label>
+              <Label>Alamat *</Label>
               <Input
                 type="text"
                 value={formData.alamat}
@@ -435,6 +466,8 @@ export default function KonsultanPerencanaan() {
                   setFormData({ ...formData, alamat: e.target.value })
                 }
                 placeholder="Kota/Kabupaten"
+                error={!!errors.alamat}
+                hint={errors.alamat}
               />
             </div>
 
@@ -455,8 +488,8 @@ export default function KonsultanPerencanaan() {
             <Button size="sm" variant="outline" onClick={closeModal}>
               Batal
             </Button>
-            <Button size="sm" variant="primary" onClick={handleSubmit}>
-              {editingKonsultan ? 'Update Konsultan' : 'Simpan Konsultan'}
+            <Button size="sm" variant="primary" onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Menyimpan...' : (editingKonsultan ? 'Update Konsultan' : 'Simpan Konsultan')}
             </Button>
           </div>
         </div>
@@ -473,6 +506,67 @@ export default function KonsultanPerencanaan() {
         cancelText="Batal"
         variant="danger"
       />
+
+      {/* Upload Modal */}
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        size="lg"
+        title="Upload Dokumen"
+        showHeader={true}
+      >
+        <div className="p-6">
+          <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
+            Upload Dokumen untuk {uploadingKonsultan?.namaVendor}
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Jenis Dokumen</Label>
+              <select className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                <option value="">Pilih jenis dokumen</option>
+                <option value="izin_usaha">Izin Usaha</option>
+                <option value="sertifikat_kompetensi">Sertifikat Kompetensi</option>
+                <option value="surat_rekomendasi">Surat Rekomendasi</option>
+                <option value="laporan_keuangan">Laporan Keuangan</option>
+                <option value="lainnya">Lainnya</option>
+              </select>
+            </div>
+
+            <div>
+              <Label>File Dokumen</Label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              />
+              {selectedFile && (
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  File dipilih: {selectedFile.name}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label>Deskripsi (Opsional)</Label>
+              <textarea
+                className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                placeholder="Tambahkan deskripsi dokumen..."
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button size="sm" variant="outline" onClick={() => setIsUploadModalOpen(false)}>
+              Batal
+            </Button>
+            <Button size="sm" variant="primary" disabled={!selectedFile}>
+              Upload Dokumen
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
