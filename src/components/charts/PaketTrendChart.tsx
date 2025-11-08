@@ -34,14 +34,16 @@ export default function PaketTrendChart() {
 
         paketList.forEach((paket: any) => {
           const date = new Date(paket.tanggalBuat);
-          const monthKey = date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+          if (date.getFullYear() >= 2025) {
+            const monthKey = date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
 
-          if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { total: 0, DRAFT: 0, ON_PROGRESS: 0, COMPLETED: 0 };
+            if (!monthlyData[monthKey]) {
+              monthlyData[monthKey] = { total: 0, DRAFT: 0, ON_PROGRESS: 0, COMPLETED: 0 };
+            }
+
+            monthlyData[monthKey].total++;
+            monthlyData[monthKey][paket.status as keyof typeof monthlyData[string]]++;
           }
-
-          monthlyData[monthKey].total++;
-          monthlyData[monthKey][paket.status as keyof typeof monthlyData[string]]++;
         });
 
         // Convert to chart data format
@@ -69,11 +71,11 @@ export default function PaketTrendChart() {
       console.error('Error fetching paket trend data:', error);
       // Fallback data
       setData([
-        { month: 'Jan 2024', totalPaket: 12, paketDRAFT: 8, paketON_PROGRESS: 3, paketCOMPLETED: 1 },
-        { month: 'Feb 2024', totalPaket: 15, paketDRAFT: 10, paketON_PROGRESS: 4, paketCOMPLETED: 1 },
-        { month: 'Mar 2024', totalPaket: 18, paketDRAFT: 12, paketON_PROGRESS: 5, paketCOMPLETED: 1 },
-        { month: 'Apr 2024', totalPaket: 22, paketDRAFT: 15, paketON_PROGRESS: 6, paketCOMPLETED: 1 },
-        { month: 'May 2024', totalPaket: 20, paketDRAFT: 13, paketON_PROGRESS: 6, paketCOMPLETED: 1 },
+        { month: 'Jan 2025', totalPaket: 12, paketDRAFT: 8, paketON_PROGRESS: 3, paketCOMPLETED: 1 },
+        { month: 'Feb 2025', totalPaket: 15, paketDRAFT: 10, paketON_PROGRESS: 4, paketCOMPLETED: 1 },
+        { month: 'Mar 2025', totalPaket: 18, paketDRAFT: 12, paketON_PROGRESS: 5, paketCOMPLETED: 1 },
+        { month: 'Apr 2025', totalPaket: 22, paketDRAFT: 15, paketON_PROGRESS: 6, paketCOMPLETED: 1 },
+        { month: 'May 2025', totalPaket: 20, paketDRAFT: 13, paketON_PROGRESS: 6, paketCOMPLETED: 1 },
       ]);
     } finally {
       setLoading(false);
@@ -126,25 +128,22 @@ export default function PaketTrendChart() {
           />
           <Bar
             dataKey="paketDRAFT"
-            stackId="a"
             fill="#fef3c7"
             stroke="#f59e0b"
             strokeWidth={1}
             name="Draft"
-            radius={[0, 0, 0, 0]}
+            radius={[4, 4, 0, 0]}
           />
           <Bar
             dataKey="paketON_PROGRESS"
-            stackId="a"
             fill="#dbeafe"
             stroke="#3b82f6"
             strokeWidth={1}
             name="On Progress"
-            radius={[0, 0, 0, 0]}
+            radius={[4, 4, 0, 0]}
           />
           <Bar
             dataKey="paketCOMPLETED"
-            stackId="a"
             fill="#d1fae5"
             stroke="#10b981"
             strokeWidth={1}

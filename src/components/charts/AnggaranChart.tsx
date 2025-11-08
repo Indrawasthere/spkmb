@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -98,33 +98,31 @@ export default function AnggaranChart() {
     <div className="w-full">
       <div className="mb-4 text-center">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-          Distribusi Anggaran Proyek
+          Anggaran Proyek Berdasarkan Status
         </h3>
-        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
           {formatCurrency(totalAnggaran)}
         </p>
         <p className="text-sm text-gray-500">Total Anggaran</p>
       </div>
 
       <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-            outerRadius={90}
-            innerRadius={50}
-            fill="#8884d8"
-            dataKey="value"
-            stroke="#ffffff"
-            strokeWidth={2}
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
+        <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+          <XAxis
+            dataKey="name"
+            stroke="#6b7280"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            stroke="#6b7280"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value) => formatCurrency(value).replace('Rp ', '')}
+          />
           <Tooltip
             formatter={(value: number) => [formatCurrency(value), 'Anggaran']}
             contentStyle={{
@@ -144,7 +142,15 @@ export default function AnggaranChart() {
             }}
             iconType="circle"
           />
-        </PieChart>
+          <Bar
+            dataKey="value"
+            fill="#10b981"
+            stroke="#059669"
+            strokeWidth={1}
+            name="Anggaran"
+            radius={[4, 4, 0, 0]}
+          />
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
