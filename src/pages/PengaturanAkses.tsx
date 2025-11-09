@@ -43,7 +43,7 @@ export default function PengaturanAkses() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/users', {
+        const response = await fetch('https://sipakat-bpj:3001/api/users', {
           credentials: 'include',
         });
         if (response.ok) {

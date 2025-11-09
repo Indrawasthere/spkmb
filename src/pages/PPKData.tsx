@@ -14,7 +14,7 @@ import { ActionButtons } from "../components/common/ActionButtons";
 import { DetailsModal } from "../components/common/DetailsModal";
 import toast, { Toaster } from "react-hot-toast";
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface PPKData {
   id: string;
