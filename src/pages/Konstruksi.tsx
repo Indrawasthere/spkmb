@@ -9,6 +9,9 @@ import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import { DataTable } from "../components/common/DataTable";
+import { ActionButtons } from "../components/common/ActionButtons";
+import { DetailsModal } from "../components/common/DetailsModal";
+import toast from "react-hot-toast";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -40,6 +43,16 @@ export default function Konstruksi() {
   const [editingKontraktor, setEditingKontraktor] = useState<Kontraktor | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
+  // details modal state injected
+  const [selectedData, setSelectedData] = useState<any | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
+  const handleViewDetails = (data: any) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
+
 
   // Fetch kontraktor data from API
   useEffect(() => {
@@ -94,14 +107,14 @@ export default function Konstruksi() {
         await fetchKontraktor();
         closeModal();
         resetForm();
-        alert('Kontraktor berhasil disimpan!');
+        toast.error('Kontraktor berhasil disimpan!');
       } else {
         const errorText = await response.text();
-        alert('Gagal menyimpan kontraktor: ' + errorText);
+        toast.error('Gagal menyimpan kontraktor: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving kontraktor:', error);
-      alert('Terjadi kesalahan saat menyimpan kontraktor');
+      toast.error('Terjadi kesalahan saat menyimpan kontraktor');
     }
   };
 
@@ -126,21 +139,21 @@ export default function Konstruksi() {
         });
         if (response.ok) {
           await fetchKontraktor();
-          alert('Kontraktor berhasil dihapus!');
+          toast.error('Kontraktor berhasil dihapus!');
         } else {
           const errorText = await response.text();
-          alert('Gagal menghapus kontraktor: ' + errorText);
+          toast.error('Gagal menghapus kontraktor: ' + errorText);
         }
       } catch (error) {
         console.error('Error deleting kontraktor:', error);
-        alert('Terjadi kesalahan saat menghapus kontraktor');
+        toast.error('Terjadi kesalahan saat menghapus kontraktor');
       }
     }
   };
 
   const handleUpload = (id: string) => {
     // Placeholder untuk modal upload
-    alert(`Upload dokumen untuk kontraktor ${id}`);
+    toast.error(`Upload dokumen untuk kontraktor ${id}`);
   };
 
   const resetForm = () => {
@@ -171,28 +184,55 @@ export default function Konstruksi() {
 
   const renderStars = (rating: number | null) => {
     if (!rating) return <span className="text-gray-400">-</span>;
-    return (
-      <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, index) => (
-          <svg
-            key={index}
-            className={`size-4 ${
-              index < Math.floor(rating)
-                ? "fill-warning-500 text-warning-500"
-                : "fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600"
-            }`}
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-          </svg>
-        ))}
-        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-          {rating.toFixed(1)}
-        </span>
-      </div>
-    );
   };
+    
+  // details sections injected
+  const detailsSections = selectedData
+  ? [
+      {
+        title: "Informasi Kontraktor",
+        fields: [
+          { label: "Nama Vendor", value: selectedData.namaVendor ?? "-" },
+          { label: "Nomor Izin", value: selectedData.nomorIzin ?? "-" },
+          { label: "Spesialisasi", value: selectedData.spesialisasi ?? "-" },
+          { label: "Jumlah Proyek", value: selectedData.jumlahProyek ?? 0 },
+          {
+            label: "Rating",
+            value: selectedData.rating
+              ? `${selectedData.rating.toFixed(1)} / 5`
+              : "-",
+          },
+          { 
+            label: "Status", 
+            value: (
+              <Badge color={getStatusColor(selectedData.status)}>
+                {selectedData.status}
+              </Badge>
+            ),
+          },
+          { label: "Lokasi", value: selectedData.lokasi ?? "-" },
+          { label: "Alamat", value: selectedData.alamat ?? "-", fullWidth: true },
+        ],
+      },
+    ]
+  : [];
+
+  const detailsDocuments =
+    selectedData?.dokumen ||
+    (selectedData?.filePath
+      ? [
+          {
+            id: selectedData.id,
+            namaDokumen: selectedData.namaDokumen || "Dokumen Terkait",
+            filePath: selectedData.filePath,
+            uploadedAt:
+              selectedData.updatedAt ||
+              selectedData.tanggalUpload ||
+              new Date().toISOString(),
+          },
+        ]
+  : []);
+
 
   // Stats Cards
   const stats = [
@@ -346,26 +386,11 @@ export default function Konstruksi() {
               header: "Aksi",
               accessorKey: "actions",
               cell: ({ row }) => (
-                <div className="flex gap-2">
-                  <button
-                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                    onClick={() => handleUpload(row.original.id)}
-                  >
-                    Upload
-                  </button>
-                  <button
-                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                    onClick={() => handleEdit(row.original)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                    onClick={() => handleDelete(row.original.id)}
-                  >
-                    Hapus
-                  </button>
-                </div>
+                <ActionButtons
+                  onView={() => handleViewDetails(row.original)}
+                  onEdit={() => handleEdit(row.original)}
+                  onDelete={() => handleDelete(row.original.id)}
+                />
               ),
             },
           ]}
@@ -459,6 +484,16 @@ export default function Konstruksi() {
           </div>
         </div>
       </Modal>
+
+      {selectedData && (
+        <DetailsModal
+          isOpen={viewDetailsOpen}
+          onClose={() => setViewDetailsOpen(false)}
+          title={`Detail Konstruksi`}
+          sections={detailsSections}
+          documents={detailsDocuments}
+        />
+      )}
     </>
   );
 }

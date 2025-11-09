@@ -111,10 +111,10 @@ model Dokumen {
   id           String        @id @default(cuid())
   paketId      String?
   namaDokumen  String
-  jenisDokumen DokumenJenis
+  jenisDokumen String
   filePath     String
   fileSize     Int
-  mimeType     String
+  mimeType     String?
   uploadedBy   String
   uploadedAt   DateTime      @default(now())
 

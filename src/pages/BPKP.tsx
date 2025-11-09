@@ -3,15 +3,18 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
+import { PlusIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
+import { useAuth } from "../context/AuthContext";
 import { DataTable } from "../components/common/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { ActionButtons } from "../components/common/ActionButtons";
+import { DetailsModal } from "../components/common/DetailsModal";
 
 
 const API_BASE_URL = "http://localhost:3001";
@@ -62,11 +65,14 @@ interface FormErrors {
 }
 
 export default function BPKP() {
+  const { user } = useAuth();
   const [temuans, setTemuans] = useState<Temuan[]>([]);
   const [pakets, setPakets] = useState<Paket[]>([]);
   const [laporanItwasda, setLaporanItwasda] = useState<LaporanItwasda[]>([]);
   const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedTemuan, setSelectedTemuan] = useState<Temuan | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [formData, setFormData] = useState({
     nomorTemuan: "",
     paketId: "" as string | null,
@@ -164,34 +170,43 @@ export default function BPKP() {
       id: "actions",
       header: "Aksi",
       cell: ({ row }) => (
-        <div className="flex gap-2">
-          <button
-            className="text-green-600 hover:text-green-900 dark:text-green-400"
-            onClick={() => handleUpload(row.original.id)}
-            disabled={loading}
-            title="Upload"
-          >
-            Upload
-          </button>
-          <button
-            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-            onClick={() => handleEdit(row.original)}
-            disabled={loading}
-            title="Edit"
-          >
-            <PencilIcon className="size-5" />
-          </button>
-          <button
-            className="text-red-600 hover:text-red-900 dark:text-red-400"
-            onClick={() => handleDelete(row.original.id)}
-            disabled={loading}
-            title="Hapus"
-          >
-            <TrashBinIcon className="size-5" />
-          </button>
-        </div>
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original.id)}
+          canDelete={user?.role === "ADMIN"}
+        />
       ),
     },
+  ];
+
+  const detailsSections = [
+    {
+      title: "Informasi Temuan",
+      fields: [
+        { label: "Nomor Temuan", value: selectedTemuan?.nomorTemuan },
+        { label: "Jenis Temuan", value: selectedTemuan?.jenisTemuan },
+        { label: "Tingkat Kualitas", value: selectedTemuan?.tingkatKualitasTemuan },
+        { label: "Status", value: selectedTemuan?.status },
+        { label: "Auditor", value: selectedTemuan?.auditor },
+        { label: "PIC", value: selectedTemuan?.pic },
+        { label: "Tanggal", value: selectedTemuan?.tanggal ? new Date(selectedTemuan.tanggal).toLocaleDateString('id-ID') : undefined },
+      ],
+    },
+    {
+      title: "Deskripsi Temuan",
+      fields: [
+        { label: "Deskripsi", value: selectedTemuan?.deskripsi },
+      ],
+    },
+    ...(selectedTemuan?.paket ? [{
+      title: "Informasi Paket",
+      fields: [
+        { label: "Kode Paket", value: selectedTemuan.paket.kodePaket },
+        { label: "Nama Paket", value: selectedTemuan.paket.namaPaket },
+        { label: "Status Paket", value: selectedTemuan.paket.status },
+      ],
+    }] : []),
   ];
 
   const { isOpen, openModal, closeModal } = useModal();
@@ -358,6 +373,11 @@ export default function BPKP() {
     }
   };
 
+  const handleViewDetails = (temuan: Temuan) => {
+    setSelectedTemuan(temuan);
+    setViewDetailsOpen(true);
+  };
+
   const handleEdit = (temuan: Temuan) => {
     setEditingTemuan(temuan);
     setFormData({
@@ -399,49 +419,7 @@ export default function BPKP() {
     }
   };
 
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [selectedTemuanId, setSelectedTemuanId] = useState<string>("");
-  const [uploadFormData, setUploadFormData] = useState({
-    file: null as File | null,
-  });
 
-  const handleUpload = (id: string) => {
-    setSelectedTemuanId(id);
-    setUploadModalOpen(true);
-  };
-
-  const handleFileUpload = async () => {
-    if (!uploadFormData.file) {
-      alert("Pilih file dokumen");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("file", uploadFormData.file);
-
-      const response = await fetch(`${API_BASE_URL}/api/temuan-bpkp/${selectedTemuanId}/upload`, {
-        method: "PUT",
-        credentials: "include",
-        body: formDataToSend,
-      });
-
-      if (response.ok) {
-        alert("Dokumen berhasil diupload");
-        setUploadModalOpen(false);
-        setUploadFormData({ file: null });
-        fetchTemuans();
-      } else {
-        alert("Gagal upload dokumen");
-      }
-    } catch (error) {
-      console.error("Error uploading dokumen:", error);
-      alert("Terjadi kesalahan saat upload");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const resetForm = () => {
     setFormData({
@@ -784,38 +762,19 @@ export default function BPKP() {
         </div>
       </Modal>
 
-      {/* Upload Modal */}
-      <Modal
-        isOpen={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        size="md"
-        title="Upload Dokumen Temuan"
-        showHeader={true}
-      >
-        <div className="px-6 py-4 space-y-4">
-          <div>
-            <Label>File Dokumen *</Label>
-            <input
-              type="file"
-              onChange={(e) => setUploadFormData({ file: e.target.files?.[0] || null })}
-              accept=".pdf,.doc,.docx,.xlsx,.csv,.jpg,.jpeg,.png"
-              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Format: PDF, DOC, DOCX, XLSX, CSV, JPG, PNG (Max 10MB)
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={() => setUploadModalOpen(false)} disabled={loading}>
-              Batal
-            </Button>
-            <Button size="sm" variant="primary" onClick={handleFileUpload} disabled={loading}>
-              {loading ? 'Uploading...' : 'Upload'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {/* Details Modal */}
+      <DetailsModal
+        isOpen={viewDetailsOpen}
+        onClose={() => setViewDetailsOpen(false)}
+        title="Detail Temuan"
+        sections={detailsSections}
+        documents={selectedTemuan?.filePath ? [{
+          id: selectedTemuan.id,
+          namaDokumen: "Dokumen Temuan",
+          filePath: selectedTemuan.filePath,
+          uploadedAt: selectedTemuan.createdAt
+        }] : []}
+      />
     </>
   );
 }

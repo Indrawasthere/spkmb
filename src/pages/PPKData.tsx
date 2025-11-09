@@ -10,6 +10,8 @@ import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 import { DataTable } from "../components/common/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { ActionButtons } from "../components/common/ActionButtons";
+import { DetailsModal } from "../components/common/DetailsModal";
 import toast, { Toaster } from "react-hot-toast";
 
 const API_BASE_URL = 'http://localhost:3001';
@@ -41,6 +43,13 @@ interface Paket {
   namaPaket: string;
 }
 
+const formatCurrency = (value: number): string =>
+  value.toLocaleString("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  });
+
 export default function PPKData() {
   const [ppkData, setPpkData] = useState<PPKData[]>([]);
   const [pakets, setPakets] = useState<Paket[]>([]);
@@ -49,11 +58,16 @@ export default function PPKData() {
     namaPPK: "",
     noSertifikasi: "",
     jumlahAnggaran: "",
+    jumlahAnggaranValue: 0,
     lamaProyek: "",
     realisasiTermin1: "",
+    realisasiTermin1Value: 0,
     realisasiTermin2: "",
+    realisasiTermin2Value: 0,
     realisasiTermin3: "",
+    realisasiTermin3Value: 0,
     realisasiTermin4: "",
+    realisasiTermin4Value: 0,
     PHO: "",
     FHO: "",
   });
@@ -61,6 +75,16 @@ export default function PPKData() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { isOpen, openModal, closeModal } = useModal();
+
+  const [selectedData, setSelectedData] = useState<any | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
+  const handleViewDetails = (data: any) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
+
 
   // Fetch PPK Data and Pakets from API
   useEffect(() => {
@@ -98,8 +122,13 @@ export default function PPKData() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.paketId || !formData.namaPPK || !formData.noSertifikasi || !formData.jumlahAnggaran) {
-      toast.error('Mohon lengkapi semua field yang wajib');
+    if (
+      !formData.paketId ||
+      !formData.namaPPK ||
+      !formData.noSertifikasi ||
+      !formData.jumlahAnggaranValue
+    ) {
+      toast.error("Mohon lengkapi semua field yang wajib");
       return;
     }
 
@@ -109,12 +138,12 @@ export default function PPKData() {
         paketId: formData.paketId,
         namaPPK: formData.namaPPK,
         noSertifikasi: formData.noSertifikasi,
-        jumlahAnggaran: parseFloat(formData.jumlahAnggaran),
+        jumlahAnggaran: formData.jumlahAnggaranValue,
         lamaProyek: parseInt(formData.lamaProyek) || 0,
-        realisasiTermin1: formData.realisasiTermin1 ? parseFloat(formData.realisasiTermin1) : null,
-        realisasiTermin2: formData.realisasiTermin2 ? parseFloat(formData.realisasiTermin2) : null,
-        realisasiTermin3: formData.realisasiTermin3 ? parseFloat(formData.realisasiTermin3) : null,
-        realisasiTermin4: formData.realisasiTermin4 ? parseFloat(formData.realisasiTermin4) : null,
+        realisasiTermin1: formData.realisasiTermin1Value || null,
+        realisasiTermin2: formData.realisasiTermin2Value || null,
+        realisasiTermin3: formData.realisasiTermin3Value || null,
+        realisasiTermin4: formData.realisasiTermin4Value || null,
         PHO: formData.PHO ? new Date(formData.PHO) : null,
         FHO: formData.FHO ? new Date(formData.FHO) : null,
       };
@@ -159,14 +188,19 @@ export default function PPKData() {
       paketId: ppkData.paketId,
       namaPPK: ppkData.namaPPK,
       noSertifikasi: ppkData.noSertifikasi,
-      jumlahAnggaran: ppkData.jumlahAnggaran.toString(),
+      jumlahAnggaran: formatCurrency(ppkData.jumlahAnggaran),
+      jumlahAnggaranValue: ppkData.jumlahAnggaran,
       lamaProyek: ppkData.lamaProyek.toString(),
       realisasiTermin1: ppkData.realisasiTermin1?.toString() || "",
+      realisasiTermin1Value: ppkData.realisasiTermin1 || 0,
       realisasiTermin2: ppkData.realisasiTermin2?.toString() || "",
+      realisasiTermin2Value: ppkData.realisasiTermin2 || 0,
       realisasiTermin3: ppkData.realisasiTermin3?.toString() || "",
+      realisasiTermin3Value: ppkData.realisasiTermin3 || 0,
       realisasiTermin4: ppkData.realisasiTermin4?.toString() || "",
-      PHO: ppkData.PHO ? new Date(ppkData.PHO).toISOString().split('T')[0] : "",
-      FHO: ppkData.FHO ? new Date(ppkData.FHO).toISOString().split('T')[0] : "",
+      realisasiTermin4Value: ppkData.realisasiTermin4 || 0,
+      PHO: ppkData.PHO ? new Date(ppkData.PHO).toISOString().split("T")[0] : "",
+      FHO: ppkData.FHO ? new Date(ppkData.FHO).toISOString().split("T")[0] : "",
     });
     openModal();
   };
@@ -198,11 +232,16 @@ export default function PPKData() {
       namaPPK: "",
       noSertifikasi: "",
       jumlahAnggaran: "",
+      jumlahAnggaranValue: 0,
       lamaProyek: "",
       realisasiTermin1: "",
+      realisasiTermin1Value: 0,
       realisasiTermin2: "",
+      realisasiTermin2Value: 0,
       realisasiTermin3: "",
+      realisasiTermin3Value: 0,
       realisasiTermin4: "",
+      realisasiTermin4Value: 0,
       PHO: "",
       FHO: "",
     });
@@ -217,13 +256,20 @@ export default function PPKData() {
   // Calculate stats
   const totalPPK = ppkData.length;
   const totalBudget = ppkData.reduce((sum, item) => sum + item.jumlahAnggaran, 0);
-  const averageCompletion = ppkData.length > 0
-    ? Math.round(ppkData.reduce((sum, item) => {
-        const terminCount = [item.realisasiTermin1, item.realisasiTermin2, item.realisasiTermin3, item.realisasiTermin4]
-          .filter(Boolean).length;
-        return sum + (terminCount / 4) * 100;
-      }, 0) / ppkData.length)
-    : 0;
+  const averageCompletion =
+    ppkData.length > 0
+      ? Math.round(
+          ppkData.reduce((sum, item) => {
+            const terminCount = [
+              item.realisasiTermin1,
+              item.realisasiTermin2,
+              item.realisasiTermin3,
+              item.realisasiTermin4,
+            ].filter(Boolean).length;
+            return sum + (terminCount / 4) * 100;
+          }, 0) / ppkData.length
+        )
+      : 0;
 
   // Table columns
   const columns: ColumnDef<PPKData>[] = [
@@ -246,9 +292,9 @@ export default function PPKData() {
       header: 'No Sertifikasi',
     },
     {
-      accessorKey: 'jumlahAnggaran',
-      header: 'Jumlah Anggaran',
-      cell: ({ row }) => `Rp ${row.original.jumlahAnggaran.toLocaleString('id-ID')}`,
+      accessorKey: "jumlahAnggaran",
+      header: "Jumlah Anggaran",
+      cell: ({ row }) => formatCurrency(row.original.jumlahAnggaran),
     },
     {
       accessorKey: 'lamaProyek',
@@ -256,10 +302,15 @@ export default function PPKData() {
       cell: ({ row }) => `${row.original.lamaProyek} hari`,
     },
     {
-      id: 'realisasi',
-      header: 'Realisasi Termin',
+      id: "realisasi",
+      header: "Realisasi Termin",
       cell: ({ row }) => {
-        const termin = [row.original.realisasiTermin1, row.original.realisasiTermin2, row.original.realisasiTermin3, row.original.realisasiTermin4];
+        const termin = [
+          row.original.realisasiTermin1,
+          row.original.realisasiTermin2,
+          row.original.realisasiTermin3,
+          row.original.realisasiTermin4,
+        ];
         const completed = termin.filter(Boolean).length;
         return (
           <div className="flex items-center gap-2">
@@ -275,26 +326,58 @@ export default function PPKData() {
       },
     },
     {
-      id: 'actions',
-      header: 'Aksi',
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <button
-            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-            onClick={() => handleEdit(row.original)}
-          >
-            <PencilIcon className="w-5 h-5" />
-          </button>
-          <button
-            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <TrashBinIcon className="w-5 h-5" />
-          </button>
-        </div>
+      id: 'actions', header: 'Aksi', cell: ({ row }) => (
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original.id)}
+        />
       ),
     },
   ];
+
+  // details sections injected
+  const detailsSections = selectedData ? [
+      {
+        title: "Informasi Dasar",
+        fields: [
+          { label: "Nama PPK", value: selectedData?.namaPPK ?? "-" },
+          { label: "No Sertifikasi", value: selectedData?.noSertifikasi ?? "-" },
+          {
+            label: "Jumlah Anggaran",
+            value: selectedData?.jumlahAnggaran
+              ? formatCurrency(selectedData.jumlahAnggaran)
+              : "-",
+          },
+          { label: "Lama Proyek", value: selectedData?.lamaProyek ?? "-" },
+          { label: "PHO", value: selectedData?.PHO ?? "-" },
+          { label: "FHO", value: selectedData?.FHO ?? "-" },
+          {
+            label: "Paket",
+            value: selectedData?.paket
+              ? `${selectedData.paket.kodePaket} - ${selectedData.paket.namaPaket}`
+              : "-",
+            fullWidth: true,
+          },
+        ],
+      },
+    ]
+  : [];
+  const detailsDocuments =
+  selectedData?.dokumen ||
+  (selectedData?.filePath
+    ? [
+        {
+          id: selectedData?.id,
+          namaDokumen: selectedData?.namaDokumen || "Dokumen Terkait",
+          filePath: selectedData?.filePath,
+          uploadedAt:
+            selectedData?.updatedAt ||
+            selectedData?.tanggalUpload ||
+            new Date().toISOString(),
+        },
+      ]
+    : []);
 
 
 
@@ -327,7 +410,7 @@ export default function PPKData() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm">Total Anggaran</p>
-                <p className="text-3xl font-bold mt-1">Rp {totalBudget.toLocaleString('id-ID')}</p>
+                <p className="text-3xl font-bold mt-1">{formatCurrency(totalBudget)}</p>
                 <p className="text-green-100 text-xs mt-2">Nilai total proyek</p>
               </div>
               <div className="bg-white/20 rounded-full p-4">
@@ -428,14 +511,12 @@ export default function PPKData() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Jumlah Anggaran (Rp) <span className="text-red-500">*</span></Label>
+                <Label>Jumlah Anggaran (Rp)</Label>
                 <Input
-                  type="number"
+                  type="text"
                   value={formData.jumlahAnggaran}
-                  onChange={(e) =>
-                    setFormData({ ...formData, jumlahAnggaran: e.target.value })
-                  }
-                  placeholder="100000000"
+                  readOnly
+                  placeholder="Dihitung otomatis"
                 />
               </div>
               <div>
@@ -454,50 +535,35 @@ export default function PPKData() {
             <div className="border-t pt-4">
               <h4 className="text-lg font-medium mb-4">Realisasi Termin</h4>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Termin 1 (Rp)</Label>
+                {["1", "2", "3", "4"].map((num) => (
+                <div key={num}>
+                  <Label>{`Termin ${num} (Rp)`}</Label>
                   <Input
-                    type="number"
-                    value={formData.realisasiTermin1}
-                    onChange={(e) =>
-                      setFormData({ ...formData, realisasiTermin1: e.target.value })
-                    }
+                    type="text"
+                    value={formData[`realisasiTermin${num}` as keyof typeof formData] as string}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, "");
+                      const parsed = raw ? parseInt(raw, 10) : 0;
+                       const updated = {
+                        ...formData,
+                        [`realisasiTermin${num}`]: parsed ? formatCurrency(parsed) : "",
+                        [`realisasiTermin${num}Value`]: parsed,
+                      };
+                      const total =
+                        (updated.realisasiTermin1Value || 0) +
+                        (updated.realisasiTermin2Value || 0) +
+                        (updated.realisasiTermin3Value || 0) +
+                        (updated.realisasiTermin4Value || 0);
+
+                      updated.jumlahAnggaran = total ? formatCurrency(total) : "";
+                      updated.jumlahAnggaranValue = total;
+
+                      setFormData(updated);
+                    }}
                     placeholder="25000000"
                   />
                 </div>
-                <div>
-                  <Label>Termin 2 (Rp)</Label>
-                  <Input
-                    type="number"
-                    value={formData.realisasiTermin2}
-                    onChange={(e) =>
-                      setFormData({ ...formData, realisasiTermin2: e.target.value })
-                    }
-                    placeholder="25000000"
-                  />
-                </div>
-                <div>
-                  <Label>Termin 3 (Rp)</Label>
-                  <Input
-                    type="number"
-                    value={formData.realisasiTermin3}
-                    onChange={(e) =>
-                      setFormData({ ...formData, realisasiTermin3: e.target.value })
-                    }
-                    placeholder="25000000"
-                  />
-                </div>
-                <div>
-                  <Label>Termin 4 (Rp)</Label>
-                  <Input
-                    type="number"
-                    value={formData.realisasiTermin4}
-                    onChange={(e) =>
-                      setFormData({ ...formData, realisasiTermin4: e.target.value })
-                    }
-                    placeholder="25000000"
-                  />
-                </div>
+                ))}
               </div>
             </div>
 
@@ -540,6 +606,16 @@ export default function PPKData() {
           </div>
         </div>
       </Modal>
+    
+      {selectedData && (
+        <DetailsModal
+          isOpen={viewDetailsOpen}
+          onClose={() => setViewDetailsOpen(false)}
+          title={`Detail PPKData`}
+          sections={detailsSections}
+          documents={detailsDocuments}
+        />
+      )}
     </>
   );
 }

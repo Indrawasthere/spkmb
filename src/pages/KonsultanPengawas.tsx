@@ -3,7 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, TrashBinIcon } from "../icons";
+import { PlusIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
@@ -13,6 +13,9 @@ import Select from "../components/form/Select";
 import { DataTable } from "../components/common/DataTable";
 import { useToast } from "../hooks/useToast";
 import { FileUploadPreview } from "../components/ui/FileUploadPreview";
+import { ActionButtons } from "../components/common/ActionButtons";
+import { DetailsModal } from "../components/common/DetailsModal";
+import toast from "react-hot-toast";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -46,6 +49,16 @@ export default function KonsultanPengawas() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   const { isOpen, openModal, closeModal } = useModal();
+  // details modal state injected
+  const [selectedData, setSelectedData] = useState<any | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
+  const handleViewDetails = (data: KonsultanPengawas) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
+
   const { success: showSuccessToast, error: showErrorToast } = useToast();
 
   // Fetch konsultan data from API
@@ -101,14 +114,14 @@ export default function KonsultanPengawas() {
         await fetchKonsultan();
         closeModal();
         resetForm();
-        alert('Konsultan berhasil disimpan!');
+        toast.error('Konsultan berhasil disimpan!');
       } else {
         const errorText = await response.text();
-        alert('Gagal menyimpan konsultan: ' + errorText);
+        toast.error('Gagal menyimpan konsultan: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving konsultan:', error);
-      alert('Terjadi kesalahan saat menyimpan konsultan');
+      toast.error('Terjadi kesalahan saat menyimpan konsultan');
     }
   };
 
@@ -238,7 +251,8 @@ export default function KonsultanPengawas() {
   };
 
   const renderStars = (rating: number | null) => {
-    if (!rating) return <span className="text-gray-400">-</span>;
+  if (!rating) return <span className="text-gray-400">-</span>;
+
     return (
       <div className="flex items-center gap-1">
         {[...Array(5)].map((_, index) => (
@@ -260,7 +274,23 @@ export default function KonsultanPengawas() {
         </span>
       </div>
     );
-  };
+  }; 
+    
+  const detailsSections = [
+    {
+      title: "Informasi Dasar",
+      fields: [
+        { label: "Nama Vendor", value: selectedData?.namaVendor ?? "-" },
+        { label: "No. Izin", value: selectedData?.nomorIzin ?? "-" },
+        { label: "Spesialisasi", value: selectedData?.spesialisasi ?? "-" },
+        { label: "Jumlah Proyek", value: selectedData?.jumlahProyek ?? "-" },
+        { label: "Rating", value: selectedData?.rating ?? "-" },
+        { label: "Status", value: selectedData?.status ?? "-" },
+      ]
+    }
+  ];
+  const detailsDocuments = selectedData?.dokumen || (selectedData?.filePath ? [{ id: selectedData.id, namaDokumen: selectedData?.namaDokumen || 'Dokumen Terkait', filePath: selectedData?.filePath, uploadedAt: selectedData?.updatedAt || selectedData.tanggalUpload || new Date().toISOString() }] : []);
+
 
   // Stats Cards
   const stats = [
@@ -393,32 +423,13 @@ export default function KonsultanPengawas() {
                 </Badge>
               ),
             },
-            {
-              accessorKey: "actions",
-              header: "Aksi",
-              cell: ({ row }) => (
-                <div className="flex gap-2">
-                  <button
-                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                    onClick={() => handleUpload(row.original)}
-                  >
-                    Upload
-                  </button>
-                  <button
-                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                    onClick={() => handleEdit(row.original)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                    onClick={() => handleDelete(row.original)}
-                  >
-                    <TrashBinIcon className="size-4" />
-                  </button>
-                </div>
-              ),
-            },
+            { id: 'actions', header: 'Aksi', cell: ({ row }) => (
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original.id)}
+        />
+      ), },,
           ]}
           loading={loading}
           searchPlaceholder="Cari konsultan..."
@@ -575,6 +586,16 @@ export default function KonsultanPengawas() {
           </div>
         </div>
       </Modal>
+    
+      {selectedData && (
+        <DetailsModal
+          isOpen={viewDetailsOpen}
+          onClose={() => setViewDetailsOpen(false)}
+          title={`Detail Konsultan Pengawas`}
+          sections={detailsSections}
+          documents={detailsDocuments}
+        />
+      )}
     </>
   );
 }

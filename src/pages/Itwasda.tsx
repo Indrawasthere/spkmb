@@ -3,7 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
+import { PlusIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import Input from "../components/form/input/InputField";
@@ -12,8 +12,11 @@ import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
 import { DataTable } from "../components/common/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { ActionButtons } from "../components/common/ActionButtons";
+import { DetailsModal } from "../components/common/DetailsModal";
+import toast from "react-hot-toast";
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = "http://localhost:3001";
 
 interface LaporanItwasda {
   id: string;
@@ -27,133 +30,28 @@ interface LaporanItwasda {
   auditor: string;
   pic: string;
   filePath?: string;
-  createdAt: string;
-  updatedAt: string;
-  paket?: {
-    kodePaket: string;
-    namaPaket: string;
-    status: string;
-  };
+  paket?: { kodePaket: string; namaPaket: string };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Paket {
   id: string;
   kodePaket: string;
   namaPaket: string;
-  status: "DRAFT" | "PUBLISHED" | "ON_PROGRESS" | "COMPLETED" | "CANCELLED";
-}
-
-interface FormErrors {
-  nomorLaporan?: string;
-  paketId?: string;
-  jenisLaporan?: string;
-  deskripsi?: string;
-  tingkatKualitasTemuan?: string;
-  auditor?: string;
-  pic?: string;
+  status: string;
 }
 
 export default function Itwasda() {
   const [laporan, setLaporan] = useState<LaporanItwasda[]>([]);
   const [pakets, setPakets] = useState<Paket[]>([]);
-  const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
+  const [selectedData, setSelectedData] = useState<LaporanItwasda | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [editingLaporan, setEditingLaporan] = useState<LaporanItwasda | null>(null);
 
-  // Define table columns
-  const columns: ColumnDef<LaporanItwasda>[] = [
-    {
-      accessorKey: "nomorLaporan",
-      header: "No. Laporan",
-      cell: ({ row }) => (
-        <span className="font-medium text-gray-800 dark:text-white/90">
-          {row.original.nomorLaporan}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "paket",
-      header: "Paket",
-      cell: ({ row }) => (
-        <div>
-          <p className="font-medium">{row.original.paket?.kodePaket}</p>
-          <p className="text-xs text-gray-500">{row.original.paket?.namaPaket}</p>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "jenisLaporan",
-      header: "Jenis",
-    },
-    {
-      accessorKey: "deskripsi",
-      header: "Deskripsi",
-      cell: ({ row }) => (
-        <span className="max-w-xs truncate block">{row.original.deskripsi}</span>
-      ),
-    },
-    {
-      accessorKey: "tingkatKualitasTemuan",
-      header: "Kualitas Temuan",
-      cell: ({ row }) => (
-        <Badge
-          size="sm"
-          color={getKualitasTemuanColor(row.original.tingkatKualitasTemuan)}
-        >
-          {row.original.tingkatKualitasTemuan}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge size="sm" color={getStatusColor(row.original.status)}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "auditor",
-      header: "Auditor",
-    },
-    {
-      accessorKey: "pic",
-      header: "PIC",
-    },
-    {
-      id: "actions",
-      header: "Aksi",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <button
-            className="text-green-600 hover:text-green-900 dark:text-green-400"
-            onClick={() => handleUpload(row.original.id)}
-            disabled={loading}
-            title="Upload"
-          >
-            Upload
-          </button>
-          <button
-            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-            onClick={() => handleEdit(row.original)}
-            disabled={loading}
-            title="Edit"
-          >
-            <PencilIcon className="size-5" />
-          </button>
-          <button
-            className="text-red-600 hover:text-red-900 dark:text-red-400"
-            onClick={() => handleDelete(row.original.id)}
-            disabled={loading}
-            title="Hapus"
-          >
-            <TrashBinIcon className="size-5" />
-          </button>
-        </div>
-      ),
-    },
-  ];
+  const { isOpen, openModal, closeModal } = useModal();
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     nomorLaporan: "",
@@ -163,40 +61,29 @@ export default function Itwasda() {
     tingkatKualitasTemuan: "" as LaporanItwasda["tingkatKualitasTemuan"] | "",
     auditor: "",
     pic: "",
+    file: null as File | null,
   });
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [editingLaporan, setEditingLaporan] = useState<LaporanItwasda | null>(null);
 
-  const { isOpen, openModal, closeModal } = useModal();
-
+  // --- fetches ---
   useEffect(() => {
     fetchLaporan();
     fetchPakets();
   }, []);
 
-  useEffect(() => {
-    // Filter paket yang eligible untuk laporan Itwasda
-    // Hanya paket dengan status ON_PROGRESS atau PUBLISHED dan belum ada laporan
-    const eligible = pakets.filter((paket) => {
-      const hasStatus = paket.status === 'ON_PROGRESS' || paket.status === 'PUBLISHED';
-      const hasNoReport = !laporan.some(l => l.paketId === paket.id);
-      return hasStatus && hasNoReport;
-    });
-    setEligiblePakets(eligible);
-  }, [pakets, laporan]);
-
   const fetchLaporan = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda`, {
-        credentials: 'include',
+      const res = await fetch(`${API_BASE_URL}/api/laporan-itwasda`, {
+        credentials: "include",
       });
-      if (response.ok) {
-        const data = await response.json();
+      if (res.ok) {
+        const data = await res.json();
         setLaporan(data);
+      } else {
+        console.error("fetch laporan failed", await res.text());
       }
-    } catch (error) {
-      console.error('Error fetching laporan:', error);
+    } catch (err) {
+      console.error("Fetch laporan error:", err);
     } finally {
       setLoading(false);
     }
@@ -204,226 +91,206 @@ export default function Itwasda() {
 
   const fetchPakets = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/paket`, {
-        credentials: 'include',
+      const res = await fetch(`${API_BASE_URL}/api/paket`, {
+        credentials: "include",
       });
-      if (response.ok) {
-        const data = await response.json();
+      if (res.ok) {
+        const data = await res.json();
         setPakets(data);
       }
-    } catch (error) {
-      console.error('Error fetching pakets:', error);
+    } catch (err) {
+      console.error("Fetch paket error:", err);
     }
   };
 
-  // Form validation
-  const validateForm = (): boolean => {
-    const errors: FormErrors = {};
-
-    if (!formData.nomorLaporan.trim()) {
-      errors.nomorLaporan = "Nomor laporan wajib diisi";
+  // --- helpers for status / colors ---
+  const getStatusColor = (status: LaporanItwasda["status"]) => {
+    switch (status) {
+      case "SELESAI": return "success";
+      case "PROSES": return "warning";
+      case "BARU": return "info";
+      case "DITUNDA": return "error";
+      default: return "light";
     }
-
-    if (!formData.paketId) {
-      errors.paketId = "Paket wajib dipilih";
-    }
-
-    if (!formData.jenisLaporan) {
-      errors.jenisLaporan = "Jenis laporan wajib dipilih";
-    }
-
-    if (!formData.deskripsi.trim()) {
-      errors.deskripsi = "Deskripsi wajib diisi";
-    }
-
-    if (!formData.tingkatKualitasTemuan) {
-      errors.tingkatKualitasTemuan = "Tingkat kualitas temuan wajib dipilih";
-    }
-
-    if (!formData.auditor.trim()) {
-      errors.auditor = "Nama auditor wajib diisi";
-    }
-
-    if (!formData.pic.trim()) {
-      errors.pic = "PIC wajib diisi";
-    }
-
-    // Validate paket eligibility for new reports
-    if (!editingLaporan && formData.paketId) {
-      const selectedPaket = pakets.find(p => p.id === formData.paketId);
-      if (selectedPaket) {
-        if (selectedPaket.status !== 'ON_PROGRESS' && selectedPaket.status !== 'PUBLISHED') {
-          errors.paketId = "Laporan hanya bisa dibuat untuk paket dengan status 'Pelaksanaan' atau 'Dipublikasi'";
-        }
-
-        const hasExistingReport = laporan.some((l: LaporanItwasda) => l.paketId === formData.paketId && (!editingLaporan || l.id !== editingLaporan.id));
-        if (hasExistingReport) {
-          errors.paketId = "Paket ini sudah memiliki laporan Itwasda";
-        }
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
   };
 
+  const getKualitasTemuanColor = (k: LaporanItwasda["tingkatKualitasTemuan"]) => {
+    switch (k) {
+      case "KRITIS": return "error";
+      case "TINGGI": return "warning";
+      case "SEDANG": return "info";
+      case "RENDAH": return "success";
+      default: return "light";
+    }
+  };
+
+  // --- open details ---
+  const handleViewDetails = (data: LaporanItwasda) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
+  // --- submit (create or update) ---
+  // Strategy:
+  // - For compatibility with your server: POST JSON to create (server expects JSON on POST).
+  // - If user attached a file, immediately call PUT /api/laporan-itwasda/:id with FormData (server supports upload on PUT).
   const handleSubmit = async () => {
-    if (!validateForm()) {
+    // basic validation
+    if (!formData.nomorLaporan || !formData.paketId || !formData.jenisLaporan) {
+      toast.error("Lengkapi nomor, paket, dan jenis laporan dulu.");
       return;
     }
 
     setLoading(true);
     try {
-      const laporanData = {
-        nomorLaporan: formData.nomorLaporan.trim(),
-        paketId: formData.paketId,
-        jenisLaporan: formData.jenisLaporan,
-        deskripsi: formData.deskripsi.trim(),
-        tingkatKualitasTemuan: formData.tingkatKualitasTemuan,
-        auditor: formData.auditor.trim(),
-        pic: formData.pic.trim(),
-        tanggal: new Date(),
-      };
-
-      let response;
-      if (editingLaporan) {
-        response = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${editingLaporan.id}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(laporanData),
+      // 1) create or update base record (JSON) if creating
+      let created: LaporanItwasda | null = null;
+      if (!editingLaporan) {
+        const payload = {
+          nomorLaporan: formData.nomorLaporan.trim(),
+          paketId: formData.paketId,
+          jenisLaporan: formData.jenisLaporan,
+          deskripsi: formData.deskripsi.trim(),
+          tingkatKualitasTemuan: formData.tingkatKualitasTemuan,
+          auditor: formData.auditor.trim(),
+          pic: formData.pic.trim(),
+          tanggal: new Date().toISOString(),
+          status: "BARU",
+        };
+        const res = await fetch(`${API_BASE_URL}/api/laporan-itwasda`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
-      } else {
-        response = await fetch(`${API_BASE_URL}/api/laporan-itwasda`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(laporanData),
-        });
-      }
-
-      if (response.ok) {
-        // Update paket status to "Dalam Audit" after creating laporan
-        if (!editingLaporan) {
-          await updatePaketStatus(formData.paketId, 'ON_PROGRESS');
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Unknown" }));
+          throw new Error(err.error || "Gagal membuat laporan");
         }
-        
-        await fetchLaporan();
-        await fetchPakets();
-        closeModal();
-        resetForm();
-        alert('Laporan berhasil disimpan!');
+        created = await res.json();
       } else {
-        const errorData = await response.json();
-        alert('Gagal menyimpan laporan: ' + (errorData.error || 'Unknown error'));
+        // update base non-file fields via PUT with JSON first (server PUT supports upload but also works with JSON)
+        const payload = {
+          nomorLaporan: formData.nomorLaporan.trim(),
+          paketId: formData.paketId,
+          jenisLaporan: formData.jenisLaporan,
+          deskripsi: formData.deskripsi.trim(),
+          tingkatKualitasTemuan: formData.tingkatKualitasTemuan,
+          auditor: formData.auditor.trim(),
+          pic: formData.pic.trim(),
+          tanggal: editingLaporan.tanggal || new Date().toISOString(),
+        };
+        const res = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${editingLaporan.id}`, {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Unknown" }));
+          throw new Error(err.error || "Gagal update laporan");
+        }
+        created = await res.json();
       }
-    } catch (error) {
-      console.error('Error saving laporan:', error);
-      alert('Terjadi kesalahan saat menyimpan laporan');
+
+      // 2) if file present, upload using FormData to PUT endpoint (server has upload.single on PUT)
+      if (formData.file && created) {
+        const fd = new FormData();
+        fd.append("filePath", formData.file);
+        // other fields optional but harmless
+        fd.append("nomorLaporan", created.nomorLaporan);
+        const upRes = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${created.id}`, {
+          method: "PUT",
+          credentials: "include",
+          body: fd,
+        });
+        if (!upRes.ok) {
+          const txt = await upRes.text().catch(() => "unknown");
+          throw new Error("Upload file gagal: " + txt);
+        }
+        // updated record with filePath
+        created = await upRes.json();
+      }
+
+      toast.success(editingLaporan ? "Laporan diperbarui" : "Laporan dibuat");
+      await fetchLaporan();
+      await fetchPakets();
+      closeModal();
+      resetForm();
+
+      // open details of created/updated item
+      if (created) {
+        setSelectedData(created);
+        setViewDetailsOpen(true);
+      }
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      toast.error(err.message || "Terjadi kesalahan saat menyimpan laporan");
     } finally {
       setLoading(false);
     }
   };
 
-  const updatePaketStatus = async (paketId: string, status: string) => {
+  // --- change status helper (used from details modal) ---
+  const changeStatus = async (id: string, newStatus: LaporanItwasda["status"]) => {
     try {
-      const paket = pakets.find(p => p.id === paketId);
-      if (!paket) return;
-
-      await fetch(`${API_BASE_URL}/api/paket/${paketId}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...paket,
-          status,
-        }),
+      setLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
       });
-    } catch (error) {
-      console.error('Error updating paket status:', error);
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "unknown");
+        throw new Error("Gagal ubah status: " + txt);
+      }
+      const updated = await res.json();
+      toast.success("Status diperbarui: " + newStatus);
+      await fetchLaporan();
+      setSelectedData(updated);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal ubah status");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = (laporan: LaporanItwasda) => {
-    setEditingLaporan(laporan);
+  // --- edit / delete ---
+  const handleEdit = (lap: LaporanItwasda) => {
+    setEditingLaporan(lap);
     setFormData({
-      nomorLaporan: laporan.nomorLaporan,
-      paketId: laporan.paketId,
-      jenisLaporan: laporan.jenisLaporan,
-      deskripsi: laporan.deskripsi,
-      tingkatKualitasTemuan: laporan.tingkatKualitasTemuan,
-      auditor: laporan.auditor,
-      pic: laporan.pic,
+      nomorLaporan: lap.nomorLaporan,
+      paketId: lap.paketId,
+      jenisLaporan: lap.jenisLaporan,
+      deskripsi: lap.deskripsi,
+      tingkatKualitasTemuan: lap.tingkatKualitasTemuan,
+      auditor: lap.auditor,
+      pic: lap.pic,
+      file: null,
     });
-    setFormErrors({});
     openModal();
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus laporan ini?')) return;
-
-    setLoading(true);
+    if (!confirm("Yakin ingin menghapus laporan ini?")) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (response.ok) {
-        await fetchLaporan();
-        await fetchPakets();
-        alert('Laporan berhasil dihapus!');
-      } else {
-        const errorData = await response.json();
-        alert('Gagal menghapus laporan: ' + (errorData.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Error deleting laporan:', error);
-      alert('Terjadi kesalahan saat menghapus laporan');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [selectedLaporanId, setSelectedLaporanId] = useState<string>("");
-  const [uploadFormData, setUploadFormData] = useState({
-    file: null as File | null,
-  });
-
-  const handleUpload = (id: string) => {
-    setSelectedLaporanId(id);
-    setUploadModalOpen(true);
-  };
-
-  const handleFileUpload = async () => {
-    if (!uploadFormData.file) {
-      alert("Pilih file dokumen");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("filePath", uploadFormData.file);
-
-      const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${selectedLaporanId}`, {
-        method: "PUT",
+      setLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${id}`, {
+        method: "DELETE",
         credentials: "include",
-        body: formDataToSend,
       });
-
-      if (response.ok) {
-        alert("Dokumen berhasil diupload");
-        setUploadModalOpen(false);
-        setUploadFormData({ file: null });
-        fetchLaporan();
-      } else {
-        const errorData = await response.json();
-        alert("Gagal upload dokumen: " + (errorData.error || "Unknown error"));
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "unknown");
+        throw new Error("Gagal hapus: " + txt);
       }
-    } catch (error) {
-      console.error("Error uploading dokumen:", error);
-      alert("Terjadi kesalahan saat upload");
+      toast.success("Laporan dihapus");
+      await fetchLaporan();
+      setSelectedData(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menghapus laporan");
     } finally {
       setLoading(false);
     }
@@ -435,355 +302,196 @@ export default function Itwasda() {
       paketId: "",
       jenisLaporan: "",
       deskripsi: "",
-      tingkatKualitasTemuan: "",
+      tingkatKualitasTemuan: "" as any,
       auditor: "",
       pic: "",
+      file: null,
     });
-    setFormErrors({});
     setEditingLaporan(null);
   };
 
-  const openAddModal = () => {
-    if (eligiblePakets.length === 0) {
-      alert('Tidak ada paket yang eligible untuk laporan Itwasda. Paket harus berstatus "Pelaksanaan" atau "Dipublikasi" dan belum memiliki laporan.');
-      return;
-    }
-    resetForm();
-    openModal();
-  };
-
-  const filteredLaporan: LaporanItwasda[] = laporan.filter((l) => {
-    const matchFilter = filterStatus === "all" || l.status === filterStatus;
-    return matchFilter;
-  });
-
-  const getStatusColor = (status: LaporanItwasda["status"]) => {
-    switch (status) {
-      case "SELESAI":
-        return "success";
-      case "PROSES":
-        return "warning";
-      case "BARU":
-        return "info";
-      case "DITUNDA":
-        return "error";
-      default:
-        return "light";
-    }
-  };
-
-  const getKualitasTemuanColor = (kualitasTemuan: LaporanItwasda["tingkatKualitasTemuan"]) => {
-    switch (kualitasTemuan) {
-      case "KRITIS":
-        return "error";
-      case "TINGGI":
-        return "warning";
-      case "SEDANG":
-        return "info";
-      case "RENDAH":
-        return "success";
-      default:
-        return "light";
-    }
-  };
-
-  const jenisLaporanOptions = [
-    { value: "Inspeksi Teknis", label: "Inspeksi Teknis" },
-    { value: "Wawasan Audit", label: "Wawasan Audit" },
-    { value: "Supervisi", label: "Supervisi" },
-    { value: "Evaluasi", label: "Evaluasi" },
-    { value: "Monitoring", label: "Monitoring" },
-  ];
-
-  const keparahanOptions = [
-    { value: "RENDAH", label: "Rendah" },
-    { value: "SEDANG", label: "Sedang" },
-    { value: "TINGGI", label: "Tinggi" },
-    { value: "KRITIS", label: "Kritis" },
-  ];
-
-  const paketOptions = eligiblePakets.map(paket => ({
-    value: paket.id,
-    label: `${paket.kodePaket} - ${paket.namaPaket}`
-  }));
-
-  // Stats Cards
-  const stats = [
+  // --- UI: columns ---
+  const columns: ColumnDef<LaporanItwasda>[] = [
     {
-      label: "Total Laporan",
-      value: laporan.length,
-      color: "text-brand-500",
+      accessorKey: "nomorLaporan",
+      header: "No. Laporan",
+      cell: ({ row }) => <span className="font-medium">{row.original.nomorLaporan}</span>,
     },
     {
-      label: "Laporan Baru",
-      value: laporan.filter((l) => l.status === "BARU").length,
-      color: "text-blue-light-500",
+      accessorKey: "paket",
+      header: "Paket",
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium">{row.original.paket?.kodePaket}</p>
+          <p className="text-xs text-gray-500">{row.original.paket?.namaPaket}</p>
+        </div>
+      ),
+    },
+    { accessorKey: "jenisLaporan", header: "Jenis" },
+    {
+      accessorKey: "tingkatKualitasTemuan",
+      header: "Kualitas",
+      cell: ({ row }) => <Badge size="sm" color={getKualitasTemuanColor(row.original.tingkatKualitasTemuan)}>{row.original.tingkatKualitasTemuan}</Badge>,
     },
     {
-      label: "Dalam Proses",
-      value: laporan.filter((l) => l.status === "PROSES").length,
-      color: "text-warning-500",
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => <Badge size="sm" color={getStatusColor(row.original.status)}>{row.original.status}</Badge>,
     },
     {
-      label: "Selesai",
-      value: laporan.filter((l) => l.status === "SELESAI").length,
-      color: "text-success-500",
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original.id)}
+        />
+      ),
     },
   ];
+
+  // --- computed lists ---
+  const eligiblePakets = pakets.filter(p => (p.status === "ON_PROGRESS" || p.status === "PUBLISHED"));
+
+  const paketOptions = eligiblePakets.map(p => ({ value: p.id, label: `${p.kodePaket} - ${p.namaPaket}` }));
+
+  const filteredLaporan = laporan.filter(l => filterStatus === "all" || l.status === filterStatus);
+
+  // --- modal detail sections ---
+  const detailsSections = selectedData ? [
+    {
+      title: "Informasi Dasar",
+      fields: [
+        { label: "Nomor Laporan", value: selectedData.nomorLaporan },
+        { label: "Jenis Laporan", value: selectedData.jenisLaporan },
+        { label: "Auditor", value: selectedData.auditor },
+        { label: "PIC", value: selectedData.pic },
+        { label: "Tanggal", value: selectedData.tanggal ? new Date(selectedData.tanggal).toLocaleDateString("id-ID") : "-" },
+        { label: "Status", value: selectedData.status },
+        { label: "Deskripsi", value: selectedData.deskripsi || "-", fullWidth: true },
+      ],
+    }
+  ] : [];
 
   return (
     <>
-      <PageMeta
-        title="Itwasda | SIP-KPBJ"
-        description="Halaman Itwasda untuk Pengawasan dan Audit"
-      />
+      <PageMeta title="Itwasda | SIP-KPBJ" description="Itwasda - laporan & temuan" />
       <PageBreadcrumb pageTitle="Itwasda" />
 
       <div className="space-y-6">
-        {/* Info Alert */}
-        {eligiblePakets.length === 0 && (
-          <div className="rounded-lg border border-warning-300 bg-warning-50 p-4 dark:border-warning-800 dark:bg-warning-900/20">
-            <p className="text-sm text-warning-800 dark:text-warning-200">
-              ⚠️ Tidak ada paket yang eligible untuk laporan Itwasda. Paket harus berstatus "Pelaksanaan" atau "Dipublikasi" dan belum memiliki laporan.
-            </p>
-          </div>
-        )}
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
-            >
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {stat.label}
-              </p>
-              <h3 className={`mt-2 text-3xl font-bold ${stat.color}`}>
-                {stat.value}
-              </h3>
-            </div>
-          ))}
-        </div>
-
-        {/* Header Section */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-              Daftar Laporan Itwasda
-            </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Kelola laporan inspeksi teknis, wawasan audit, dan supervisi
-            </p>
+            <h2 className="text-xl font-semibold">Daftar Laporan Itwasda</h2>
+            <p className="text-sm text-gray-500 mt-1">Kelola laporan inspeksi dan temuan</p>
           </div>
-          <Button
-            size="md"
-            variant="primary"
-            startIcon={<PlusIcon />}
-            onClick={openAddModal}
-            disabled={loading || eligiblePakets.length === 0}
-          >
+          <Button size="md" variant="primary" startIcon={<PlusIcon />} onClick={() => { resetForm(); openModal(); }} disabled={eligiblePakets.length === 0}>
             Tambah Laporan
           </Button>
         </div>
 
-        {/* Filter */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex justify-end">
-            <select
-              className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="all">Semua Status</option>
-              <option value="BARU">Baru</option>
-              <option value="PROSES">Proses</option>
-              <option value="SELESAI">Selesai</option>
-              <option value="DITUNDA">Ditunda</option>
-            </select>
+        <div className="rounded-lg border p-4 mb-4">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2 items-center">
+              <label className="text-sm text-gray-500">Filter status</label>
+              <select className="h-10 rounded-md border px-3" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                <option value="all">Semua</option>
+                <option value="BARU">Baru</option>
+                <option value="PROSES">Proses</option>
+                <option value="SELESAI">Selesai</option>
+                <option value="DITUNDA">Ditunda</option>
+              </select>
+            </div>
+            <div className="text-sm text-gray-500">Eligible paket: {eligiblePakets.length}</div>
           </div>
         </div>
 
-        {/* Data Table */}
-        {loading ? (
-          <div className="p-6 text-center">Loading...</div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={filteredLaporan}
-            searchPlaceholder="Cari laporan..."
-          />
-        )}
+        <DataTable columns={columns} data={filteredLaporan} searchPlaceholder="Cari laporan..." loading={loading} />
       </div>
 
-      {/* Modal Form */}
-      <Modal
-        isOpen={isOpen}
-        onClose={closeModal}
-        size="2xl"
-        title={editingLaporan ? "" : ""}
-        showHeader={true}
-      >
-        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
-          <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingLaporan ? 'Edit Laporan Itwasda' : 'Tambah Laporan Itwasda'}
-          </h3>
+      {/* Form Modal */}
+      <Modal isOpen={isOpen} onClose={closeModal} size="2xl" title={editingLaporan ? "Edit Laporan Itwasda" : "Tambah Laporan Itwasda"} showHeader>
+        <div className="p-6 max-h-[80vh] overflow-y-auto space-y-4">
+          <Label>Nomor Laporan</Label>
+          <Input value={formData.nomorLaporan} onChange={(e) => setFormData({...formData, nomorLaporan: e.target.value})} placeholder="ITW-2025-001" />
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Nomor Laporan *</Label>
-                <Input
-                  type="text"
-                  value={formData.nomorLaporan}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nomorLaporan: e.target.value })
-                  }
-                  placeholder="ITW-2024-XXX"
-                  error={!!formErrors.nomorLaporan}
-                  hint={formErrors.nomorLaporan}
-                />
-              </div>
-              <div>
-                <Label>Paket *</Label>
-                <Select
-                  options={paketOptions}
-                  placeholder="Pilih paket"
-                  onChange={(value) =>
-                    setFormData({ ...formData, paketId: value })
-                  }
-                  defaultValue={formData.paketId}
-                />
-                {formErrors.paketId && (
-                  <p className="mt-1 text-xs text-error-500">{formErrors.paketId}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  Hanya paket eligible yang ditampilkan
-                </p>
-              </div>
-            </div>
+          <Label>Paket</Label>
+          <Select options={paketOptions} placeholder="Pilih paket (hanya paket eligible)" onChange={(v) => setFormData({...formData, paketId: v})} value={formData.paketId} />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Jenis Laporan *</Label>
-                <Select
-                  options={jenisLaporanOptions}
-                  placeholder="Pilih jenis"
-                  onChange={(value) =>
-                    setFormData({ ...formData, jenisLaporan: value })
-                  }
-                  defaultValue={formData.jenisLaporan}
-                />
-                {formErrors.jenisLaporan && (
-                  <p className="mt-1 text-xs text-error-500">{formErrors.jenisLaporan}</p>
-                )}
-              </div>
-              <div>
-                <Label>Tingkat Kualitas Temuan *</Label>
-                <Select
-                  options={keparahanOptions}
-                  placeholder="Pilih kualitas temuan"
-                  onChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      tingkatKualitasTemuan: value as LaporanItwasda["tingkatKualitasTemuan"],
-                    })
-                  }
-                  defaultValue={formData.tingkatKualitasTemuan}
-                />
-                {formErrors.tingkatKualitasTemuan && (
-                  <p className="mt-1 text-xs text-error-500">{formErrors.tingkatKualitasTemuan}</p>
-                )}
-              </div>
-            </div>
+          <Label>Jenis Laporan</Label>
+          <Select options={[
+            { value: "Inspeksi Teknis", label: "Inspeksi Teknis" },
+            { value: "Audit", label: "Audit" },
+            { value: "Supervisi", label: "Supervisi" },
+            { value: "Monitoring", label: "Monitoring" },
+          ]} onChange={(v) => setFormData({...formData, jenisLaporan: v})} value={formData.jenisLaporan} />
 
+          <Label>Tingkat Kualitas Temuan</Label>
+          <Select options={[
+            { value: "RENDAH", label: "Rendah" },
+            { value: "SEDANG", label: "Sedang" },
+            { value: "TINGGI", label: "Tinggi" },
+            { value: "KRITIS", label: "Kritis" },
+          ]} onChange={(v) => setFormData({...formData, tingkatKualitasTemuan: v as any})} value={formData.tingkatKualitasTemuan} />
+
+          <Label>Deskripsi</Label>
+          <TextArea rows={4} value={formData.deskripsi} onChange={(v) => setFormData({...formData, deskripsi: v})} />
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Deskripsi Laporan *</Label>
-              <TextArea
-                rows={4}
-                value={formData.deskripsi}
-                onChange={(value) =>
-                  setFormData({ ...formData, deskripsi: value })
-                }
-                placeholder="Jelaskan laporan inspeksi teknis secara detail..."
-                error={!!formErrors.deskripsi}
-                hint={formErrors.deskripsi}
-              />
+              <Label>Auditor</Label>
+              <Input value={formData.auditor} onChange={(e) => setFormData({...formData, auditor: e.target.value})} />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Auditor *</Label>
-                <Input
-                  type="text"
-                  value={formData.auditor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, auditor: e.target.value })
-                  }
-                  placeholder="Nama auditor"
-                  error={!!formErrors.auditor}
-                  hint={formErrors.auditor}
-                />
-              </div>
-              <div>
-                <Label>PIC (Person in Charge) *</Label>
-                <Input
-                  type="text"
-                  value={formData.pic}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pic: e.target.value })
-                  }
-                  placeholder="Nama penanggung jawab"
-                  error={!!formErrors.pic}
-                  hint={formErrors.pic}
-                />
-              </div>
+            <div>
+              <Label>PIC</Label>
+              <Input value={formData.pic} onChange={(e) => setFormData({...formData, pic: e.target.value})} />
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={closeModal} disabled={loading}>
-              Batal
-            </Button>
-            <Button size="sm" variant="primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Menyimpan...' : 'Simpan Laporan'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Upload Modal */}
-      <Modal
-        isOpen={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        size="md"
-        title="Upload Dokumen Laporan"
-        showHeader={true}
-      >
-        <div className="px-6 py-4 space-y-4">
           <div>
-            <Label>File Dokumen *</Label>
-            <input
-              type="file"
-              onChange={(e) => setUploadFormData({ file: e.target.files?.[0] || null })}
-              accept=".pdf,.doc,.docx,.xlsx,.csv,.jpg,.jpeg,.png"
-              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Format: PDF, DOC, DOCX, XLSX, CSV, JPG, PNG (Max 10MB)
-            </p>
+            <Label>Upload Dokumen (opsional — max 10MB)</Label>
+            <input type="file" accept=".pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png" onChange={(e) => {
+              const f = e.target.files?.[0] || null;
+              if (f && f.size > 10 * 1024 * 1024) { toast.error("Ukuran file maksimal 10MB"); return; }
+              setFormData({...formData, file: f});
+            }} className="w-full h-11 rounded-lg border px-3" />
+            {formData.file && <p className="text-xs mt-2 text-gray-500">✓ {formData.file.name} ({(formData.file.size/1024/1024).toFixed(2)} MB)</p>}
           </div>
 
-          <div className="flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={() => setUploadModalOpen(false)} disabled={loading}>
-              Batal
-            </Button>
-            <Button size="sm" variant="primary" onClick={handleFileUpload} disabled={loading}>
-              {loading ? 'Uploading...' : 'Upload'}
-            </Button>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => { closeModal(); resetForm(); }}>Batal</Button>
+            <Button variant="primary" onClick={handleSubmit} disabled={loading}>{loading ? "Menyimpan..." : "Simpan Laporan"}</Button>
           </div>
         </div>
       </Modal>
+
+      {/* Details Modal with preview + quick status actions */}
+      {selectedData && (
+        <DetailsModal isOpen={viewDetailsOpen} onClose={() => setViewDetailsOpen(false)} title={`Detail Itwasda - ${selectedData.nomorLaporan}`} sections={detailsSections}>
+          <div className="flex gap-2 justify-end mb-3">
+            {/* Quick status buttons */}
+            <Button size="sm" variant="outline" onClick={() => changeStatus(selectedData.id, "PROSES")}>Set PROSES</Button>
+            <Button size="sm" variant="primary" onClick={() => changeStatus(selectedData.id, "SELESAI")}>Set SELESAI</Button>
+          </div>
+
+          {selectedData.filePath ? (
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium mb-2">Dokumen Terlampir</h4>
+              {selectedData.filePath.endsWith(".pdf") ? (
+                <iframe src={selectedData.filePath} className="w-full h-[500px] border rounded-lg" title="Preview PDF"></iframe>
+              ) : selectedData.filePath.match(/\.(jpg|jpeg|png)$/i) ? (
+                <img src={selectedData.filePath} alt="Preview" className="w-full rounded-lg border" />
+              ) : (
+                <a href={selectedData.filePath} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Lihat / Unduh Dokumen</a>
+              )}
+            </div>
+          ) : (
+            <div className="border-t pt-4 mt-4 text-sm text-gray-500">
+              Tidak ada dokumen terlampir.
+            </div>
+          )}
+        </DetailsModal>
+      )}
     </>
   );
 }

@@ -3,7 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
+import { PlusIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
@@ -11,6 +11,9 @@ import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import { DataTable } from "../components/common/DataTable";
 import { useToast } from "../hooks/useToast";
+import { ActionButtons } from "../components/common/ActionButtons";
+import { DetailsModal } from "../components/common/DetailsModal";
+import toast from "react-hot-toast";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -47,6 +50,16 @@ export default function KonsultanPerencanaan() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
+  // details modal state injected
+  const [selectedData, setSelectedData] = useState<any | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
+  const handleViewDetails = (data: any) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
+
   const { success: showSuccessToast, error: showErrorToast } = useToast();
 
   // Fetch konsultan data from API
@@ -215,29 +228,47 @@ export default function KonsultanPerencanaan() {
   };
 
   const renderStars = (rating: number | null) => {
-    if (!rating) return <span className="text-gray-400">-</span>;
-    return (
-      <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, index) => (
-          <svg
-            key={index}
-            className={`size-4 ${
-              index < Math.floor(rating)
-                ? "fill-warning-500 text-warning-500"
-                : "fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600"
-            }`}
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-          </svg>
-        ))}
-        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-          {rating.toFixed(1)}
-        </span>
-      </div>
-    );
-  };
+  if (!rating) return <span className="text-gray-400">-</span>;
+
+  return (
+    <div className="flex items-center gap-1">
+      {[...Array(5)].map((_, index) => (
+        <svg
+          key={index}
+          className={`size-4 ${
+            index < Math.floor(rating)
+              ? "fill-warning-500 text-warning-500"
+              : "fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600"
+          }`}
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+        >
+          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+      ))}
+      <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
+        {rating.toFixed(1)}
+      </span>
+    </div>
+  );
+};
+    
+  // details sections injected
+  const detailsSections = [
+  {
+    title: "Informasi Dasar",
+    fields: [
+      { label: "Nama Vendor", value: selectedData?.namaVendor ?? "-" },
+      { label: "No. Kontrak", value: selectedData?.nomorIzin ?? "-" },
+      { label: "Spesialisasi", value: selectedData?.spesialisasi ?? "-" },
+      { label: "Jumlah Proyek", value: selectedData?.jumlahProyek ?? "-" },
+      { label: "Rating", value: selectedData?.rating ?? "-" },
+      { label: "Status", value: selectedData?.status ?? "-" },
+    ]
+  }
+];
+  const detailsDocuments = selectedData?.dokumen || (selectedData?.filePath ? [{ id: selectedData.id, namaDokumen: selectedData.namaDokumen || 'Dokumen Terkait', filePath: selectedData.filePath, uploadedAt: selectedData.updatedAt || selectedData.tanggalUpload || new Date().toISOString() }] : []);
+
 
   // Stats Cards
   const stats = [
@@ -345,7 +376,7 @@ export default function KonsultanPerencanaan() {
             },
             {
               accessorKey: "nomorIzin",
-              header: "No. Izin",
+              header: "No. Kontrak",
             },
             {
               accessorKey: "spesialisasi",
@@ -370,32 +401,13 @@ export default function KonsultanPerencanaan() {
                 </Badge>
               ),
             },
-            {
-              accessorKey: "actions",
-              header: "Aksi",
-              cell: ({ row }) => (
-                <div className="flex gap-2">
-                  <button
-                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                    onClick={() => handleUpload(row.original)}
-                  >
-                    Upload
-                  </button>
-                  <button
-                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                    onClick={() => handleEdit(row.original)}
-                  >
-                    <PencilIcon className="size-4" />
-                  </button>
-                  <button
-                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                    onClick={() => handleDelete(row.original)}
-                  >
-                    <TrashBinIcon className="size-5" />
-                  </button>
-                </div>
-              ),
-            },
+            { id: 'actions', header: 'Aksi', cell: ({ row }) => (
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original.id)}
+        />
+      ), },,
           ]}
           loading={loading}
           searchPlaceholder="Cari konsultan..."
@@ -432,7 +444,7 @@ export default function KonsultanPerencanaan() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Nomor Izin *</Label>
+                <Label>Nomor Kontrak *</Label>
                 <Input
                   type="text"
                   value={formData.nomorIzin}
@@ -567,6 +579,16 @@ export default function KonsultanPerencanaan() {
           </div>
         </div>
       </Modal>
+    
+      {selectedData && (
+        <DetailsModal
+          isOpen={viewDetailsOpen}
+          onClose={() => setViewDetailsOpen(false)}
+          title={`Detail Konsultan Perencanaan`}
+          sections={detailsSections}
+          documents={detailsDocuments}
+        />
+      )}
     </>
   );
 }

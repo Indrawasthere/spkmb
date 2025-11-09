@@ -3,18 +3,21 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, DownloadIcon, PencilIcon, TrashBinIcon } from "../icons";
+import { PlusIcon, DownloadIcon, PencilIcon, TrashBinIcon, EyeIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/Select";
+import { DetailsModal } from "../components/common/DetailsModal";
 import { useToast } from "../hooks/useToast";
 
 
 import { DataTable } from "../components/common/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { ActionButtons } from "../components/common/ActionButtons";
+import toast from "react-hot-toast";
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -49,11 +52,20 @@ interface DokumenFormData {
   file: File | null;
 }
 
+interface FormErrors {
+  namaDokumen?: string;
+  jenisDokumen?: string;
+  paketId?: string;
+  file?: string;
+}
+
 export default function DokumenArsip() {
   const [dokumens, setDokumens] = useState<Dokumen[]>([]);
   const [pakets, setPakets] = useState<Paket[]>([]);
   const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedData, setSelectedData] = useState<Dokumen | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [filterJenis, setFilterJenis] = useState("all");
   const [editingDokumen, setEditingDokumen] = useState<Dokumen | null>(null);
   const [deletingDokumen, setDeletingDokumen] = useState<Dokumen | null>(null);
@@ -65,7 +77,7 @@ export default function DokumenArsip() {
     paketId: "",
     file: null,
   });
-  const [formErrors, setFormErrors] = useState<Partial<DokumenFormData>>({});
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const { isOpen, openModal, closeModal } = useModal();
   const { success: showSuccessToast, error: showErrorToast } = useToast();
@@ -178,6 +190,11 @@ export default function DokumenArsip() {
     openModal();
   };
 
+  const handleViewDetails = (data: Dokumen) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
   const handleDelete = (dokumen: Dokumen) => {
     setDeletingDokumen(dokumen);
     setIsConfirmModalOpen(true);
@@ -263,7 +280,7 @@ export default function DokumenArsip() {
 
   const openAddModal = () => {
     if (eligiblePakets.length === 0) {
-      alert('Tidak ada paket yang eligible untuk upload dokumen. Paket harus berstatus "Pelaksanaan" atau "Dipublikasi".');
+      showErrorToast('Tidak ada paket yang eligible untuk upload dokumen. Paket harus berstatus "Pelaksanaan" atau "Dipublikasi".');
       return;
     }
     resetForm();
@@ -300,7 +317,24 @@ export default function DokumenArsip() {
       header: 'Paket',
       cell: ({ getValue }) => {
         const paket = getValue() as Dokumen['paket'];
-        return (
+        
+  // details sections injected
+    const detailsSections = selectedData
+    ? [
+    {
+      title: "Informasi Dasar",
+      fields: [
+        { label: "Nama Dokumen", value: selectedData.namaDokumen ?? "-" },
+        { label: "Kategori", value: selectedData.kategori ?? "-" },
+        { label: "Tanggal Upload", value: selectedData.tanggalUpload ? new Date(selectedData.tanggalUpload).toLocaleDateString("id-ID") : "-" },
+        { label: "Status", value: selectedData.status ?? "-" },
+        { label: "Deskripsi", value: selectedData.deskripsi || "-", fullWidth: true },
+        ],
+      },
+    ]: [];
+  const detailsDocuments = selectedData?.dokumen || (selectedData?.filePath ? [{ id: selectedData.id, namaDokumen: selectedData.namaDokumen || 'Dokumen Terkait', filePath: selectedData.filePath, uploadedAt: selectedData.updatedAt || selectedData.tanggalUpload || new Date().toISOString() }] : []);
+
+  return (
           <div>
             <p className="font-medium">{paket?.kodePaket}</p>
             <p className="text-xs text-gray-500">{paket?.namaPaket}</p>
@@ -327,6 +361,14 @@ export default function DokumenArsip() {
       header: 'Aksi',
       cell: ({ row }) => (
         <div className="flex gap-2">
+          <button
+            className="text-purple-600 hover:text-purple-900 dark:text-purple-400"
+            onClick={() => handleViewDetails(row.original)}
+            disabled={loading}
+            title="View Details"
+          >
+            <EyeIcon className="size-5" />
+          </button>
           <button
             className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
             onClick={() => handleDownload(row.original)}
@@ -590,6 +632,43 @@ export default function DokumenArsip() {
         cancelText="Batal"
         loading={loading}
       />
+
+      {/* Details Modal */}
+      {selectedData && (
+        <DetailsModal
+          isOpen={viewDetailsOpen}
+          onClose={() => setViewDetailsOpen(false)}
+          title="Detail Dokumen"
+          sections={[
+            {
+              title: "Informasi Dokumen",
+              fields: [
+                { label: "Nama Dokumen", value: selectedData.namaDokumen },
+                { label: "Jenis Dokumen", value: <Badge size="sm" color="info">{selectedData.jenisDokumen}</Badge> },
+                { label: "Ukuran File", value: formatFileSize(selectedData.fileSize) },
+                { label: "Tipe MIME", value: selectedData.mimeType },
+                { label: "Upload Oleh", value: selectedData.uploadedBy },
+                { label: "Tanggal Upload", value: new Date(selectedData.uploadedAt).toLocaleDateString('id-ID') },
+              ]
+            },
+            {
+              title: "Informasi Paket",
+              fields: [
+                { label: "Kode Paket", value: selectedData.paket?.kodePaket || '-' },
+                { label: "Nama Paket", value: selectedData.paket?.namaPaket || '-' },
+                { label: "Status Paket", value: selectedData.paket?.status || '-' },
+              ]
+            }
+          ]}
+          documents={[{
+            id: selectedData.id,
+            namaDokumen: selectedData.namaDokumen,
+            filePath: selectedData.filePath,
+            uploadedAt: selectedData.uploadedAt
+          }]}
+        />
+      )}
+
     </>
   );
 }
