@@ -20,6 +20,7 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: [
       'localhost',
+      'https://sipakat-bpj.com',
     '127.0.0.1',
     '.ngrok-free.app',
     '.asse.devtunnels.ms', // biar semua URL ngrok boleh

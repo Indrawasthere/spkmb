@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface AnggaranData {
   name: string;

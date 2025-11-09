@@ -8,7 +8,7 @@ import VendorPerformanceChart from "../../components/charts/VendorPerformanceCha
 import LaporanAnalyticsChart from "../../components/charts/LaporanAnalyticsChart";
 import { Assessment, TrendingUp, Business, Analytics } from "@mui/icons-material";
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface DashboardStats {
   paket: number;
