@@ -957,7 +957,12 @@ app.post('/api/vendor', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/vendor/:id', authenticateToken, async (req, res) => {
+app.put('/api/vendor/:id', authenticateToken, upload.fields([
+  { name: 'dokumenDED', maxCount: 1 },
+  { name: 'dokumenLaporan', maxCount: 1 },
+  { name: 'uploadDokumen', maxCount: 1 },
+  { name: 'uploadFoto', maxCount: 1 }
+]), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -981,39 +986,59 @@ app.put('/api/vendor/:id', authenticateToken, async (req, res) => {
       uploadFoto,
     } = req.body;
 
-    // Auto-set warningTemuan based on some logic, e.g., if there are related temuan
-    const relatedTemuan = await prisma.temuanBPKP.findMany({ where: { paketId } });
+    // Auto-set warningTemuan based on related temuan
+    const relatedTemuan = await prisma.temuanBPKP.findMany({ 
+      where: { paketId: paketId || undefined } 
+    });
     const warningTemuan = relatedTemuan.length > 0;
+
+    // Handle file uploads
+    // Handle file uploads
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const updateData: any = {
+      namaVendor,
+      jenisVendor,
+      nomorIzin,
+      spesialisasi,
+      kontak,
+      alamat,
+      status,
+      paketId,
+      noKontrak,
+      deskripsi,
+      lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : undefined,
+      namaProyek,
+      deskripsiLaporan,
+      deskripsiProgress,
+      warningTemuan,
+      updatedAt: new Date(),
+    };
+
+    // Add file paths if uploaded
+    if (files?.dokumenDED?.[0]) {
+      updateData.dokumenDED = `/uploads/${files.dokumenDED[0].filename}`;
+    }
+    if (files?.dokumenLaporan?.[0]) {
+      updateData.dokumenLaporan = `/uploads/${files.dokumenLaporan[0].filename}`;
+    }
+    if (files?.uploadDokumen?.[0]) {
+      updateData.uploadDokumen = `/uploads/${files.uploadDokumen[0].filename}`;
+    }
+    if (files?.uploadFoto?.[0]) {
+      updateData.uploadFoto = `/uploads/${files.uploadFoto[0].filename}`;
+    }
 
     const vendor = await prisma.vendor.update({
       where: { id },
-      data: {
-        namaVendor,
-        jenisVendor,
-        nomorIzin,
-        spesialisasi,
-        kontak,
-        alamat,
-        status,
-        paketId,
-        noKontrak,
-        deskripsi,
-        dokumenDED,
-        lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : undefined,
-        warningTemuan,
-        namaProyek,
-        deskripsiLaporan,
-        dokumenLaporan,
-        deskripsiProgress,
-        uploadDokumen,
-        uploadFoto,
-        updatedAt: new Date(),
-      },
+      data: updateData,
     });
+    
     res.json(vendor);
   } catch (error) {
+    console.error('Update vendor error:', error);
     res.status(500).json({ error: 'Failed to update vendor' });
   }
+
 });
 
 app.delete('/api/vendor/:id', authenticateToken, async (req, res) => {

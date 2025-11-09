@@ -386,7 +386,7 @@ export default function Itwasda() {
             <p className="text-sm text-gray-500 mt-1">Kelola laporan inspeksi dan temuan</p>
           </div>
           <Button size="md" variant="primary" startIcon={<PlusIcon />} onClick={() => { resetForm(); openModal(); }} disabled={eligiblePakets.length === 0}>
-            Tambah Laporan
+            Tambah Temuan
           </Button>
         </div>
 
@@ -410,7 +410,7 @@ export default function Itwasda() {
       </div>
 
       {/* Form Modal */}
-      <Modal isOpen={isOpen} onClose={closeModal} size="2xl" title={editingLaporan ? "Edit Laporan Itwasda" : "Tambah Laporan Itwasda"} showHeader>
+      <Modal isOpen={isOpen} onClose={closeModal} size="2xl" title={editingLaporan ? "Edit Laporan Itwasda" : "Tambah Temuan Itwasda"} showHeader>
         <div className="p-6 max-h-[80vh] overflow-y-auto space-y-4">
           <Label>Nomor Laporan</Label>
           <Input value={formData.nomorLaporan} onChange={(e) => setFormData({...formData, nomorLaporan: e.target.value})} placeholder="ITW-2025-001" />

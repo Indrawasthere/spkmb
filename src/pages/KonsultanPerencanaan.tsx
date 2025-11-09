@@ -28,6 +28,16 @@ interface Konsultan {
   status: "AKTIF" | "NON_AKTIF" | "SUSPENDED";
   kontak: string | null;
   alamat: string | null;
+  deskripsi?: string;
+  dokumenDED?: string;
+  lamaKontrak?: number;
+  namaProyek?: string;
+  deskripsiLaporan?: string;
+  dokumenLaporan?: string;
+  deskripsiProgress?: string;
+  uploadDokumen?: string;
+  uploadFoto?: string;
+  warningTemuan?: boolean;
   createdAt: string;
 }
 
@@ -41,6 +51,9 @@ export default function KonsultanPerencanaan() {
     spesialisasi: "",
     kontak: "",
     alamat: "",
+    deskripsi: "",
+    lamaKontrak: "",
+    dokumenDED: null as File | null,
   });
   const [editingKonsultan, setEditingKonsultan] = useState<Konsultan | null>(null);
   const [deletingKonsultan, setDeletingKonsultan] = useState<Konsultan | null>(null);
@@ -104,36 +117,32 @@ export default function KonsultanPerencanaan() {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      showErrorToast("Mohon lengkapi semua field yang wajib diisi");
-      return;
-    }
-
-    setIsSubmitting(true);
     try {
-      const konsultanData = {
-        namaVendor: formData.namaVendor,
-        jenisVendor: "KONSULTAN_PERENCANAAN" as const,
-        nomorIzin: formData.nomorIzin,
-        spesialisasi: formData.spesialisasi || null,
-        kontak: formData.kontak || null,
-        alamat: formData.alamat || null,
-      };
+      const fd = new FormData();
+      fd.append('namaVendor', formData.namaVendor);
+      fd.append('jenisVendor', "KONSULTAN_PERENCANAAN");
+      fd.append('nomorIzin', formData.nomorIzin);
+      fd.append('spesialisasi', formData.spesialisasi || "");
+      fd.append('kontak', formData.kontak || "");
+      fd.append('alamat', formData.alamat || "");
+      fd.append('deskripsi', formData.deskripsi || "");       
+      fd.append('lamaKontrak', formData.lamaKontrak || "0");  
+
+      if (formData.dokumenDED) {                             
+        fd.append('dokumenDED', formData.dokumenDED);
+      }
 
       let response;
       if (editingKonsultan) {
         response = await fetch(`${API_BASE_URL}/api/vendor/${editingKonsultan.id}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(konsultanData),
+          body: fd,  
         });
       } else {
         response = await fetch(`${API_BASE_URL}/api/vendor`, {
           method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(konsultanData),
+          credentials: 'include',// 👈 Ganti dari JSON ke FormData
         });
       }
 
@@ -141,16 +150,14 @@ export default function KonsultanPerencanaan() {
         await fetchKonsultan();
         closeModal();
         resetForm();
-        showSuccessToast(editingKonsultan ? 'Konsultan berhasil diperbarui!' : 'Konsultan berhasil ditambahkan!');
+        toast.success('Konsultan berhasil disimpan!');
       } else {
-        const errorData = await response.json();
-        showErrorToast('Gagal menyimpan konsultan: ' + (errorData.error || 'Terjadi kesalahan'));
+        const errorText = await response.text();
+        toast.error('Gagal menyimpan konsultan: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving konsultan:', error);
-      showErrorToast('Terjadi kesalahan saat menyimpan konsultan');
-    } finally {
-      setIsSubmitting(false);
+      toast.error('Terjadi kesalahan saat menyimpan konsultan');
     }
   };
 
@@ -162,6 +169,9 @@ export default function KonsultanPerencanaan() {
       spesialisasi: konsultan.spesialisasi || "",
       kontak: konsultan.kontak || "",
       alamat: konsultan.alamat || "",
+      deskripsi: "",
+      lamaKontrak: "",
+      dokumenDED: null,
     });
     openModal();
   };
@@ -210,6 +220,9 @@ export default function KonsultanPerencanaan() {
       spesialisasi: "",
       kontak: "",
       alamat: "",
+      deskripsi: "",
+      lamaKontrak: "",
+      dokumenDED: null,
     });
     setEditingKonsultan(null);
   };
@@ -263,11 +276,28 @@ export default function KonsultanPerencanaan() {
       { label: "Spesialisasi", value: selectedData?.spesialisasi ?? "-" },
       { label: "Jumlah Proyek", value: selectedData?.jumlahProyek ?? "-" },
       { label: "Rating", value: selectedData?.rating ?? "-" },
-      { label: "Status", value: selectedData?.status ?? "-" },
+      { 
+        label: "Status", 
+        value: (
+          <Badge color={getStatusColor(selectedData?.status)}>
+            {selectedData?.status}
+          </Badge>
+        ),
+      },
+      { 
+        label: "Warning Temuan", 
+        value: selectedData?.warningTemuan ? (
+          <Badge color="error">⚠️ Ada Temuan Audit</Badge>
+        ) : (
+          <Badge color="success">✓ Tidak Ada Temuan</Badge>
+        ),
+      },
+      { label: "Deskripsi", value: selectedData?.deskripsi ?? "-", fullWidth: true },
+      { label: "Lama Kontrak", value: selectedData?.lamaKontrak ? `${selectedData.lamaKontrak} hari` : "-" },
     ]
   }
 ];
-  const detailsDocuments = selectedData?.dokumen || (selectedData?.filePath ? [{ id: selectedData.id, namaDokumen: selectedData.namaDokumen || 'Dokumen Terkait', filePath: selectedData.filePath, uploadedAt: selectedData.updatedAt || selectedData.tanggalUpload || new Date().toISOString() }] : []);
+  const detailsDocuments = selectedData?.dokumen || (selectedData?.dokumenDED ? [{ id: selectedData.id + '-ded', namaDokumen: 'Dokumen DED', filePath: selectedData.dokumenDED, uploadedAt: selectedData.updatedAt || selectedData.tanggalUpload || new Date().toISOString() }] : []);
 
 
   // Stats Cards
@@ -401,6 +431,21 @@ export default function KonsultanPerencanaan() {
                 </Badge>
               ),
             },
+            {
+              accessorKey: "warningTemuan",
+              header: "Warning",
+              cell: ({ row }) => (
+                row.original.warningTemuan ? (
+                  <Badge size="sm" color="error">
+                    ⚠️ Ada Temuan
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="success">
+                    ✓ Aman
+                  </Badge>
+                )
+              ),
+            },
             { id: 'actions', header: 'Aksi', cell: ({ row }) => (
         <ActionButtons
           onView={() => handleViewDetails(row.original)}
@@ -482,7 +527,45 @@ export default function KonsultanPerencanaan() {
                 hint={errors.alamat}
               />
             </div>
-
+            <div>
+            <Label>Deskripsi</Label>
+            <textarea
+              className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              value={formData.deskripsi}
+              onChange={(e) =>
+                setFormData({ ...formData, deskripsi: e.target.value })
+              }
+              placeholder="Deskripsi pekerjaan konsultan..."
+            />
+          </div>
+          <div>
+            <Label>Lama Kontrak (hari)</Label>
+            <Input
+              type="number"
+              value={formData.lamaKontrak}
+              onChange={(e) =>
+                setFormData({ ...formData, lamaKontrak: e.target.value })
+              }
+              placeholder="90"
+            />
+          </div>
+            
+          <div>
+            <Label>Upload DED / Gambar</Label>
+            <input
+              type="file"
+              onChange={(e) =>
+                setFormData({ ...formData, dokumenDED: e.target.files?.[0] || null })
+              }
+              accept=".pdf,.dwg,.jpg,.jpeg,.png"
+              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+            />
+            {formData.dokumenDED && (
+              <p className="mt-1 text-xs text-green-600">
+                ✓ {formData.dokumenDED.name}
+              </p>
+            )}
+          </div>
             <div>
               <Label>Kontak</Label>
               <Input

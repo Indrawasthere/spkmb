@@ -27,6 +27,7 @@ import PengaturanAkses from "./pages/PengaturanAkses";
 import BantuanPanduan from "./pages/BantuanPanduan";
 import EditProfile from "./pages/EditProfile";
 import AccountSettings from "./pages/AccountSettings";
+import Pengaduan from "./pages/Pengaduan";
 
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="profile" element={<UserProfiles />} />
             <Route path="edit-profile" element={<EditProfile />} />
             <Route path="account-settings" element={<AccountSettings />} />
+            <Route path="pengaduan" element={<Pengaduan />} />
           </Route>
 
           {/* Auth Layout */}

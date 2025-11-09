@@ -88,6 +88,11 @@ const navItems: NavItem[] = [
     name: "Bantuan & Panduan",
     path: "/bantuan-panduan",
   },
+  { 
+    icon: <HorizontaLDots />,
+    name: "Pengaduan",
+    path: "/pengaduan",
+  }
 ];
 
 const othersItems: NavItem[] = [];

@@ -26,6 +26,16 @@ interface Kontraktor {
   status: "AKTIF" | "NON_AKTIF" | "SUSPENDED";
   kontak: string | null;
   alamat: string | null;
+  deskripsi?: string;
+  dokumenDED?: string;
+  lamaKontrak?: number;
+  namaProyek?: string;
+  deskripsiLaporan?: string;
+  dokumenLaporan?: string;
+  deskripsiProgress?: string;
+  uploadDokumen?: string;
+  uploadFoto?: string;
+  warningTemuan?: boolean;
   createdAt: string;
 }
 
@@ -39,6 +49,10 @@ export default function Konstruksi() {
     spesialisasi: "",
     kontak: "",
     alamat: "",
+    namaProyek: "",
+    deskripsiProgress: "",
+    uploadDokumen: null as File | null,
+    uploadFoto: null as File | null,
   });
   const [editingKontraktor, setEditingKontraktor] = useState<Kontraktor | null>(null);
 
@@ -76,45 +90,50 @@ export default function Konstruksi() {
   };
 
   const handleSubmit = async () => {
-    try {
-      const kontraktorData = {
-        namaVendor: formData.namaVendor,
-        jenisVendor: "KONSTRUKSI" as const,
-        nomorIzin: formData.nomorIzin,
-        spesialisasi: formData.spesialisasi || null,
-        kontak: formData.kontak || null,
-        alamat: formData.alamat || null,
-      };
+  try {
+    const fd = new FormData();
+    fd.append('namaVendor', formData.namaVendor);
+    fd.append('jenisVendor', "KONSTRUKSI");
+    fd.append('nomorIzin', formData.nomorIzin);
+    fd.append('spesialisasi', formData.spesialisasi || "");
+    fd.append('kontak', formData.kontak || "");
+    fd.append('alamat', formData.alamat || "");
+    fd.append('namaProyek', formData.namaProyek || "");        
+    fd.append('deskripsiProgress', formData.deskripsiProgress || "");  
+    
+    if (formData.uploadDokumen) {                               
+      fd.append('uploadDokumen', formData.uploadDokumen);
+    }
+    if (formData.uploadFoto) {                                  
+      fd.append('uploadFoto', formData.uploadFoto);
+    }
 
-      let response;
-      if (editingKontraktor) {
-        response = await fetch(`${API_BASE_URL}/api/vendor/${editingKontraktor.id}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(kontraktorData),
-        });
-      } else {
-        response = await fetch(`${API_BASE_URL}/api/vendor`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(kontraktorData),
-        });
-      }
+    let response;
+    if (editingKontraktor) {
+      response = await fetch(`${API_BASE_URL}/api/vendor/${editingKontraktor.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        body: fd,
+      });
+    } else {
+      response = await fetch(`${API_BASE_URL}/api/vendor`, {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      });
+    }
 
-      if (response.ok) {
-        await fetchKontraktor();
-        closeModal();
-        resetForm();
-        toast.error('Kontraktor berhasil disimpan!');
-      } else {
-        const errorText = await response.text();
-        toast.error('Gagal menyimpan kontraktor: ' + errorText);
-      }
-    } catch (error) {
-      console.error('Error saving kontraktor:', error);
-      toast.error('Terjadi kesalahan saat menyimpan kontraktor');
+    if (response.ok) {
+      await fetchKontraktor();
+      closeModal();
+      resetForm();
+      toast.success('Kontraktor berhasil disimpan!');
+    } else {
+      toast.error('Gagal menyimpan kontraktor');
+    }
+  } catch (error) {
+    console.error('Error saving kontraktor:', error);
+    toast.error('Terjadi kesalahan');
     }
   };
 
@@ -126,6 +145,10 @@ export default function Konstruksi() {
       spesialisasi: kontraktor.spesialisasi || "",
       kontak: kontraktor.kontak || "",
       alamat: kontraktor.alamat || "",
+      namaProyek: kontraktor.namaProyek || "",
+      deskripsiProgress: kontraktor.deskripsiProgress || "",
+      uploadDokumen: null,
+      uploadFoto: null,
     });
     openModal();
   };
@@ -163,6 +186,10 @@ export default function Konstruksi() {
       spesialisasi: "",
       kontak: "",
       alamat: "",
+      namaProyek: "",
+      deskripsiProgress: "",
+      uploadDokumen: null,
+      uploadFoto: null,
     });
     setEditingKontraktor(null);
   };
@@ -217,21 +244,21 @@ export default function Konstruksi() {
     ]
   : [];
 
-  const detailsDocuments =
-    selectedData?.dokumen ||
-    (selectedData?.filePath
-      ? [
-          {
-            id: selectedData.id,
-            namaDokumen: selectedData.namaDokumen || "Dokumen Terkait",
-            filePath: selectedData.filePath,
-            uploadedAt:
-              selectedData.updatedAt ||
-              selectedData.tanggalUpload ||
-              new Date().toISOString(),
-          },
-        ]
-  : []);
+  const detailsDocuments = [
+  ...(selectedData?.dokumen || []),
+  ...(selectedData?.uploadDokumen ? [{
+    id: selectedData.id + '-jaminan',
+    namaDokumen: 'Dokumen Jaminan',
+    filePath: selectedData.uploadDokumen,
+    uploadedAt: selectedData.updatedAt || new Date().toISOString(),
+  }] : []),
+  ...(selectedData?.uploadFoto ? [{
+    id: selectedData.id + '-foto',
+    namaDokumen: 'Foto Progress',
+    filePath: selectedData.uploadFoto,
+    uploadedAt: selectedData.updatedAt || new Date().toISOString(),
+  }] : []),
+];
 
 
   // Stats Cards
@@ -383,6 +410,21 @@ export default function Konstruksi() {
               ),
             },
             {
+              accessorKey: "warningTemuan",
+              header: "Warning",
+              cell: ({ row }) => (
+                row.original.warningTemuan ? (
+                  <Badge size="sm" color="error">
+                    ⚠️ Ada Temuan
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="success">
+                    ✓ Aman
+                  </Badge>
+                )
+              ),
+            },
+            {
               header: "Aksi",
               accessorKey: "actions",
               cell: ({ row }) => (
@@ -460,6 +502,66 @@ export default function Konstruksi() {
                 placeholder="Kota/Kabupaten"
               />
             </div>
+            <div>
+            <Label>Nama Proyek</Label>
+            <Input
+              type="text"
+              value={formData.namaProyek}
+              onChange={(e) =>
+                setFormData({ ...formData, namaProyek: e.target.value })
+              }
+              placeholder="Nama proyek konstruksi"
+            />
+          </div>
+
+          <div>
+            <Label>Deskripsi Laporan Progress</Label>
+            <textarea
+              className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              value={formData.deskripsiProgress}
+              onChange={(e) =>
+                setFormData({ ...formData, deskripsiProgress: e.target.value })
+              }
+              placeholder="Laporan progress mingguan, bulanan, akhir..."
+            />
+          </div>
+            
+          <div>
+            <Label>Upload Dokumen Jaminan</Label>
+            <p className="text-xs text-gray-500 mb-2">
+              (Jaminan Uang Muka, Pelaksanaan, Pemeliharaan)
+            </p>
+            <input
+              type="file"
+              onChange={(e) =>
+                setFormData({ ...formData, uploadDokumen: e.target.files?.[0] || null })
+              }
+              accept=".pdf,.doc,.docx"
+              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+            />
+            {formData.uploadDokumen && (
+              <p className="mt-1 text-xs text-green-600">
+                ✓ {formData.uploadDokumen.name}
+              </p>
+            )}
+          </div>
+          
+          <div>
+            <Label>Upload Foto Progress</Label>
+            <input
+              type="file"
+              onChange={(e) =>
+                setFormData({ ...formData, uploadFoto: e.target.files?.[0] || null })
+              }
+              accept=".jpg,.jpeg,.png"
+              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+            />
+            {formData.uploadFoto && (
+              <p className="mt-1 text-xs text-green-600">
+                ✓ {formData.uploadFoto.name}
+              </p>
+            )}
+          </div>
 
             <div>
               <Label>Kontak</Label>
