@@ -12,9 +12,11 @@ import Select from "../components/form/Select";
 import { useAuth } from "../context/AuthContext";
 import { DataTable } from "../components/common/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { ActionButtons } from "../components/common/ActionButtons";
 import { DetailsModal } from "../components/common/DetailsModal";
-import { Download } from "lucide-react";
+import { FolderOpen, CheckCircle2, AlertTriangle } from "lucide-react";
+import { StatsCard } from "../components/common/StatsCard";
 import toast from "react-hot-toast";
 
 interface Paket {
@@ -42,12 +44,16 @@ export default function ManajemenPaket() {
   const [loading, setLoading] = useState(false);
   const [selectedPaket, setSelectedPaket] = useState<Paket | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [editingPaket, setEditingPaket] = useState<Paket | null>(null);
+  const [deletingPaket, setDeletingPaket] = useState<Paket | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
-  // === FILTERING STATE - Centralized ===
+  // === Filters ===
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [jenisFilter, setJenisFilter] = useState("ALL");
 
+  // === Form Data ===
   const [formData, setFormData] = useState({
     kodePaket: "",
     kodeRUP: "",
@@ -64,11 +70,9 @@ export default function ManajemenPaket() {
   const [uploadedFiles, setUploadedFiles] = useState<{ [key: string]: File }>(
     {}
   );
-  const [editingPaket, setEditingPaket] = useState<Paket | null>(null);
-
   const { isOpen, openModal, closeModal } = useModal();
 
-  // Auto-calculate lamaProyek
+  // === Auto Hitung Lama Proyek ===
   useEffect(() => {
     if (formData.tanggalMulai && formData.tanggalSelesai) {
       const start = new Date(formData.tanggalMulai);
@@ -85,40 +89,72 @@ export default function ManajemenPaket() {
     fetchPakets();
   }, []);
 
-  // === COMPUTED FILTERED DATA - useMemo untuk performance ===
+  const fetchPakets = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/paket`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPakets(data);
+      } else {
+        toast.error("Gagal memuat data paket");
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan saat memuat paket");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // === Format Currency ===
+  const handleCurrencyInput = (value: string) => {
+    const numericValue = value.replace(/\D/g, "");
+    const formatted = new Intl.NumberFormat("id-ID").format(
+      Number(numericValue || 0)
+    );
+    setFormData((prev) => ({
+      ...prev,
+      nilaiPaket: formatted ? `Rp ${formatted}` : "",
+    }));
+  };
+
   const filteredPakets = useMemo(() => {
     return pakets.filter((paket) => {
-      // Search filter
       const matchSearch =
         searchQuery === "" ||
         paket.namaPaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
         paket.kodePaket.toLowerCase().includes(searchQuery.toLowerCase());
-
-      // Status filter
-      const matchStatus = statusFilter === "ALL" || paket.status === statusFilter;
-
-      // Jenis filter
-      const matchJenis = jenisFilter === "ALL" || paket.jenisPaket === jenisFilter;
-
+      const matchStatus =
+        statusFilter === "ALL" || paket.status === statusFilter;
+      const matchJenis =
+        jenisFilter === "ALL" || paket.jenisPaket === jenisFilter;
       return matchSearch && matchStatus && matchJenis;
     });
   }, [pakets, searchQuery, statusFilter, jenisFilter]);
 
-  const fetchPakets = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/paket`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPakets(data);
-      }
-    } catch (error) {
-      toast.error("Gagal memuat data paket");
-    } finally {
-      setLoading(false);
-    }
+  // === Status Formatting ===
+  const getStatusColor = (status: Paket["status"]) => {
+    const colors = {
+      DRAFT: "light",
+      PUBLISHED: "info",
+      ON_PROGRESS: "warning",
+      COMPLETED: "success",
+      CANCELLED: "error",
+    };
+    return colors[status] || "light";
+  };
+
+  const getStatusLabel = (status: Paket["status"]) => {
+    const labels = {
+      DRAFT: "Perencanaan",
+      PUBLISHED: "Dipublikasi",
+      ON_PROGRESS: "Proses",
+      COMPLETED: "Selesai",
+      CANCELLED: "Batal",
+    };
+    return labels[status] || status;
   };
 
   const handleViewDetails = (paket: Paket) => {
@@ -133,33 +169,50 @@ export default function ManajemenPaket() {
       kodeRUP: paket.kodeRUP || "",
       namaPaket: paket.namaPaket,
       jenisPaket: paket.jenisPaket,
-      nilaiPaket: paket.nilaiPaket.toString(),
+      nilaiPaket: `Rp ${paket.nilaiPaket.toLocaleString("id-ID")}`,
       metodePengadaan: paket.metodePengadaan,
       status: paket.status,
       tanggalMulai: paket.tanggalMulai?.split("T")[0] || "",
       tanggalSelesai: paket.tanggalSelesai?.split("T")[0] || "",
       lamaProyek: paket.lamaProyek?.toString() || "",
     });
-    setUploadedFiles({});
     openModal();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin ingin menghapus paket ini?")) return;
+  const handleDelete = (paket: Paket) => {
+    setDeletingPaket(paket);
+    setIsConfirmModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!deletingPaket) return;
+
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/paket/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/dokumen/${deletingPaket.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
       if (response.ok) {
-        toast.success("Paket berhasil dihapus!");
-        fetchPakets();
+        await fetchPakets();
+        toast.success("Dokumen berhasil dihapus!");
       } else {
-        toast.error("Gagal menghapus paket");
+        const errorData = await response.json();
+        toast.error(
+          "Gagal menghapus dokumen: " + (errorData.error || "Unknown error")
+        );
       }
-    } catch {
-      toast.error("Terjadi kesalahan");
+    } catch (error) {
+      console.error("Error deleting dokumen:", error);
+      toast.error("Terjadi kesalahan saat menghapus dokumen");
+    } finally {
+      setLoading(false);
+      setIsConfirmModalOpen(false);
+      setDeletingPaket(null);
     }
   };
 
@@ -261,77 +314,24 @@ export default function ManajemenPaket() {
     setEditingPaket(null);
   };
 
-  const getStatusColor = (status: Paket["status"]) => {
-    const colors = {
-      DRAFT: "light",
-      PUBLISHED: "info",
-      ON_PROGRESS: "warning",
-      COMPLETED: "success",
-      CANCELLED: "error",
-    };
-    return colors[status] || "light";
-  };
-
-  const getStatusLabel = (status: Paket["status"]) => {
-    const labels = {
-      DRAFT: "Perencanaan",
-      PUBLISHED: "Dipublikasi",
-      ON_PROGRESS: "Proses",
-      COMPLETED: "Selesai",
-      CANCELLED: "Batal",
-    };
-    return labels[status] || status;
-  };
-
+  // === Table Columns ===
   const columns: ColumnDef<Paket>[] = [
-    {
-      accessorKey: "kodePaket",
-      header: () => <span className="font-semibold">Kode Paket</span>,
-      cell: ({ row }) => (
-        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-          {row.original.kodePaket}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "namaPaket",
-      header: () => <span className="font-semibold">Nama Paket</span>,
-      cell: ({ row }) => (
-        <span className="text-sm text-gray-700 dark:text-gray-300">
-          {row.original.namaPaket}
-        </span>
-      ),
-    },
+    { accessorKey: "kodePaket", header: "Kode Paket" },
+    { accessorKey: "namaPaket", header: "Nama Paket" },
     {
       accessorKey: "nilaiPaket",
-      header: () => <span className="font-semibold">Nilai Paket</span>,
+      header: "Nilai Paket",
       cell: ({ row }) => (
-        <span className="text-sm font-medium text-green-700 dark:text-green-400">
+        <span className="font-medium text-green-600 dark:text-green-400">
           Rp {row.original.nilaiPaket.toLocaleString("id-ID")}
         </span>
       ),
     },
-    {
-      accessorKey: "jenisPaket",
-      header: () => <span className="font-semibold">Jenis</span>,
-      cell: ({ row }) => (
-        <span className="text-sm text-gray-700 dark:text-gray-300">
-          {row.original.jenisPaket}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "metodePengadaan",
-      header: () => <span className="font-semibold">Metode</span>,
-      cell: ({ row }) => (
-        <span className="text-sm text-gray-700 dark:text-gray-300">
-          {row.original.metodePengadaan}
-        </span>
-      ),
-    },
+    { accessorKey: "jenisPaket", header: "Jenis Paket" },
+    { accessorKey: "metodePengadaan", header: "Metode" },
     {
       accessorKey: "status",
-      header: () => <span className="font-semibold">Status</span>,
+      header: "Status",
       cell: ({ row }) => (
         <Badge size="sm" color={getStatusColor(row.original.status)}>
           {getStatusLabel(row.original.status)}
@@ -340,13 +340,12 @@ export default function ManajemenPaket() {
     },
     {
       id: "actions",
-      header: () => <span className="font-semibold">Aksi</span>,
+      header: "Aksi",
       cell: ({ row }) => (
         <ActionButtons
           onView={() => handleViewDetails(row.original)}
           onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original.id)}
-          canDelete={user?.role === "ADMIN"}
+          onDelete={() => handleDelete(row.original)}
         />
       ),
     },
@@ -381,19 +380,19 @@ export default function ManajemenPaket() {
           fields: [
             {
               label: "Tanggal Mulai",
-              value: selectedPaket.tanggalMulai
-                ? new Date(selectedPaket.tanggalMulai).toLocaleDateString(
-                    "id-ID"
-                  )
-                : "-",
+              value:
+                selectedPaket.tanggalMulai &&
+                new Date(selectedPaket.tanggalMulai).toLocaleDateString(
+                  "id-ID"
+                ),
             },
             {
               label: "Tanggal Selesai",
-              value: selectedPaket.tanggalSelesai
-                ? new Date(selectedPaket.tanggalSelesai).toLocaleDateString(
-                    "id-ID"
-                  )
-                : "-",
+              value:
+                selectedPaket.tanggalSelesai &&
+                new Date(selectedPaket.tanggalSelesai).toLocaleDateString(
+                  "id-ID"
+                ),
             },
             {
               label: "Lama Proyek",
@@ -405,6 +404,11 @@ export default function ManajemenPaket() {
         },
       ]
     : [];
+
+  // === Stats Data ===
+  const totalNilai = pakets.reduce((sum, p) => sum + p.nilaiPaket, 0);
+  const totalSelesai = pakets.filter((p) => p.status === "COMPLETED").length;
+  const totalProgress = pakets.filter((p) => p.status === "ON_PROGRESS").length;
 
   const dokumenTypes = [
     "KAK/RAB",
@@ -419,15 +423,49 @@ export default function ManajemenPaket() {
 
   return (
     <>
-      <PageMeta title="SIPAKAT-PBJ - Manajemen Paket" />
+      <PageMeta 
+        title="SIPAKAT-PBJ - Manajemen Paket"
+        description="Kelola dan manajemen paket" />
       <PageBreadcrumb pageTitle="Manajemen Paket" />
-
       <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <StatsCard
+            title="Total Paket"
+            value={pakets.length}
+            subtitle="Jumlah seluruh paket pengadaan"
+            icon={FolderOpen}
+            fromColor="from-indigo-500"
+            toColor="to-indigo-700"
+          />
+          <StatsCard
+            title="Nilai Total"
+            value={`Rp ${pakets
+              .reduce((a, b) => a + b.nilaiPaket, 0)
+              .toLocaleString("id-ID")}`}
+            subtitle="Total nilai proyek aktif"
+            icon={CheckCircle2}
+            fromColor="from-green-500"
+            toColor="to-green-700"
+          />
+          <StatsCard
+            title="Paket Selesai"
+            value={pakets.filter((p) => p.status === "COMPLETED").length}
+            subtitle={`Progres aktif: ${
+              pakets.filter((p) => p.status === "ON_PROGRESS").length
+            }`}
+            icon={AlertTriangle}
+            fromColor="from-yellow-400"
+            toColor="to-yellow-600"
+          />
+        </div>
+      
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Daftar Paket Pengadaan</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+              Daftar Paket Pengadaan
+              </h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Kelola semua paket pengadaan dan dokumennya
             </p>
           </div>
@@ -444,12 +482,12 @@ export default function ManajemenPaket() {
           </Button>
         </div>
 
-        {/* === CUSTOM FILTER BAR - Jangan hapus ini, ini pattern yang benar === */}
+
+        {/* Filters + Data Table */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Status Filter */}
             <select
-              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M4%206l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.5rem_center] bg-no-repeat"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -474,18 +512,6 @@ export default function ManajemenPaket() {
               <option value="Jasa Lainnya">Jasa Lainnya</option>
             </select>
           </div>
-
-          {/* Export Button */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              startIcon={<Download className="w-4 h-4" />}
-              onClick={() => toast.success("Export berhasil disimpan!")}
-            >
-              Export
-            </Button>
-          </div>
         </div>
 
         {/* DataTable - PASS CONTROLLED SEARCH & FILTERED DATA */}
@@ -493,15 +519,15 @@ export default function ManajemenPaket() {
           columns={columns}
           data={filteredPakets}
           loading={loading}
-          enableExport={false}
+          enableExport={true}
           enableColumnVisibility={false}
           pageSize={10}
           searchPlaceholder="Cari nama atau kode paket..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           fixedHeight="750px"
-          fixedWidth="1200px"
-          minVisibleRows={10} 
+          fixedWidth="1300px"
+          minVisibleRows={10}
         />
       </div>
 
@@ -511,8 +537,12 @@ export default function ManajemenPaket() {
         onClose={closeModal}
         size="2xl"
         title={editingPaket ? "Edit Paket" : "Tambah Paket"}
+        showHeader={false}
       >
-        <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
+          <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+            {editingPaket ? "Edit Paket" : "Upload Paket"}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Kode Paket *</Label>
@@ -536,9 +566,8 @@ export default function ManajemenPaket() {
               <Label>Nilai Paket *</Label>
               <Input
                 value={formData.nilaiPaket}
-                onChange={(e) =>
-                  setFormData({ ...formData, nilaiPaket: e.target.value })
-                }
+                onChange={(e) => handleCurrencyInput(e.target.value)}
+                placeholder="Rp 0"
               />
             </div>
           </div>
@@ -677,6 +706,17 @@ export default function ManajemenPaket() {
         </div>
       </Modal>
 
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Hapus Dokumen"
+        message={`Apakah Anda yakin ingin menghapus dokumen "${deletingPaket?.namaPaket}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        loading={loading}
+      />
+
       {/* Detail Modal */}
       {selectedPaket && (
         <DetailsModal
@@ -684,47 +724,15 @@ export default function ManajemenPaket() {
           onClose={() => setViewDetailsOpen(false)}
           title="Detail Paket"
           sections={detailsSections}
-        >
-          {selectedPaket.dokumen && selectedPaket.dokumen.length > 0 && (
-            <div className="border-t mt-4 pt-4">
-              <h4 className="font-medium mb-2">Dokumen Terlampir</h4>
-              <ul className="space-y-2">
-                {selectedPaket.dokumen.map((doc) => (
-                  <li
-                    key={doc.id}
-                    className="flex justify-between items-center p-2 rounded-md border hover:bg-gray-50 dark:hover:bg-gray-800/30"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">
-                        {doc.jenisDokumen || "Dokumen"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {doc.namaDokumen || doc.filePath}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <a
-                        href={doc.filePath}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        Preview
-                      </a>
-                      <a
-                        href={doc.filePath}
-                        download
-                        className="text-green-600 hover:underline text-sm"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </DetailsModal>
+          documents={
+            selectedPaket.dokumen?.map((doc) => ({
+              id: doc.id,
+              namaDokumen: doc.namaDokumen,
+              filePath: doc.filePath,
+              uploadedAt: doc.uploadedAt,
+            })) || []
+          }
+        />
       )}
     </>
   );

@@ -7,7 +7,7 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ToastContainer } from "./components/ui/Toast";
+import { ToastProvider } from "./components/common/ToastProvider";
 
 import ManajemenPaket from "./pages/ManajemenPaket";
 import DokumenArsip from "./pages/DokumenArsip";
@@ -39,7 +39,7 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
 export default function App() {
   return (
     <AuthProvider>
-      <ToastContainer />
+      <ToastProvider />
       <Router>
         <ScrollToTop />
         <Routes>

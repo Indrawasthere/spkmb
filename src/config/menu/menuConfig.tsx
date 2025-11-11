@@ -48,21 +48,27 @@ export const menuItems: MenuItem[] = [
     submenu: [
       {
         name: "Itwasda",
-        path: "/itwasda",
+        path: "/pengawasan-audit/itwasda",
         icon: ShieldCheckIcon,
         roles: ["ADMIN", "AUDITOR"],
       },
       {
         name: "BPKP",
-        path: "/bpkp",
+        path: "/pengawasan-audit/bpkp",
         icon: ExclamationTriangleIcon,
         roles: ["ADMIN", "AUDITOR"],
       },
       {
         name: "PUPR",
-        path: "/pupr",
+        path: "/pengawasan-audit/pupr",
         icon: BuildingOfficeIcon,
         roles: ["ADMIN", "MANAGER", "USER"],
+      },
+      {
+        name: "Data PPK",
+        path: "/pengawasan-audit/ppk-data",
+        icon: DocumentTextIcon,
+        roles: ["ADMIN", "MANAGER"], // Keuangan
       },
     ],
   },
@@ -74,19 +80,19 @@ export const menuItems: MenuItem[] = [
     submenu: [
       {
         name: "Konsultan Perencanaan",
-        path: "/konsultan-perencanaan",
+        path: "/vendor-penyedia/konsultan-perencanaan",
         icon: BriefcaseIcon,
         roles: ["ADMIN", "MANAGER", "USER"],
       },
       {
         name: "Konsultan Pengawas",
-        path: "/konsultan-pengawas",
+        path: "/vendor-penyedia/konsultan-pengawas",
         icon: BriefcaseIcon,
         roles: ["ADMIN", "MANAGER", "USER"],
       },
       {
         name: "Konstruksi",
-        path: "/konstruksi",
+        path: "/vendor-penyedia/konstruksi",
         icon: BriefcaseIcon,
         roles: ["ADMIN", "MANAGER", "USER"],
       },
@@ -99,14 +105,8 @@ export const menuItems: MenuItem[] = [
     roles: ["ADMIN", "MANAGER"], // Biro SDM
   },
   {
-    name: "Data PPK",
-    path: "/ppk-data",
-    icon: DocumentTextIcon,
-    roles: ["ADMIN", "MANAGER"], // Keuangan
-  },
-  {
     name: "Monitoring & Evaluasi",
-    path: "/monitoring",
+    path: "/monitoring-evaluasi",
     icon: ChartBarIcon,
     roles: ["ADMIN", "AUDITOR", "MANAGER"],
   },

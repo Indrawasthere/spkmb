@@ -42,7 +42,7 @@ export default function NotFound() {
 
           {/* Image */}
           <img
-            src="/images/error/404.png"
+            src="/images/error/404.svg"
             alt="404 Illustration"
             className="w-full max-w-[450px] drop-shadow-lg animate-fadeIn"
           />

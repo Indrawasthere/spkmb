@@ -1,15 +1,10 @@
-import { toast } from '../components/ui/Toast';
+import toast from "react-hot-toast";
 
 export const useToast = () => {
-  const success = (message: string) => toast.success(message);
-  const error = (message: string) => toast.error(message);
-  const warning = (message: string) => toast(message, { icon: '⚠️' });
-  const info = (message: string) => toast(message);
-
   return {
-    success,
-    error,
-    warning,
-    info,
+    success: (msg: string) => toast.success(msg),
+    error: (msg: string) => toast.error(msg),
+    info: (msg: string) => toast(msg, { icon: "ℹ️" }),
+    loading: (msg: string) => toast.loading(msg),
   };
 };

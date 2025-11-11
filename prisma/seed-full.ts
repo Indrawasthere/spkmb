@@ -26,36 +26,36 @@ async function main() {
 
   const users = await Promise.all([
     prisma.user.upsert({
-      where: { email: 'ppk.dinas@pupr.go.id' },
+      where: { email: 'ppk@sip.com' },
       update: {},
       create: {
-        email: 'ppk.dinas@pupr.go.id',
-        firstName: 'Ir. Ahmad',
-        lastName: 'Fauzi, M.T.',
+        email: 'ppk@sip.com',
+        firstName: 'PPK',
+        lastName: 'SIPAKAT',
         password: await bcrypt.hash('ppk123', 10),
         role: 'MANAGER',
         isActive: true,
       },
     }),
     prisma.user.upsert({
-      where: { email: 'auditor.itwasda@pemda.go.id' },
+      where: { email: 'auditor@sip.com' },
       update: {},
       create: {
-        email: 'auditor.itwasda@pemda.go.id',
-        firstName: 'Dr. Siti',
-        lastName: 'Nurhaliza, S.E., M.Ak.',
+        email: 'auditor@sip.com',
+        firstName: 'Auditor',
+        lastName: 'SIPAKAT',
         password: await bcrypt.hash('auditor123', 10),
         role: 'AUDITOR',
         isActive: true,
       },
     }),
     prisma.user.upsert({
-      where: { email: 'manager.keuangan@pemda.go.id' },
+      where: { email: 'manager@sip.com' },
       update: {},
       create: {
-        email: 'manager.keuangan@pemda.go.id',
-        firstName: 'Budi',
-        lastName: 'Santoso, S.E.',
+        email: 'manager@sip.com',
+        firstName: 'Manager',
+        lastName: 'SIPAKAT',
         password: await bcrypt.hash('manager123', 10),
         role: 'MANAGER',
         isActive: true,
@@ -779,9 +779,9 @@ async function main() {
   console.log(`- Monitoring: ${monitoringData.length} monitoring`);
   console.log('\n🔐 Demo credentials:');
   console.log(' - Admin: admin@sip.com / sip345');
-  console.log(' - PPK: ppk.dinas@pupr.go.id / ppk123');
-  console.log(' - Auditor: auditor.itwasda@pemda.go.id / auditor123');
-  console.log(' - Manager: manager.keuangan@pemda.go.id / manager123');
+  console.log(' - PPK: ppk@sip.com / ppk123');
+  console.log(' - Auditor: auditor@sip.com / auditor123');
+  console.log(' - Manager: manager@sip.com / manager123');
 }
 
 main()

@@ -1,103 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
-
-// Assume these icons are imported from an icon library
-import {
-  BoxCubeIcon,
-  ChevronDownIcon,
-  DocsIcon,
-  GridIcon,
-  GroupIcon,
-  HorizontaLDots,
-  InfoIcon,
-  LockIcon,
-  PieChartIcon,
-  TableIcon,
-  TaskIcon,
-  UserCircleIcon,
-} from "../icons";
+import { getMenuByRole } from "../config/menu";
+import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
+
+// Icon buat tanda dropdown
+import { ChevronDownIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
+
+type SubItem = {
+  name: string;
+  path: string;
+  icon?: any;
+  new?: boolean;
+  pro?: boolean;
+};
 
 type NavItem = {
   name: string;
-  icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
+  icon: any;
+  subItems?: SubItem[];
 };
-
-const navItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    path: "/",
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "Manajemen Paket",
-    path: "/manajemen-paket",
-  },
-  {
-    icon: <DocsIcon />,
-    name: "Dokumen & Arsip",
-    path: "/dokumen-arsip",
-  },
-  {
-    icon: <TaskIcon />,
-    name: "Pengawasan & Audit",
-    path: "/pengawasan-audit",
-    subItems: [
-      { name: "Itwasda", path: "/pengawasan-audit/itwasda" },
-      { name: "BPKP", path: "/pengawasan-audit/bpkp" },
-      { name: "PUPR", path: "/pengawasan-audit/pupr" },
-      { name: "PPK", path: "/pengawasan-audit/ppk" },
-    ],
-  },
-  {
-    icon: <GroupIcon />,
-    name: "Vendor / Penyedia",
-    path: "/vendor-penyedia",
-    subItems: [
-      { name: "Konsultan Perencanaan", path: "/vendor-penyedia/konsultan-perencanaan" },
-      { name: "Konsultan Pengawas", path: "/vendor-penyedia/konsultan-pengawas" },
-      { name: "Konstruksi", path: "/vendor-penyedia/konstruksi" },
-    ],
-  },
-
-  {
-    icon: <UserCircleIcon />,
-    name: "Kompetensi PPK",
-    path: "/kompetensi-ppk",
-  },
-  {
-    icon: <PieChartIcon />,
-    name: "Monitoring & Evaluasi",
-    path: "/monitoring-evaluasi",
-  },
-  {
-    icon: <TableIcon />,
-    name: "Laporan & Analisis",
-    path: "/laporan-analisis",
-  },
-  {
-    icon: <LockIcon />,
-    name: "Pengaturan & Hak Akses",
-    path: "/pengaturan-akses",
-  },
-  {
-    icon: <InfoIcon />,
-    name: "Bantuan & Panduan",
-    path: "/bantuan-panduan",
-  },
-  { 
-    icon: <HorizontaLDots />,
-    name: "Pengaduan",
-    path: "/pengaduan",
-  }
-];
 
 const othersItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
+  const { user } = useAuth();
+  const role = user?.role ?? "USER";
+  const navItems = getMenuByRole(role);
+
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
 
@@ -105,12 +36,10 @@ const AppSidebar: React.FC = () => {
     type: "main" | "others";
     index: number;
   } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
-  );
+
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // const isActive = (path: string) => location.pathname === path;
   const isActive = useCallback(
     (path: string) => location.pathname === path,
     [location.pathname]
@@ -138,7 +67,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [location, isActive]);
+  }, [location, isActive, navItems]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -182,14 +111,8 @@ const AppSidebar: React.FC = () => {
                   : "lg:justify-start"
               }`}
             >
-              <span
-                className={`menu-item-icon-size  ${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }`}
-              >
-                {nav.icon}
+              <span className="menu-item-icon-size">
+                {nav.icon && <nav.icon className="w-5 h-5" />}
               </span>
               {(isExpanded || isHovered || isMobileOpen) && (
                 <span className="menu-item-text">{nav.name}</span>
@@ -213,14 +136,8 @@ const AppSidebar: React.FC = () => {
                   isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
                 }`}
               >
-                <span
-                  className={`menu-item-icon-size ${
-                    isActive(nav.path)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }`}
-                >
-                  {nav.icon}
+                <span className="menu-item-icon-size">
+                  {nav.icon && <nav.icon className="w-5 h-5" />}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
                   <span className="menu-item-text">{nav.name}</span>
@@ -228,6 +145,7 @@ const AppSidebar: React.FC = () => {
               </Link>
             )
           )}
+
           {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
             <div
               ref={(el) => {
@@ -252,7 +170,12 @@ const AppSidebar: React.FC = () => {
                           : "menu-dropdown-item-inactive"
                       }`}
                     >
-                      {subItem.name}
+                      <div className="flex items-center gap-2">
+                        {subItem.icon && (
+                          <subItem.icon className="w-4 h-4 opacity-70" />
+                        )}
+                        <span>{subItem.name}</span>
+                      </div>
                       <span className="flex items-center gap-1 ml-auto">
                         {subItem.new && (
                           <span
@@ -303,6 +226,7 @@ const AppSidebar: React.FC = () => {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Logo */}
       <div
         className={`py-8 flex ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
@@ -328,6 +252,8 @@ const AppSidebar: React.FC = () => {
           )}
         </Link>
       </div>
+
+      {/* Menu */}
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
@@ -342,18 +268,16 @@ const AppSidebar: React.FC = () => {
                 {isExpanded || isHovered || isMobileOpen ? (
                   "Menu"
                 ) : (
-                  <HorizontaLDots className="size-6" />
+                  <EllipsisHorizontalIcon className="w-6 h-6" />
                 )}
               </h2>
               {renderMenuItems(navItems, "main")}
             </div>
-
           </div>
         </nav>
-        {/* {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null} */}
       </div>
 
-      {/* Button to external link */}
+      {/* Tombol eksternal */}
       <div className="mt-auto mb-4">
         <a
           href="https://spse.inaproc.id/polri"

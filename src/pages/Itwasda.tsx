@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
@@ -11,10 +11,16 @@ import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
 import { DataTable } from "../components/common/DataTable";
+import { StatsCard } from "../components/common/StatsCard";
 import { ColumnDef } from "@tanstack/react-table";
 import { ActionButtons } from "../components/common/ActionButtons";
 import { DetailsModal } from "../components/common/DetailsModal";
 import toast from "react-hot-toast";
+import {
+  DocumentChartBarIcon as DocumentIcon,
+  FolderIcon,
+  ChartBarIcon,
+} from "@heroicons/react/24/outline";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -47,11 +53,15 @@ export default function Itwasda() {
   const [pakets, setPakets] = useState<Paket[]>([]);
   const [selectedData, setSelectedData] = useState<LaporanItwasda | null>(null);
   const [loading, setLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState("all");
   const [editingLaporan, setEditingLaporan] = useState<LaporanItwasda | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
+  // === FILTERING STATE - Centralized ===
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterKualitas, setFilterKualitas] = useState("all");
 
   const [formData, setFormData] = useState({
     nomorLaporan: "",
@@ -131,9 +141,6 @@ export default function Itwasda() {
   };
 
   // --- submit (create or update) ---
-  // Strategy:
-  // - For compatibility with your server: POST JSON to create (server expects JSON on POST).
-  // - If user attached a file, immediately call PUT /api/laporan-itwasda/:id with FormData (server supports upload on PUT).
   const handleSubmit = async () => {
     // basic validation
     if (!formData.nomorLaporan || !formData.paketId || !formData.jenisLaporan) {
@@ -169,7 +176,7 @@ export default function Itwasda() {
         }
         created = await res.json();
       } else {
-        // update base non-file fields via PUT with JSON first (server PUT supports upload but also works with JSON)
+        // update base non-file fields via PUT with JSON first
         const payload = {
           nomorLaporan: formData.nomorLaporan.trim(),
           paketId: formData.paketId,
@@ -193,11 +200,10 @@ export default function Itwasda() {
         created = await res.json();
       }
 
-      // 2) if file present, upload using FormData to PUT endpoint (server has upload.single on PUT)
+      // 2) if file present, upload using FormData to PUT endpoint
       if (formData.file && created) {
         const fd = new FormData();
         fd.append("filePath", formData.file);
-        // other fields optional but harmless
         fd.append("nomorLaporan", created.nomorLaporan);
         const upRes = await fetch(`${API_BASE_URL}/api/laporan-itwasda/${created.id}`, {
           method: "PUT",
@@ -208,7 +214,6 @@ export default function Itwasda() {
           const txt = await upRes.text().catch(() => "unknown");
           throw new Error("Upload file gagal: " + txt);
         }
-        // updated record with filePath
         created = await upRes.json();
       }
 
@@ -353,10 +358,27 @@ export default function Itwasda() {
 
   // --- computed lists ---
   const eligiblePakets = pakets.filter(p => (p.status === "ON_PROGRESS" || p.status === "PUBLISHED"));
-
   const paketOptions = eligiblePakets.map(p => ({ value: p.id, label: `${p.kodePaket} - ${p.namaPaket}` }));
 
-  const filteredLaporan = laporan.filter(l => filterStatus === "all" || l.status === filterStatus);
+  // === COMPUTED FILTERED DATA - useMemo untuk performance ===
+  const filteredLaporan = useMemo(() => {
+    return laporan.filter((l) => {
+      // Search filter
+      const matchSearch =
+        searchQuery === "" ||
+        l.nomorLaporan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.jenisLaporan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.auditor.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Status filter
+      const matchStatus = filterStatus === "all" || l.status === filterStatus;
+
+      // Kualitas filter
+      const matchKualitas = filterKualitas === "all" || l.tingkatKualitasTemuan === filterKualitas;
+
+      return matchSearch && matchStatus && matchKualitas;
+    });
+  }, [laporan, searchQuery, filterStatus, filterKualitas]);
 
   // --- modal detail sections ---
   const detailsSections = selectedData ? [
@@ -380,33 +402,108 @@ export default function Itwasda() {
       <PageBreadcrumb pageTitle="Itwasda" />
 
       <div className="space-y-6">
+        {/* Info Alert */}
+        {eligiblePakets.length === 0 && (
+          <div className="rounded-lg border border-info-300 bg-info-50 p-4 dark:border-info-800 dark:bg-info-900/20">
+            <p className="text-sm text-info-800 dark:text-info-200">
+              ℹ️ Tidak ada paket eligible. Temuan Itwasda hanya bisa dibuat untuk paket dengan status "Pelaksanaan" atau "Dipublikasi".
+            </p>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatsCard
+            title="Total Temuan"
+            value={laporan.length}
+            subtitle="Dokumen tersimpan di sistem"
+            icon={DocumentIcon}
+            fromColor="from-blue-500"
+            toColor="to-blue-600"
+          />
+          <StatsCard
+            title="Temuan Kualitas Tinggi"
+            value={laporan.filter(l => l.tingkatKualitasTemuan === "TINGGI").length}
+            subtitle="Total laporan dengan tingkat kualitas tinggi"
+            icon={ChartBarIcon}
+            fromColor="from-red-500"
+            toColor="to-orange-600"
+          />
+          <StatsCard
+            title="Paket Eligible"
+            value={eligiblePakets.length}
+            subtitle="Paket dengan temuan"
+            icon={FolderIcon}
+            fromColor="from-purple-500"
+            toColor="to-purple-600"
+          />
+        </div>
+
+        {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold">Daftar Laporan Itwasda</h2>
-            <p className="text-sm text-gray-500 mt-1">Kelola laporan inspeksi dan temuan</p>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">Daftar Laporan Itwasda</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Kelola laporan inspeksi dan temuan</p>
           </div>
-          <Button size="md" variant="primary" startIcon={<PlusIcon />} onClick={() => { resetForm(); openModal(); }} disabled={eligiblePakets.length === 0}>
+          <Button 
+            size="md" 
+            variant="primary" 
+            startIcon={<PlusIcon />} 
+            onClick={() => { resetForm(); openModal(); }} 
+            disabled={eligiblePakets.length === 0}
+          >
             Tambah Temuan
           </Button>
         </div>
 
-        <div className="rounded-lg border p-4 mb-4">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2 items-center">
-              <label className="text-sm text-gray-500">Filter status</label>
-              <select className="h-10 rounded-md border px-3" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                <option value="all">Semua</option>
-                <option value="BARU">Baru</option>
-                <option value="PROSES">Proses</option>
-                <option value="SELESAI">Selesai</option>
-                <option value="DITUNDA">Ditunda</option>
-              </select>
-            </div>
-            <div className="text-sm text-gray-500">Eligible paket: {eligiblePakets.length}</div>
+        {/* === CUSTOM FILTER BAR === */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Status Filter */}
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M4%206l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.5rem_center] bg-no-repeat"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="BARU">Baru</option>
+              <option value="PROSES">Proses</option>
+              <option value="SELESAI">Selesai</option>
+              <option value="DITUNDA">Ditunda</option>
+            </select>
+
+            {/* Kualitas Filter */}
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M4%206l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.5rem_center] bg-no-repeat"
+              value={filterKualitas}
+              onChange={(e) => setFilterKualitas(e.target.value)}
+            >
+              <option value="all">Semua Kualitas</option>
+              <option value="RENDAH">Rendah</option>
+              <option value="SEDANG">Sedang</option>
+              <option value="TINGGI">Tinggi</option>
+              <option value="KRITIS">Kritis</option>
+            </select>
           </div>
+
+          <div className="text-sm text-gray-500">Eligible paket: {eligiblePakets.length}</div>
         </div>
 
-        <DataTable columns={columns} data={filteredLaporan} searchPlaceholder="Cari laporan..." loading={loading} />
+        {/* DataTable - WITH FIXED DIMENSIONS */}
+        <DataTable 
+          columns={columns} 
+          data={filteredLaporan} 
+          searchPlaceholder="Cari laporan..." 
+          loading={loading}
+          enableExport={true}
+          enableColumnVisibility={false}
+          pageSize={10}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          fixedHeight="750px"
+          fixedWidth="1300px"
+          minVisibleRows={10}
+        />
       </div>
 
       {/* Form Modal */}
