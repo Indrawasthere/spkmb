@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
@@ -14,7 +14,7 @@ import { DataTable } from "../components/common/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { ActionButtons } from "../components/common/ActionButtons";
 import { DetailsModal } from "../components/common/DetailsModal";
-import { Search, Download } from "lucide-react";
+import { Download } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Paket {
@@ -39,11 +39,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 export default function ManajemenPaket() {
   const { user } = useAuth();
   const [pakets, setPakets] = useState<Paket[]>([]);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(false);
   const [selectedPaket, setSelectedPaket] = useState<Paket | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
+  // === FILTERING STATE - Centralized ===
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [jenisFilter, setJenisFilter] = useState("ALL");
 
   const [formData, setFormData] = useState({
     kodePaket: "",
@@ -78,12 +81,29 @@ export default function ManajemenPaket() {
     }
   }, [formData.tanggalMulai, formData.tanggalSelesai]);
 
-  const [filteredPakets, setFilteredPakets] = useState<Paket[]>([]);
-
   useEffect(() => {
     fetchPakets();
   }, []);
-  
+
+  // === COMPUTED FILTERED DATA - useMemo untuk performance ===
+  const filteredPakets = useMemo(() => {
+    return pakets.filter((paket) => {
+      // Search filter
+      const matchSearch =
+        searchQuery === "" ||
+        paket.namaPaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        paket.kodePaket.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Status filter
+      const matchStatus = statusFilter === "ALL" || paket.status === statusFilter;
+
+      // Jenis filter
+      const matchJenis = jenisFilter === "ALL" || paket.jenisPaket === jenisFilter;
+
+      return matchSearch && matchStatus && matchJenis;
+    });
+  }, [pakets, searchQuery, statusFilter, jenisFilter]);
+
   const fetchPakets = async () => {
     setLoading(true);
     try {
@@ -93,7 +113,6 @@ export default function ManajemenPaket() {
       if (response.ok) {
         const data = await response.json();
         setPakets(data);
-        setFilteredPakets(data); // simpan versi penuh untuk filter
       }
     } catch (error) {
       toast.error("Gagal memuat data paket");
@@ -144,7 +163,7 @@ export default function ManajemenPaket() {
     }
   };
 
-  // === Submit Paket + Upload Dokumen (Revisi Aman) ===
+  // === Submit Paket + Upload Dokumen ===
   const handleSubmit = async () => {
     if (!formData.kodePaket || !formData.namaPaket || !formData.nilaiPaket) {
       toast.error("Lengkapi semua field yang wajib");
@@ -153,7 +172,6 @@ export default function ManajemenPaket() {
 
     setLoading(true);
     try {
-      // 1️⃣ Buat / update paket dulu
       const payload = {
         kodePaket: formData.kodePaket,
         namaPaket: formData.namaPaket,
@@ -185,13 +203,11 @@ export default function ManajemenPaket() {
       const paketData = await paketRes.json();
       const paketId = paketData.id;
 
-      // 2️⃣ Upload file dokumen (kalau ada)
+      // Upload dokumen
       if (Object.keys(uploadedFiles).length > 0) {
         toast.loading("Mengupload dokumen...", { id: "uploadDocs" });
 
         for (const [jenisDokumen, file] of Object.entries(uploadedFiles)) {
-          console.log(`📤 Upload dokumen: ${jenisDokumen}`, file.name);
-
           const fd = new FormData();
           fd.append("file", file);
           fd.append("paketId", paketId);
@@ -204,19 +220,14 @@ export default function ManajemenPaket() {
           });
 
           if (!res.ok) {
-            const errMsg = await res.text();
-            console.error("Upload gagal:", errMsg);
             toast.error(`Gagal upload dokumen: ${jenisDokumen}`);
-            continue; // lanjut ke file berikutnya biar gak gagal total
+            continue;
           }
         }
 
         toast.success("Semua dokumen berhasil diupload!", { id: "uploadDocs" });
-      } else {
-        console.log("ℹ️ Tidak ada file yang diupload untuk paket ini.");
       }
 
-      // 3️⃣ Refresh data dan UI
       await fetchPakets();
       closeModal();
       resetForm();
@@ -227,7 +238,6 @@ export default function ManajemenPaket() {
           : "Paket berhasil ditambahkan!"
       );
     } catch (err: any) {
-      console.error("❌ Error saat submit paket:", err);
       toast.error(err.message || "Terjadi kesalahan saat menyimpan paket");
     } finally {
       setLoading(false);
@@ -342,30 +352,6 @@ export default function ManajemenPaket() {
     },
   ];
 
-  const filters = [
-    {
-      key: "status",
-      label: "Status",
-      options: [
-        { value: "DRAFT", label: "Perencanaan" },
-        { value: "PUBLISHED", label: "Dipublikasi" },
-        { value: "ON_PROGRESS", label: "Proses" },
-        { value: "COMPLETED", label: "Selesai" },
-        { value: "CANCELLED", label: "Batal" },
-      ],
-    },
-    {
-      key: "jenisPaket",
-      label: "Jenis Paket",
-      options: [
-        { value: "Konstruksi", label: "Konstruksi" },
-        { value: "Barang", label: "Barang" },
-        { value: "Jasa Konsultansi", label: "Jasa Konsultansi" },
-        { value: "Jasa Lainnya", label: "Jasa Lainnya" },
-      ],
-    },
-  ];
-
   const detailsSections = selectedPaket
     ? [
         {
@@ -458,37 +444,14 @@ export default function ManajemenPaket() {
           </Button>
         </div>
 
-        {/* Search + Filter + Export bar */}
+        {/* === CUSTOM FILTER BAR - Jangan hapus ini, ini pattern yang benar === */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Search input */}
-            <div className="relative w-full md:w-64">
-              <Search className="w-4 h-4 text-gray-400 absolute top-1/2 left-3 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Cari nama atau kode paket..."
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-9 pr-3 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                onChange={(e) => {
-                  const val = e.target.value.toLowerCase();
-                  setFilteredPakets(
-                    pakets.filter(
-                      (p) =>
-                        p.namaPaket.toLowerCase().includes(val) ||
-                        p.kodePaket.toLowerCase().includes(val)
-                    )
-                  );
-                }}
-              />
-            </div>
-
-            {/* Dropdown filter */}
+            {/* Status Filter */}
             <select
-              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-8 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 appearance-none bg-[url('data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' fill=\\'none\\' stroke=\\'%23666\\' stroke-width=\\'2\\'><path d=\\'M4 6l4 4 4-4\\'/></svg>')] bg-[right_0.75rem_center] bg-no-repeat"
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "ALL") setFilteredPakets(pakets);
-                else setFilteredPakets(pakets.filter((p) => p.status === val));
-              }}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M4%206l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.5rem_center] bg-no-repeat"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="ALL">Semua Status</option>
               <option value="DRAFT">Perencanaan</option>
@@ -497,9 +460,22 @@ export default function ManajemenPaket() {
               <option value="COMPLETED">Selesai</option>
               <option value="CANCELLED">Batal</option>
             </select>
+
+            {/* Jenis Filter */}
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M4%206l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.5rem_center] bg-no-repeat"
+              value={jenisFilter}
+              onChange={(e) => setJenisFilter(e.target.value)}
+            >
+              <option value="ALL">Semua Jenis</option>
+              <option value="Konstruksi">Konstruksi</option>
+              <option value="Barang">Barang</option>
+              <option value="Jasa Konsultansi">Jasa Konsultansi</option>
+              <option value="Jasa Lainnya">Jasa Lainnya</option>
+            </select>
           </div>
 
-          {/* Export */}
+          {/* Export Button */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -512,15 +488,20 @@ export default function ManajemenPaket() {
           </div>
         </div>
 
-        {/* DataTable */}
+        {/* DataTable - PASS CONTROLLED SEARCH & FILTERED DATA */}
         <DataTable
           columns={columns}
           data={filteredPakets}
           loading={loading}
-          enableExport
+          enableExport={false}
           enableColumnVisibility={false}
           pageSize={10}
-          exportFileName="daftar_paket"
+          searchPlaceholder="Cari nama atau kode paket..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          fixedHeight="750px"
+          fixedWidth="1200px"
+          minVisibleRows={10} 
         />
       </div>
 
