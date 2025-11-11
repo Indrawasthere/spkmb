@@ -266,7 +266,7 @@ export default function LaporanAnalisis() {
   return (
     <>
       <PageMeta
-        title="Laporan & Analisis - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Laporan & Analisis"
         description="Hasilkan dan unduh laporan pengadaan"
       />
       <PageBreadcrumb pageTitle="Laporan & Analisis" />

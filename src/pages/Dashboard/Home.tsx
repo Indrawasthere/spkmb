@@ -113,8 +113,8 @@ export default function Home() {
   return (
     <>
       <PageMeta
-        title="Dashboard - SIP-KPBJ"
-        description="Dashboard overview and key metrics"
+        title="SIPAKAT-PBJ - Dashboard"
+        description="Pengawasan dan Pengendalian Pengadaan Barang/Jasa"
       />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white/90">

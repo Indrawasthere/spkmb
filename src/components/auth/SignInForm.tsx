@@ -31,7 +31,7 @@ export default function SignInForm() {
               />
             </Link>
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
-              Selamat datang di Website Sipakat-BPJ
+              Selamat datang di Website Sipakat-PBJ
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Silakan masukkan email dan password Anda untuk masuk
@@ -151,6 +151,9 @@ export default function SignInForm() {
             </div>
           </div>
         </div>
+        <p className="flex justify-center text-gray-600 dark:text-gray-400">
+          &copy; {new Date().getFullYear()} - Dacode
+        </p>
       </div>
   );
 }

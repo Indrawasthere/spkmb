@@ -300,7 +300,7 @@ export default function PUPR() {
 
   return (
     <>
-      <PageMeta title="PUPR | SIP-KPBJ" description="Catatan Proyek PUPR" />
+      <PageMeta title="SIPAKAT-PBJ - PUPR" description="Catatan Proyek PUPR" />
       <PageBreadcrumb pageTitle="PUPR" />
 
       <div className="space-y-6">

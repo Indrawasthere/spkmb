@@ -385,7 +385,7 @@ export default function PPKData() {
     <>
       <Toaster position="top-right" />
       <PageMeta
-        title="Data PPK - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Data PPK"
         description="Kelola data PPK dan realisasi anggaran proyek"
       />
       <PageBreadcrumb pageTitle="Data PPK" />

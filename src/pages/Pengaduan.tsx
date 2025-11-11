@@ -228,7 +228,7 @@ export default function Pengaduan() {
 
   return (
     <>
-      <PageMeta title="Pengaduan Masyarakat | SIP-KPBJ" />
+      <PageMeta title="SIPAKAT-PBJ - Pengaduan Masyarakat" />
       <PageBreadcrumb pageTitle="Pengaduan Masyarakat" />
 
       <div className="space-y-6">

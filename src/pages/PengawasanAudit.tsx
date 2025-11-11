@@ -285,7 +285,7 @@ export default function PengawasanAudit() {
   return (
     <>
       <PageMeta
-        title="Pengawasan & Audit - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Pengawasan & Audit"
         description="Kelola temuan audit dan tindak lanjut"
       />
       <PageBreadcrumb pageTitle="Pengawasan & Audit" />

@@ -287,7 +287,7 @@ export default function VendorPenyedia() {
   return (
     <>
       <PageMeta
-        title="Vendor/Penyedia - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Vendor / Penyedia"
         description="Kelola database vendor dan penyedia jasa"
       />
       <PageBreadcrumb pageTitle="Vendor / Penyedia" />

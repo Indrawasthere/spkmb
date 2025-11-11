@@ -354,7 +354,7 @@ export default function KonsultanPengawas() {
   return (
     <>
       <PageMeta
-        title="Konsultan Pengawas | SIP-KPBJ"
+        title="SIPAKAT-PBJ - Konsultan Pengawas"
         description="Halaman Konsultan Pengawas untuk Vendor Penyedia"
       />
       <PageBreadcrumb pageTitle="Konsultan Pengawas" />

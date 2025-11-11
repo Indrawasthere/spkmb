@@ -364,7 +364,7 @@ export default function ManajemenPaket() {
 
   return (
     <>
-      <PageMeta title="Manajemen Paket - Sistem Pengawasan" />
+      <PageMeta title="SIPAKAT-PBJ - Manajemen Paket" />
       <PageBreadcrumb pageTitle="Manajemen Paket" />
 
       <div className="space-y-6">

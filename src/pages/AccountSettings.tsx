@@ -5,7 +5,7 @@ export default function AccountSettings() {
   return (
     <>
       <PageMeta
-        title="Account Settings | SIP-KPBJ"
+        title="SIPAKAT-PBJ - Account Settings"
         description="Manage your account settings and profile information"
       />
       <div className="flex justify-center">

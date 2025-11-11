@@ -376,7 +376,7 @@ export default function Itwasda() {
 
   return (
     <>
-      <PageMeta title="Itwasda | SIP-KPBJ" description="Itwasda - laporan & temuan" />
+      <PageMeta title="SIPAKAT-PBJ - Itwasda" description="Itwasda - laporan & temuan" />
       <PageBreadcrumb pageTitle="Itwasda" />
 
       <div className="space-y-6">

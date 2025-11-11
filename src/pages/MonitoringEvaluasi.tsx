@@ -378,7 +378,7 @@ export default function MonitoringEvaluasi() {
   return (
     <>
       <PageMeta
-        title="Monitoring & Evaluasi - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Monitoring & Evaluasi"
         description="Pantau KPI dan evaluasi kinerja pengadaan"
       />
       <PageBreadcrumb pageTitle="Monitoring & Evaluasi" />

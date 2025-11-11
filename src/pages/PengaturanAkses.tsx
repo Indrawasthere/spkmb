@@ -219,7 +219,7 @@ export default function PengaturanAkses() {
   return (
     <>
       <PageMeta
-        title="Pengaturan & Hak Akses - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Pengaturan & Hak Akses"
         description="Kelola pengguna dan hak akses sistem"
       />
       <PageBreadcrumb pageTitle="Pengaturan & Hak Akses" />

@@ -85,13 +85,13 @@ const AppHeader: React.FC = () => {
 
           <Link to="/" className="lg:hidden">
             <img
-              className="dark:hidden"
-              src="images/logo/logo.svg"
+              className="w-full max-w-[110px] h-auto mx-auto dark:hidden"
+              src="images/logo/mpmi-logo.png"
               alt="SIP-KPBJ"
             />
             <img
-              className="hidden dark:block"
-              src="./images/logo/logo-dark.svg"
+              className="w-full max-w-[110px] h-auto mx-auto hidden dark:block"
+              src="images/logo/mpmi-logo.png"
               alt="SIP-KPBJ"
             />
           </Link>
@@ -144,8 +144,7 @@ const AppHeader: React.FC = () => {
                 />
 
                 <button className="absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs -tracking-[0.2px] text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
-                  <span> ⌘ </span>
-                  <span> K </span>
+                  <span> Windows + K</span>
                 </button>
               </div>
             </form>

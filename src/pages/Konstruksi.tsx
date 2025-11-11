@@ -288,7 +288,7 @@ export default function Konstruksi() {
   return (
     <>
       <PageMeta
-        title="Konstruksi | SIP-KPBJ"
+        title="SIPAKAT-PBJ - Konstruksi"
         description="Halaman Konstruksi untuk Vendor Penyedia"
       />
       <PageBreadcrumb pageTitle="Konstruksi" />

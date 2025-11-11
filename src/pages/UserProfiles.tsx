@@ -8,7 +8,7 @@ export default function UserProfiles() {
   return (
     <>
       <PageMeta
-        title="User Profile Dashboard"
+        title="SIPAKAT-PBJ - User Profile"
         description="Profile page of the user dashboard."
       />
       <PageBreadcrumb pageTitle="Profile" />

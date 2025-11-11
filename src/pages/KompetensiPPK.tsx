@@ -183,7 +183,7 @@ export default function KompetensiPPK() {
   return (
     <>
       <PageMeta
-        title="Kompetensi PPK - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Kompetensi PPK"
         description="Kelola kompetensi dan sertifikasi Pejabat Pengadaan"
       />
       <PageBreadcrumb pageTitle="Kompetensi PPK" />

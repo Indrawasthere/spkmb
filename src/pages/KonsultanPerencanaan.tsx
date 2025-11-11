@@ -326,7 +326,7 @@ export default function KonsultanPerencanaan() {
   return (
     <>
       <PageMeta
-        title="Konsultan Perencanaan | SIP-KPBJ"
+        title="SIPAKAT-PBJ - Konsultan Perencanaan"
         description="Halaman Konsultan Perencanaan untuk Vendor Penyedia"
       />
       <PageBreadcrumb pageTitle="Konsultan Perencanaan" />

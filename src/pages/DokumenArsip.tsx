@@ -441,7 +441,7 @@ export default function DokumenArsip() {
   return (
     <>
       <PageMeta
-        title="Dokumen & Arsip - Sistem Pengawasan"
+        title="SIPAKAT-PBJ - Dokumen & Arsip"
         description="Kelola dokumen pengadaan"
       />
       <PageBreadcrumb pageTitle="Dokumen & Arsip" />

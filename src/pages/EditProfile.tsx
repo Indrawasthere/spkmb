@@ -7,7 +7,7 @@ export default function EditProfile() {
   return (
     <>
       <PageMeta
-        title="Edit Profile | SIP-KPBJ"
+        title="SIPAKAT-PBJ - Edit Profile"
         description="Edit your profile information"
       />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">

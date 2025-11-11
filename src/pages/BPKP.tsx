@@ -527,7 +527,7 @@ export default function BPKP() {
   return (
     <>
       <PageMeta
-        title="BPKP | SIP-KPBJ"
+        title="SIPAKAT-PBJ - BPKP"
         description="Halaman BPKP untuk Pengawasan dan Audit"
       />
       <PageBreadcrumb pageTitle="BPKP" />
