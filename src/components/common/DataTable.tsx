@@ -20,6 +20,17 @@ import Button from '../ui/button/Button';
 import Input from '../form/input/InputField';
 import toast from 'react-hot-toast';
 
+interface FilterOption {
+  label: string;
+  value: string;
+}
+
+interface FilterConfig {
+  key: string;
+  label: string;
+  options: FilterOption[];
+}
+
 interface Action<TData> {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -30,6 +41,7 @@ interface Action<TData> {
 interface DataTableProps<TData> {
   columns: ColumnDef<TData>[];
   data: TData[];
+  filters?: FilterConfig[];
   searchPlaceholder?: string;
   onExport?: () => void;
   loading?: boolean;
@@ -43,6 +55,7 @@ interface DataTableProps<TData> {
 export function DataTable<TData>({
   columns,
   data,
+  filters = [],
   searchPlaceholder = 'Search...',
   onExport,
   loading = false,
@@ -56,14 +69,14 @@ export function DataTable<TData>({
   const [columnVisibility, setColumnVisibility] = useState({});
   const [rowSelection, setRowSelection] = useState({});
   const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
-  // Export functions
+  // === CSV Export ===
   const exportToCSV = () => {
     if (!data.length) {
-      toast.error('No data to export');
+      toast.error('Tidak ada data untuk diexport');
       return;
     }
-
     const headers = columns
       .filter(col => col.id && !(columnVisibility as Record<string, boolean>)[col.id] !== false)
       .map(col => col.header as string)
@@ -88,36 +101,39 @@ export function DataTable<TData>({
     a.download = `${exportFileName}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    toast.success('Data exported to CSV');
+    toast.success('Data berhasil diexport ke CSV');
   };
 
-  // Add actions column if actions are provided
-  const tableColumns = actions ? [
-    ...columns,
-    {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }: { row: { original: TData } }) => (
-        <div className="flex items-center gap-2">
-          {actions.map((action, index) => {
-            const Icon = action.icon;
-            return (
-              <Button
-                key={index}
-                variant={action.variant || 'outline'}
-                size="sm"
-                onClick={() => action.onClick(row.original)}
-                startIcon={Icon ? <Icon className="w-4 h-4" /> : undefined}
-              >
-                {action.label}
-              </Button>
-            );
-          })}
-        </div>
-      ),
-    },
-  ] : columns;
+  // === Columns with optional actions ===
+  const tableColumns = actions
+    ? [
+        ...columns,
+        {
+          id: 'actions',
+          header: 'Aksi',
+          cell: ({ row }: { row: { original: TData } }) => (
+            <div className="flex items-center gap-2">
+              {actions.map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <Button
+                    key={index}
+                    variant={action.variant || 'outline'}
+                    size="sm"
+                    onClick={() => action.onClick(row.original)}
+                    startIcon={Icon ? <Icon className="w-4 h-4" /> : undefined}
+                  >
+                    {action.label}
+                  </Button>
+                );
+              })}
+            </div>
+          ),
+        },
+      ]
+    : columns;
 
+  // === Table Initialization ===
   const table = useReactTable({
     data,
     columns: tableColumns,
@@ -132,62 +148,55 @@ export function DataTable<TData>({
       globalFilter,
       columnVisibility,
       rowSelection,
-      pagination: {
-        pageIndex: 0,
-        pageSize,
-      },
     },
   });
 
-  // Loading state
+  // === Loading Skeleton ===
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 w-full max-w-sm">
-          <div className="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          <div className="flex-1 h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-        </div>
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-                <tr>
-                  {Array.from({ length: (actions ? columns.length + 1 : columns.length) }).map((_, i) => (
-                    <th key={i} className="px-6 py-4">
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {Array.from({ length: pageSize }).map((_, i) => (
-                  <tr key={i}>
-                    {Array.from({ length: (actions ? columns.length + 1 : columns.length) }).map((_, j) => (
-                      <td key={j} className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-6 text-center text-gray-400">
+        Memuat data...
       </div>
     );
   }
 
+  // === Toolbar (Search + Filter + Export) ===
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 w-full max-w-sm">
-          <Search className="w-5 h-5 text-gray-400" />
-          <Input
-            placeholder={searchPlaceholder}
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-          />
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-1">
+          {/* Search */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-gray-400 absolute top-1/2 left-3 -translate-y-1/2" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Dynamic Filters */}
+          {filters.map((filter) => (
+            <select
+              key={filter.key}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-8 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 appearance-none bg-[url('data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' fill=\\'none\\' stroke=\\'%23666\\' stroke-width=\\'2\\'><path d=\\'M4 6l4 4 4-4\\'/></svg>')] bg-[right_0.75rem_center] bg-no-repeat"
+              value={filterValues[filter.key] || 'ALL'}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFilterValues((prev) => ({ ...prev, [filter.key]: val }));
+                if (val === 'ALL') table.resetGlobalFilter();
+                else table.setGlobalFilter(val);
+              }}
+            >
+              <option value="ALL">{filter.label}</option>
+              {filter.options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          ))}
         </div>
 
         <div className="flex items-center gap-2">
@@ -198,23 +207,19 @@ export function DataTable<TData>({
               onClick={() => setShowColumnSettings(!showColumnSettings)}
               startIcon={<Settings className="w-4 h-4" />}
             >
-              Columns
+              Kolom
             </Button>
           )}
-
           {enableExport && (
-            <div className="relative">
-              <Button
-                variant="outline"
-                size="sm"
-                startIcon={<Download className="w-4 h-4" />}
-                onClick={exportToCSV}
-              >
-                Export
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              startIcon={<Download className="w-4 h-4" />}
+              onClick={exportToCSV}
+            >
+              Export
+            </Button>
           )}
-
           {onExport && (
             <Button
               variant="outline"
@@ -228,10 +233,10 @@ export function DataTable<TData>({
         </div>
       </div>
 
-      {/* Column Visibility Settings */}
+      {/* === Column Settings === */}
       {showColumnSettings && enableColumnVisibility && (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h4 className="text-sm font-medium mb-3">Show/Hide Columns</h4>
+          <h4 className="text-sm font-medium mb-3">Tampilkan/Sembunyikan Kolom</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {table.getAllColumns().map((column) => (
               <label key={column.id} className="flex items-center gap-2 text-sm">
@@ -248,7 +253,7 @@ export function DataTable<TData>({
         </div>
       )}
 
-      {/* Table */}
+      {/* === Table Content === */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-full">
@@ -258,12 +263,14 @@ export function DataTable<TData>({
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                      className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400"
                     >
                       {header.isPlaceholder ? null : (
                         <div
                           className={`flex items-center gap-2 ${
-                            header.column.getCanSort() ? 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200' : ''
+                            header.column.getCanSort()
+                              ? 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200'
+                              : ''
                           }`}
                           onClick={header.column.getToggleSortingHandler()}
                         >
@@ -280,13 +287,10 @@ export function DataTable<TData>({
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={table.getVisibleFlatColumns().length}
-                    className="px-6 py-12 text-center text-gray-500"
-                  >
+                  <td colSpan={table.getVisibleFlatColumns().length} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
                       <Database className="w-8 h-8 text-gray-400" />
-                      <p>No data found</p>
+                      <p>Data tidak ditemukan</p>
                     </div>
                   </td>
                 </tr>
@@ -306,14 +310,14 @@ export function DataTable<TData>({
         </div>
       </div>
 
-      {/* Pagination */}
+      {/* === Pagination === */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600 dark:text-gray-400">Rows per page:</span>
           <select
-            value={table.getState().pagination.pageSize}
+            value={table.getState().pagination?.pageSize ?? pageSize}
             onChange={(e) => table.setPageSize(Number(e.target.value))}
-            className="h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+            className="h-8 pl-2 pr-7 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 appearance-none bg-[url('data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' fill=\\'none\\' stroke=\\'%23666\\' stroke-width=\\'2\\'><path d=\\'M3 5l4 4 4-4\\'/></svg>')] bg-[right_0.5rem_center] bg-no-repeat"
           >
             {[10, 25, 50, 100].map((size) => (
               <option key={size} value={size}>
@@ -324,12 +328,12 @@ export function DataTable<TData>({
         </div>
 
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
+          Showing {table.getState().pagination?.pageIndex * table.getState().pagination?.pageSize + 1}–
           {Math.min(
-            (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+            (table.getState().pagination?.pageIndex + 1) * table.getState().pagination?.pageSize,
             data.length
           )}{' '}
-          of {data.length} results
+          of {data.length}
         </p>
 
         <div className="flex items-center gap-2">
@@ -347,10 +351,10 @@ export function DataTable<TData>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            Prev
           </Button>
           <span className="text-sm text-gray-600 dark:text-gray-400">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+            Page {table.getState().pagination?.pageIndex + 1} of {table.getPageCount()}
           </span>
           <Button
             variant="outline"
