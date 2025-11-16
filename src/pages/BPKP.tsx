@@ -1,506 +1,122 @@
-import { useState, useEffect } from "react";
+// src/pages/BPKP.tsx - REFACTORED VERSION
+import { useState, useMemo } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
-import Badge from "../components/ui/badge/Badge";
 import { PlusIcon } from "../icons";
-import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
-import Input from "../components/form/input/InputField";
-import Label from "../components/form/Label";
-import TextArea from "../components/form/input/TextArea";
-import Select from "../components/form/Select";
 import { useAuth } from "../context/AuthContext";
 import { DataTable } from "../components/common/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
-import { ActionButtons } from "../components/common/ActionButtons";
-import { DetailsModal } from "../components/common/DetailsModal";
-
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-interface Temuan {
-  id: string;
-  nomorTemuan: string;
-  paketId: string | null;
-  jenisTemuan: string;
-  deskripsi: string;
-  tingkatKualitasTemuan: "RENDAH" | "SEDANG" | "TINGGI" | "KRITIS";
-  status: "BARU" | "PROSES" | "SELESAI" | "DITUNDA";
-  tanggal: string;
-  auditor: string;
-  pic: string;
-  filePath?: string;
-  createdAt: string;
-  updatedAt: string;
-  paket?: {
-    kodePaket: string;
-    namaPaket: string;
-    status: string;
-  };
-}
-
-interface Paket {
-  id: string;
-  kodePaket: string;
-  namaPaket: string;
-  status: string;
-  laporan?: LaporanItwasda[];
-}
-
-interface LaporanItwasda {
-  id: string;
-  paketId: string;
-  status: string;
-}
-
-interface FormErrors {
-  nomorTemuan?: string;
-  paketId?: string;
-  jenisTemuan?: string;
-  deskripsi?: string;
-  tingkatKualitasTemuan?: string;
-  auditor?: string;
-  pic?: string;
-}
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { createColumns, TemuanBPKP } from "./BPKP/components/columns";
+import { PreviewTemuanModal } from "./BPKP/components/PreviewTemuanModal";
+import { TemuanFormModal } from "./BPKP/components/TemuanFormModal";
+import { useTemuanData } from "./BPKP/hooks/useTemuanData";
+import { useTemuanActions } from "./BPKP/hooks/useTemuanActions";
+import { StatsCard } from "../components/common/StatsCard";
+import { FolderOpen, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default function BPKP() {
   const { user } = useAuth();
-  const [temuans, setTemuans] = useState<Temuan[]>([]);
-  const [pakets, setPakets] = useState<Paket[]>([]);
-  const [laporanItwasda, setLaporanItwasda] = useState<LaporanItwasda[]>([]);
-  const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedTemuan, setSelectedTemuan] = useState<Temuan | null>(null);
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    nomorTemuan: "",
-    paketId: "" as string | null,
-    jenisTemuan: "",
-    deskripsi: "",
-    tingkatKualitasTemuan: "" as Temuan["tingkatKualitasTemuan"] | "",
-    auditor: "",
-    pic: "",
-  });
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [editingTemuan, setEditingTemuan] = useState<Temuan | null>(null);
+  const { temuans, eligiblePakets, loading, fetchTemuans } = useTemuanData();
+  const [selectedTemuan, setSelectedTemuan] = useState<TemuanBPKP | null>(null);
+  const [editingTemuan, setEditingTemuan] = useState<TemuanBPKP | null>(null);
+  const [deletingTemuan, setDeletingTemuan] = useState<TemuanBPKP | null>(null);
+
+  // Modals
+  const {
+    isOpen: isFormOpen,
+    openModal: openFormModal,
+    closeModal: closeFormModal,
+  } = useModal();
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Filter data based on status
-  const filteredTemuans = filterStatus === "all"
-    ? temuans
-    : temuans.filter((temuan) => temuan.status === filterStatus);
+  // Actions
+  const {
+    isSubmitting,
+    validateForm,
+    createTemuan,
+    updateTemuan,
+    deleteTemuan,
+  } = useTemuanActions(
+    () => {
+      fetchTemuans();
+      closeFormModal();
+      setEditingTemuan(null);
+    },
+    [] // laporanItwasda will be passed from hook if needed
+  );
 
-  // Define table columns
-  const columns: ColumnDef<Temuan>[] = [
-    {
-      accessorKey: "nomorTemuan",
-      header: "No. Temuan",
-      cell: ({ row }) => (
-        <span className="font-medium text-gray-800 dark:text-white/90">
-          {row.original.nomorTemuan}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "paket",
-      header: "Paket",
-      cell: ({ row }) => (
-        <div className="text-sm text-gray-700 dark:text-gray-400">
-          {row.original.paket ? (
-            <div>
-              <p className="font-medium">
-                {row.original.paket.kodePaket}
-              </p>
-              <p className="text-xs text-gray-500">
-                {row.original.paket.namaPaket}
-              </p>
-            </div>
-          ) : (
-            <Badge size="sm" color="light">
-              Tidak terkait
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "jenisTemuan",
-      header: "Jenis",
-    },
-    {
-      accessorKey: "deskripsi",
-      header: "Deskripsi",
-      cell: ({ row }) => (
-        <span className="text-sm text-gray-700 dark:text-gray-400 max-w-xs truncate block">
-          {row.original.deskripsi}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "tingkatKualitasTemuan",
-      header: "Kualitas Temuan",
-      cell: ({ row }) => (
-        <Badge
-          size="sm"
-          color={getKualitasTemuanColor(row.original.tingkatKualitasTemuan)}
-        >
-          {row.original.tingkatKualitasTemuan}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge size="sm" color={getStatusColor(row.original.status)}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "auditor",
-      header: "Auditor",
-    },
-    {
-      accessorKey: "pic",
-      header: "PIC",
-    },
-    {
-      id: "actions",
-      header: "Aksi",
-      cell: ({ row }) => (
-        <ActionButtons
-          onView={() => handleViewDetails(row.original)}
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original.id)}
-          canDelete={user?.role === "ADMIN"}
-        />
-      ),
-    },
-  ];
-
-  const detailsSections = [
-    {
-      title: "Informasi Temuan",
-      fields: [
-        { label: "Nomor Temuan", value: selectedTemuan?.nomorTemuan },
-        { label: "Jenis Temuan", value: selectedTemuan?.jenisTemuan },
-        { label: "Tingkat Kualitas", value: selectedTemuan?.tingkatKualitasTemuan },
-        { label: "Status", value: selectedTemuan?.status },
-        { label: "Auditor", value: selectedTemuan?.auditor },
-        { label: "PIC", value: selectedTemuan?.pic },
-        { label: "Tanggal", value: selectedTemuan?.tanggal ? new Date(selectedTemuan.tanggal).toLocaleDateString('id-ID') : undefined },
-      ],
-    },
-    {
-      title: "Deskripsi Temuan",
-      fields: [
-        { label: "Deskripsi", value: selectedTemuan?.deskripsi },
-      ],
-    },
-    ...(selectedTemuan?.paket ? [{
-      title: "Informasi Paket",
-      fields: [
-        { label: "Kode Paket", value: selectedTemuan.paket.kodePaket },
-        { label: "Nama Paket", value: selectedTemuan.paket.namaPaket },
-        { label: "Status Paket", value: selectedTemuan.paket.status },
-      ],
-    }] : []),
-  ];
-
-  const { isOpen, openModal, closeModal } = useModal();
-
-  useEffect(() => {
-    fetchTemuans();
-    fetchPakets();
-    fetchLaporanItwasda();
-  }, []);
-
-  useEffect(() => {
-    // Filter paket yang eligible untuk temuan BPKP
-    // Hanya paket yang sudah punya laporan Itwasda
-    const eligible = pakets.filter((paket) => {
-      const hasLaporanItwasda = laporanItwasda.some(
-        (l) => l.paketId === paket.id
-      );
-      return hasLaporanItwasda;
+  // Filtered data
+  const filteredTemuans = useMemo(() => {
+    return temuans.filter((temuan) => {
+      const matchSearch =
+        searchQuery === "" ||
+        temuan.nomorTemuan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        temuan.jenisTemuan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        temuan.auditor.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchStatus =
+        filterStatus === "all" || temuan.status === filterStatus;
+      return matchSearch && matchStatus;
     });
-    setEligiblePakets(eligible);
-  }, [pakets, laporanItwasda]);
+  }, [temuans, searchQuery, filterStatus]);
 
-  const fetchTemuans = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/temuan-bpkp`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTemuans(data);
-      }
-    } catch (error) {
-      console.error("Error fetching temuans:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchPakets = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/paket`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPakets(data);
-      }
-    } catch (error) {
-      console.error("Error fetching pakets:", error);
-    }
-  };
-
-  const fetchLaporanItwasda = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/laporan-itwasda`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setLaporanItwasda(data);
-      }
-    } catch (error) {
-      console.error("Error fetching laporan itwasda:", error);
-    }
-  };
-
-  // Form validation
-  const validateForm = (): boolean => {
-    const errors: FormErrors = {};
-
-    if (!formData.nomorTemuan.trim()) {
-      errors.nomorTemuan = "Nomor temuan wajib diisi";
-    }
-
-    if (!formData.jenisTemuan) {
-      errors.jenisTemuan = "Jenis temuan wajib dipilih";
-    }
-
-    if (!formData.deskripsi.trim()) {
-      errors.deskripsi = "Deskripsi wajib diisi";
-    }
-
-    if (!formData.tingkatKualitasTemuan) {
-      errors.tingkatKualitasTemuan = "Tingkat kualitas temuan wajib dipilih";
-    }
-
-    if (!formData.auditor.trim()) {
-      errors.auditor = "Nama auditor wajib diisi";
-    }
-
-    if (!formData.pic.trim()) {
-      errors.pic = "PIC wajib diisi";
-    }
-
-    // Validate paket eligibility - optional but must have Itwasda report if provided
-    if (formData.paketId) {
-      const hasLaporanItwasda = laporanItwasda.some(
-        (l) => l.paketId === formData.paketId
-      );
-      if (!hasLaporanItwasda) {
-        errors.paketId =
-          "Paket yang dipilih belum memiliki laporan Itwasda. Temuan BPKP hanya bisa dibuat untuk paket yang sudah memiliki laporan Itwasda.";
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const temuanData = {
-        nomorTemuan: formData.nomorTemuan.trim(),
-        paketId: formData.paketId || null,
-        jenisTemuan: formData.jenisTemuan,
-        deskripsi: formData.deskripsi.trim(),
-        tingkatKualitasTemuan: formData.tingkatKualitasTemuan,
-        auditor: formData.auditor.trim(),
-        pic: formData.pic.trim(),
-      };
-
-      let response;
-      if (editingTemuan) {
-        response = await fetch(
-          `${API_BASE_URL}/api/temuan-bpkp/${editingTemuan.id}`,
-          {
-            method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(temuanData),
-          }
-        );
-      } else {
-        response = await fetch(`${API_BASE_URL}/api/temuan-bpkp`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(temuanData),
-        });
-      }
-
-      if (response.ok) {
-        await fetchTemuans();
-        closeModal();
-        resetForm();
-        alert("Temuan berhasil disimpan!");
-      } else {
-        const errorData = await response.json();
-        alert(
-          "Gagal menyimpan temuan: " + (errorData.error || "Unknown error")
-        );
-      }
-    } catch (error) {
-      console.error("Error saving temuan:", error);
-      alert("Terjadi kesalahan saat menyimpan temuan");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleViewDetails = (temuan: Temuan) => {
+  // Handlers
+  const handleView = (temuan: TemuanBPKP) => {
     setSelectedTemuan(temuan);
-    setViewDetailsOpen(true);
+    setIsViewOpen(true);
   };
 
-  const handleEdit = (temuan: Temuan) => {
+  const handleEdit = (temuan: TemuanBPKP) => {
     setEditingTemuan(temuan);
-    setFormData({
-      nomorTemuan: temuan.nomorTemuan,
-      paketId: temuan.paketId,
-      jenisTemuan: temuan.jenisTemuan,
-      deskripsi: temuan.deskripsi,
-      tingkatKualitasTemuan: temuan.tingkatKualitasTemuan,
-      auditor: temuan.auditor,
-      pic: temuan.pic,
-    });
-    setFormErrors({});
-    openModal();
+    openFormModal();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus temuan ini?")) return;
+  const handleDeleteClick = (temuan: TemuanBPKP) => {
+    setDeletingTemuan(temuan);
+    setIsDeleteOpen(true);
+  };
 
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/temuan-bpkp/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (response.ok) {
-        await fetchTemuans();
-        alert("Temuan berhasil dihapus!");
-      } else {
-        const errorData = await response.json();
-        alert(
-          "Gagal menghapus temuan: " + (errorData.error || "Unknown error")
-        );
-      }
-    } catch (error) {
-      console.error("Error deleting temuan:", error);
-      alert("Terjadi kesalahan saat menghapus temuan");
-    } finally {
-      setLoading(false);
+  const handleDeleteConfirm = async () => {
+    if (deletingTemuan) {
+      await deleteTemuan(deletingTemuan.id);
+      setIsDeleteOpen(false);
+      setDeletingTemuan(null);
     }
   };
 
-
-
-  const resetForm = () => {
-    setFormData({
-      nomorTemuan: "",
-      paketId: "",
-      jenisTemuan: "",
-      deskripsi: "",
-      tingkatKualitasTemuan: "",
-      auditor: "",
-      pic: "",
-    });
-    setFormErrors({});
-    setEditingTemuan(null);
+  const handleFormSubmit = async (formData: any) => {
+    if (editingTemuan) {
+      await updateTemuan(editingTemuan.id, formData);
+    } else {
+      await createTemuan(formData);
+    }
   };
 
-  const openAddModal = () => {
+  const handleAddNew = () => {
     if (eligiblePakets.length === 0) {
       alert(
         "Tidak ada paket yang eligible untuk temuan BPKP. Paket harus memiliki laporan Itwasda terlebih dahulu. Anda masih bisa membuat temuan tanpa paket."
       );
     }
-    resetForm();
-    openModal();
+    setEditingTemuan(null);
+    openFormModal();
   };
 
+  const totalTemuan = temuans.reduce((sum, p) => sum + p.TemuanData, 0);
+  const totalTemuanSelesai = temuans.filter(
+    (p) => p.status === "COMPLETED"
+  ).length;
+  const totalProgressTemuan = temuans.filter(
+    (p) => p.status === "ON_PROGRESS"
+  ).length;
 
-
-  const getStatusColor = (status: Temuan["status"]) => {
-    switch (status) {
-      case "SELESAI":
-        return "success";
-      case "PROSES":
-        return "warning";
-      case "BARU":
-        return "info";
-      case "DITUNDA":
-        return "error";
-      default:
-        return "light";
-    }
-  };
-
-  const getKualitasTemuanColor = (kualitas: Temuan["tingkatKualitasTemuan"]) => {
-    switch (kualitas) {
-      case "KRITIS":
-        return "error";
-      case "TINGGI":
-        return "warning";
-      case "SEDANG":
-        return "info";
-      case "RENDAH":
-        return "success";
-      default:
-        return "light";
-    }
-  };
-
-  const jenisTemuanOptions = [
-    { value: "Administrasi", label: "Administrasi" },
-    { value: "Teknis", label: "Teknis" },
-    { value: "Keuangan", label: "Keuangan" },
-    { value: "Waktu", label: "Waktu" },
-    { value: "Kualitas", label: "Kualitas" },
-  ];
-
-  const keparahanOptions = [
-    { value: "RENDAH", label: "Rendah" },
-    { value: "SEDANG", label: "Sedang" },
-    { value: "TINGGI", label: "Tinggi" },
-    { value: "KRITIS", label: "Kritis" },
-  ];
-
-  const paketOptions = [
-    { value: "", label: "Tidak terkait paket (optional)" },
-    ...eligiblePakets.map((paket) => ({
-      value: paket.id,
-      label: `${paket.kodePaket} - ${paket.namaPaket}`,
-    })),
-  ];
-
-  // Stats Cards
+  // Stats
   const stats = [
     {
       label: "Total Temuan",
@@ -524,6 +140,17 @@ export default function BPKP() {
     },
   ];
 
+  // Table columns
+  const columns = createColumns(
+    handleView,
+    handleEdit,
+    (id) => {
+      const temuan = temuans.find((t) => t.id === id);
+      if (temuan) handleDeleteClick(temuan);
+    },
+    user?.role === "ADMIN"
+  );
+
   return (
     <>
       <PageMeta
@@ -545,20 +172,37 @@ export default function BPKP() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
-            >
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {stat.label}
-              </p>
-              <h3 className={`mt-2 text-3xl font-bold ${stat.color}`}>
-                {stat.value}
-              </h3>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <StatsCard
+            title="Total Temuan"
+            value={temuans.length}
+            subtitle="Jumlah seluruh temuan paket"
+            icon={FolderOpen}
+            fromColor="from-indigo-500"
+            toColor="to-indigo-700"
+          />
+          <StatsCard
+            title="Total Temuan Tinggi & Kritis"
+            value={
+              temuans.filter(
+                (l) =>
+                  l.tingkatKualitasTemuan === "TINGGI" ||
+                  l.tingkatKualitasTemuan === "KRITIS"
+              ).length
+            }
+            subtitle="Tingkat Kualitas Temuan"
+            icon={CheckCircle2}
+            fromColor="from-orange-500"
+            toColor="to-red-700"
+          />
+          <StatsCard
+            title="Temuan Selesai"
+            value={temuans.filter((l) => l.status === "SELESAI").length}
+            subtitle="Total Temuan Selesai Dianalisa"
+            icon={AlertTriangle}
+            fromColor="from-green-500"
+            toColor="to-green-700"
+          />
         </div>
 
         {/* Header Section */}
@@ -575,7 +219,7 @@ export default function BPKP() {
             size="md"
             variant="primary"
             startIcon={<PlusIcon />}
-            onClick={openAddModal}
+            onClick={handleAddNew}
             disabled={loading}
           >
             Tambah Temuan
@@ -583,21 +227,19 @@ export default function BPKP() {
         </div>
 
         {/* Filter */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-2">
-              <select
-                className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Semua Status</option>
-                <option value="BARU">Baru</option>
-                <option value="PROSES">Proses</option>
-                <option value="SELESAI">Selesai</option>
-                <option value="DITUNDA">Ditunda</option>
-              </select>
-            </div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="BARU">Baru</option>
+              <option value="PROSES">Proses</option>
+              <option value="SELESAI">Selesai</option>
+              <option value="DITUNDA">Ditunda</option>
+            </select>
           </div>
         </div>
 
@@ -607,173 +249,42 @@ export default function BPKP() {
           data={filteredTemuans}
           searchPlaceholder="Cari temuan..."
           loading={loading}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          fixedHeight="750px"
+          fixedWidth="1300px"
+          minVisibleRows={10}
         />
       </div>
 
-      {/* Modal Form */}
-      <Modal
-        isOpen={isOpen}
-        onClose={closeModal}
-        size="2xl"
-        title={editingTemuan ? "" : ""}
-        showHeader={true}
-      >
-        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
-          <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingTemuan ? "Edit Temuan Audit" : "Tambah Temuan Audit"}
-          </h3>
+      {/* Form Modal (Add/Edit) */}
+      <TemuanFormModal
+        isOpen={isFormOpen}
+        onClose={closeFormModal}
+        onSubmit={handleFormSubmit}
+        editingTemuan={editingTemuan}
+        eligiblePakets={eligiblePakets}
+        isSubmitting={isSubmitting}
+        validateForm={validateForm}
+      />
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Nomor Temuan *</Label>
-                <Input
-                  type="text"
-                  value={formData.nomorTemuan}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nomorTemuan: e.target.value })
-                  }
-                  placeholder="TMN-2024-XXX"
-                  error={!!formErrors.nomorTemuan}
-                  hint={formErrors.nomorTemuan}
-                />
-              </div>
-              <div>
-                <Label>Paket (Optional)</Label>
-                <Select
-                  options={paketOptions}
-                  placeholder="Pilih paket"
-                  onChange={(value) =>
-                    setFormData({ ...formData, paketId: value || null })
-                  }
-                  defaultValue={formData.paketId || ""}
-                />
-                {formErrors.paketId && (
-                  <p className="mt-1 text-xs text-error-500">
-                    {formErrors.paketId}
-                  </p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  Hanya paket dengan laporan Itwasda yang ditampilkan
-                </p>
-              </div>
-            </div>
+      {/* Preview Modal */}
+      <PreviewTemuanModal
+        isOpen={isViewOpen}
+        onClose={() => setIsViewOpen(false)}
+        temuan={selectedTemuan}
+      />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Jenis Temuan *</Label>
-                <Select
-                  options={jenisTemuanOptions}
-                  placeholder="Pilih jenis"
-                  onChange={(value) =>
-                    setFormData({ ...formData, jenisTemuan: value })
-                  }
-                  defaultValue={formData.jenisTemuan}
-                />
-                {formErrors.jenisTemuan && (
-                  <p className="mt-1 text-xs text-error-500">
-                    {formErrors.jenisTemuan}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label>Tingkat Kualitas Temuan *</Label>
-                <Select
-                  options={keparahanOptions}
-                  placeholder="Pilih tingkat kualitas"
-                  onChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      tingkatKualitasTemuan: value as Temuan["tingkatKualitasTemuan"],
-                    })
-                  }
-                  defaultValue={formData.tingkatKualitasTemuan}
-                />
-                {formErrors.tingkatKualitasTemuan && (
-                  <p className="mt-1 text-xs text-error-500">
-                    {formErrors.tingkatKualitasTemuan}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <Label>Deskripsi Temuan *</Label>
-              <TextArea
-                rows={4}
-                value={formData.deskripsi}
-                onChange={(value) =>
-                  setFormData({ ...formData, deskripsi: value })
-                }
-                placeholder="Jelaskan temuan audit secara detail..."
-                error={!!formErrors.deskripsi}
-                hint={formErrors.deskripsi}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Auditor *</Label>
-                <Input
-                  type="text"
-                  value={formData.auditor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, auditor: e.target.value })
-                  }
-                  placeholder="Nama auditor"
-                  error={!!formErrors.auditor}
-                  hint={formErrors.auditor}
-                />
-              </div>
-              <div>
-                <Label>PIC (Person in Charge) *</Label>
-                <Input
-                  type="text"
-                  value={formData.pic}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pic: e.target.value })
-                  }
-                  placeholder="Nama penanggung jawab"
-                  error={!!formErrors.pic}
-                  hint={formErrors.pic}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={closeModal}
-              disabled={loading}
-            >
-              Batal
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? "Menyimpan..." : "Simpan Temuan"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Details Modal */}
-      <DetailsModal
-        isOpen={viewDetailsOpen}
-        onClose={() => setViewDetailsOpen(false)}
-        title="Detail Temuan"
-        sections={detailsSections}
-        documents={selectedTemuan?.filePath ? [{
-          id: selectedTemuan.id,
-          namaDokumen: "Dokumen Temuan",
-          filePath: selectedTemuan.filePath,
-          uploadedAt: selectedTemuan.createdAt
-        }] : []}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Hapus Temuan"
+        message={`Apakah Anda yakin ingin menghapus temuan "${deletingTemuan?.nomorTemuan}"?`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        loading={isSubmitting}
       />
     </>
   );

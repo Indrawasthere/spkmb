@@ -1,302 +1,120 @@
-import { useState, useEffect } from "react";
+// src/pages/PUPR.tsx - REFACTORED VERSION
+import { useState, useMemo } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
-import Badge from "../components/ui/badge/Badge";
-import DatePicker from "react-datepicker";
 import { PlusIcon } from "../icons";
-import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
-import Input from "../components/form/input/InputField";
-import Label from "../components/form/Label";
 import { DataTable } from "../components/common/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
-import { ActionButtons } from "../components/common/ActionButtons";
-import { DetailsModal } from "../components/common/DetailsModal";
-import toast from "react-hot-toast";
-
-interface Proyek {
-  id: string;
-  namaProyek: string;
-  lokasi: string;
-  anggaran: number;
-  status: "PERENCANAAN" | "PELAKSANAAN" | "SELESAI" | "DITUNDA";
-  progress: number;
-  kontraktor: string;
-  tanggalMulai: string;
-  tanggalSelesai: string;
-  deskripsiCatatan?: string;
-  dokumenCatatan?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-const formatCurrency = (value: number): string =>
-  value.toLocaleString("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  });
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { StatsCard } from "../components/common/StatsCard";
+import { FolderOpen, TrendingUp, CheckCircle2 } from "lucide-react";
+import { createColumns, ProyekPUPR } from "./PUPR/components/columns";
+import { PreviewProyekModal } from "./PUPR/components/PreviewProyekModal";
+import { ProyekFormModal } from "./PUPR/components/ProyekFormModal";
+import { useProyekData } from "./PUPR/hooks/useProyekData";
+import { useProyekActions } from "./PUPR/hooks/useProyekActions";
 
 export default function PUPR() {
-  const [proyek, setProyek] = useState<Proyek[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { isOpen, openModal, closeModal } = useModal();
-  const [editingProyek, setEditingProyek] = useState<Proyek | null>(null);
-  const [selectedData, setSelectedData] = useState<any | null>(null);
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const { proyek, loading, fetchProyek } = useProyekData();
+  const [selectedProyek, setSelectedProyek] = useState<ProyekPUPR | null>(null);
+  const [editingProyek, setEditingProyek] = useState<ProyekPUPR | null>(null);
+  const [deletingProyek, setDeletingProyek] = useState<ProyekPUPR | null>(null);
 
-  const [formData, setFormData] = useState({
-    namaProyek: "",
-    lokasi: "",
-    anggaran: "",
-    anggaranValue: 0,
-    kontraktor: "",
-    tanggalMulai: "",
-    tanggalSelesai: "",
-    deskripsiCatatan: "",
-    dokumenCatatan: null as File | null,
-    progress: 0,
-  });
+  // Modals
+  const { isOpen: isFormOpen, openModal: openFormModal, closeModal: closeFormModal } = useModal();
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  useEffect(() => {
-    fetchProyek();
-  }, []);
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
 
-  const fetchProyek = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/proyek-pupr`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProyek(data);
-      }
-    } catch (error) {
-      console.error("Error fetching proyek:", error);
-    } finally {
-      setLoading(false);
+  // Actions
+  const { isSubmitting, validateForm, createProyek, updateProyek, deleteProyek } = useProyekActions(
+    () => {
+      fetchProyek();
+      closeFormModal();
+      setEditingProyek(null);
     }
-  };
+  );
 
-  const handleSubmit = async () => {
-    if (!formData.namaProyek || !formData.lokasi || !formData.anggaranValue) {
-      toast.error("Lengkapi semua field yang wajib");
-      return;
-    }
-
-    try {
-      const fd = new FormData();
-      fd.append("namaProyek", formData.namaProyek);
-      fd.append("lokasi", formData.lokasi);
-      fd.append("anggaran", String(formData.anggaranValue));
-      fd.append("kontraktor", formData.kontraktor);
-      fd.append("tanggalMulai", formData.tanggalMulai);
-      fd.append("tanggalSelesai", formData.tanggalSelesai);
-      fd.append("deskripsiCatatan", formData.deskripsiCatatan);
-      fd.append("progress", String(formData.progress));
-      if (formData.dokumenCatatan) {
-        fd.append("dokumenCatatan", formData.dokumenCatatan);
-      }
-
-      const url = editingProyek
-        ? `${API_BASE_URL}/api/proyek-pupr/${editingProyek.id}`
-        : `${API_BASE_URL}/api/proyek-pupr`;
-      const method = editingProyek ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        credentials: "include",
-        body: fd,
-      });
-
-      if (response.ok) {
-        toast.success(
-          editingProyek
-            ? "Catatan proyek berhasil diperbarui!"
-            : "Catatan proyek berhasil ditambahkan!"
-        );
-        await fetchProyek();
-        resetForm();
-        closeModal();
-      } else {
-        toast.error("Gagal menyimpan catatan proyek");
-      }
-    } catch (error) {
-      console.error("Error saving proyek:", error);
-      toast.error("Terjadi kesalahan saat menyimpan proyek");
-    }
-  };
-
-  const handleEdit = (proyek: Proyek) => {
-    setEditingProyek(proyek);
-    setFormData({
-      namaProyek: proyek.namaProyek,
-      lokasi: proyek.lokasi,
-      anggaran: formatCurrency(proyek.anggaran),
-      anggaranValue: proyek.anggaran,
-      kontraktor: proyek.kontraktor,
-      tanggalMulai: proyek.tanggalMulai.split("T")[0],
-      tanggalSelesai: proyek.tanggalSelesai.split("T")[0],
-      deskripsiCatatan: proyek.deskripsiCatatan || "",
-      dokumenCatatan: null,
-      progress: proyek.progress || 0,
+  // Filtered data
+  const filteredProyek = useMemo(() => {
+    return proyek.filter((p) => {
+      const matchSearch =
+        searchQuery === "" ||
+        p.namaProyek.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.lokasi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.kontraktor.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchStatus = filterStatus === "all" || p.status === filterStatus;
+      return matchSearch && matchStatus;
     });
-    openModal();
+  }, [proyek, searchQuery, filterStatus]);
+
+  // Handlers
+  const handleView = (proyekItem: ProyekPUPR) => {
+    setSelectedProyek(proyekItem);
+    setIsViewOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus catatan proyek ini?")) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/proyek-pupr/${id}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        if (response.ok) {
-          toast.success("Catatan proyek berhasil dihapus");
-          await fetchProyek();
-        }
-      } catch (error) {
-        console.error("Error deleting proyek:", error);
-        toast.error("Gagal menghapus catatan proyek");
-      }
+  const handleEdit = (proyekItem: ProyekPUPR) => {
+    setEditingProyek(proyekItem);
+    openFormModal();
+  };
+
+  const handleDeleteClick = (proyekItem: ProyekPUPR) => {
+    setDeletingProyek(proyekItem);
+    setIsDeleteOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (deletingProyek) {
+      await deleteProyek(deletingProyek.id);
+      setIsDeleteOpen(false);
+      setDeletingProyek(null);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      namaProyek: "",
-      lokasi: "",
-      anggaran: "",
-      anggaranValue: 0,
-      kontraktor: "",
-      tanggalMulai: "",
-      tanggalSelesai: "",
-      deskripsiCatatan: "",
-      dokumenCatatan: null,
-      progress: 0,
-    });
+  const handleFormSubmit = async (formData: any) => {
+    if (editingProyek) {
+      await updateProyek(editingProyek.id, formData);
+    } else {
+      await createProyek(formData);
+    }
+  };
+
+  const handleAddNew = () => {
     setEditingProyek(null);
+    openFormModal();
   };
 
-  const getStatusColor = (status: Proyek["status"]) => {
-    switch (status) {
-      case "SELESAI":
-        return "success";
-      case "PELAKSANAAN":
-        return "warning";
-      case "PERENCANAAN":
-        return "info";
-      case "DITUNDA":
-        return "error";
-      default:
-        return "light";
-    }
-  };
+  // Stats
+  const totalProyek = proyek.length;
+  const proyekSelesai = proyek.filter((p) => p.status === "SELESAI").length;
+  const proyekBerjalan = proyek.filter((p) => p.status === "PELAKSANAAN").length;
+  const totalAnggaran = proyek.reduce((sum, p) => sum + p.anggaran, 0);
+  const avgProgress = proyek.length > 0 
+    ? Math.round(proyek.reduce((sum, p) => sum + p.progress, 0) / proyek.length)
+    : 0;
 
-  const columns: ColumnDef<Proyek>[] = [
-    {
-      accessorKey: "namaProyek",
-      header: "Nama Proyek",
-      cell: ({ row }) => (
-        <div>
-          <p className="font-medium text-gray-800 dark:text-white/90">
-            {row.original.namaProyek}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {row.original.tanggalMulai.split("T")[0]} -{" "}
-            {row.original.tanggalSelesai.split("T")[0]}
-          </p>
-        </div>
-      ),
-    },
-    { accessorKey: "lokasi", header: "Lokasi" },
-    {
-      accessorKey: "anggaran",
-      header: "Anggaran",
-      cell: ({ row }) => <span>{formatCurrency(row.original.anggaran)}</span>,
-    },
-    {
-      accessorKey: "progress",
-      header: "Progress",
-      cell: ({ row }) => (
-        <div className="flex items-center">
-          <div className="w-16 bg-gray-200 rounded-full h-2 mr-2 dark:bg-gray-700">
-            <div
-              className="bg-blue-600 h-2 rounded-full"
-              style={{ width: `${row.original.progress}%` }}
-            ></div>
-          </div>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {row.original.progress}%
-          </span>
-        </div>
-      ),
-    },
-    {
-      id: "actions",
-      header: "Aksi",
-      cell: ({ row }) => (
-        <ActionButtons
-          onView={() => {
-            setSelectedData(row.original);
-            setViewDetailsOpen(true);
-          }}
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original.id)}
-        />
-      ),
-    },
-  ];
+  const formatCurrency = (value: number): string =>
+    value.toLocaleString("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    });
 
-  const detailsSections = selectedData
-    ? [
-      {
-        title: "Informasi Dasar",
-        fields: [
-          { label: "Nama Proyek", value: selectedData.namaProyek },
-          { label: "Lokasi", value: selectedData.lokasi },
-          {
-            label: "Anggaran",
-            value: formatCurrency(selectedData.anggaran),
-          },
-          { label: "Kontraktor", value: selectedData.kontraktor },
-          {
-            label: "Tanggal Mulai",
-            value: new Date(selectedData.tanggalMulai).toLocaleDateString(
-              "id-ID"
-            ),
-          },
-          {
-            label: "Tanggal Selesai",
-            value: new Date(selectedData.tanggalSelesai).toLocaleDateString(
-              "id-ID"
-            ),
-          },
-          { label: "Progress", value: `${selectedData.progress}%` },
-          {
-            label: "Deskripsi Catatan",
-            value: selectedData.deskripsiCatatan || "-",
-            fullWidth: true,
-          },
-        ],
-      },
-    ]
-    : [];
-
-  const detailsDocuments =
-    selectedData?.dokumenCatatan
-      ? [
-        {
-          id: selectedData.id,
-          namaDokumen: "Dokumen Catatan Proyek",
-          filePath: selectedData.dokumenCatatan,
-          uploadedAt: selectedData.updatedAt,
-        },
-      ]
-      : [];
+  // Table columns
+  const columns = createColumns(
+    handleView,
+    handleEdit,
+    (id) => {
+      const proyekItem = proyek.find((p) => p.id === id);
+      if (proyekItem) handleDeleteClick(proyekItem);
+    },
+    true // canDelete - adjust based on user role if needed
+  );
 
   return (
     <>
@@ -304,6 +122,43 @@ export default function PUPR() {
       <PageBreadcrumb pageTitle="PUPR" />
 
       <div className="space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatsCard
+            title="Total Proyek"
+            value={totalProyek}
+            subtitle={`${proyekBerjalan} sedang berjalan`}
+            icon={FolderOpen}
+            fromColor="from-blue-500"
+            toColor="to-blue-600"
+          />
+          <StatsCard
+            title="Proyek Selesai"
+            value={proyekSelesai}
+            subtitle="Proyek yang telah diselesaikan"
+            icon={CheckCircle2}
+            fromColor="from-green-500"
+            toColor="to-green-600"
+          />
+          <StatsCard
+            title="Total Anggaran"
+            value={formatCurrency(totalAnggaran)}
+            subtitle="Total nilai investasi"
+            icon={TrendingUp}
+            fromColor="from-purple-500"
+            toColor="to-purple-600"
+          />
+          <StatsCard
+            title="Rata-rata Progress"
+            value={`${avgProgress}%`}
+            subtitle="Progress keseluruhan proyek"
+            icon={TrendingUp}
+            fromColor="from-orange-500"
+            toColor="to-orange-600"
+          />
+        </div>
+
+        {/* Header Section */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
@@ -317,221 +172,72 @@ export default function PUPR() {
             size="md"
             variant="primary"
             startIcon={<PlusIcon />}
-            onClick={openModal}
+            onClick={handleAddNew}
+            disabled={loading}
           >
             Tambah Catatan Proyek
           </Button>
         </div>
 
+        {/* Filter */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="PERENCANAAN">Perencanaan</option>
+              <option value="PELAKSANAAN">Pelaksanaan</option>
+              <option value="SELESAI">Selesai</option>
+              <option value="DITUNDA">Ditunda</option>
+            </select>
+          </div>
+        </div>
+
+        {/* DataTable */}
         <DataTable
           columns={columns}
-          data={proyek}
+          data={filteredProyek}
           searchPlaceholder="Cari proyek..."
           loading={loading}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          fixedHeight="750px"
+          fixedWidth="1300px"
+          minVisibleRows={10}
         />
       </div>
 
-      {/* Modal Input */}
-      <Modal
-        isOpen={isOpen}
-        onClose={closeModal}
-        size="2xl"
-        title={editingProyek ? "Edit Catatan Proyek" : "Tambah Catatan Proyek"}
-        showHeader
-      >
-        <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          <Label>Nama Proyek</Label>
-          <Input
-            value={formData.namaProyek}
-            onChange={(e) =>
-              setFormData({ ...formData, namaProyek: e.target.value })
-            }
-            placeholder="Nama proyek lengkap"
-          />
+      {/* Form Modal (Add/Edit) */}
+      <ProyekFormModal
+        isOpen={isFormOpen}
+        onClose={closeFormModal}
+        onSubmit={handleFormSubmit}
+        editingProyek={editingProyek}
+        isSubmitting={isSubmitting}
+        validateForm={validateForm}
+      />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Lokasi</Label>
-              <Input
-                value={formData.lokasi}
-                onChange={(e) =>
-                  setFormData({ ...formData, lokasi: e.target.value })
-                }
-                placeholder="Kota/Kabupaten"
-              />
-            </div>
-            <div>
-              <Label>Anggaran</Label>
-              <Input
-                value={formData.anggaran}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^\d]/g, "");
-                  const parsed = raw ? parseInt(raw, 10) : 0;
-                  setFormData({
-                    ...formData,
-                    anggaran: parsed ? formatCurrency(parsed) : "",
-                    anggaranValue: parsed,
-                  });
-                }}
-                placeholder="Rp 0"
-              />
-            </div>
-          </div>
+      {/* Preview Modal */}
+      <PreviewProyekModal
+        isOpen={isViewOpen}
+        onClose={() => setIsViewOpen(false)}
+        proyek={selectedProyek}
+      />
 
-          <Label>Kontraktor</Label>
-          <Input
-            value={formData.kamaKontraktor}
-            onChange={(e) =>
-              setFormData({ ...formData, kontraktor: e.target.value })
-            }
-            placeholder="PT. Nama Kontraktor"
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Tanggal Mulai</Label>
-              <DatePicker
-                selected={
-                  formData.tanggalMulai
-                    ? new Date(formData.tanggalMulai)
-                    : null
-                }
-                onChange={(date) =>
-                  setFormData({
-                    ...formData,
-                    tanggalMulai: date
-                      ? date.toISOString().split("T")[0]
-                      : "",
-                  })
-                }
-                dateFormat="dd/MM/yyyy"
-                placeholderText="Pilih tanggal mulai"
-              />
-            </div>
-            <div>
-              <Label>Tanggal Selesai</Label>
-              <DatePicker
-                selected={
-                  formData.tanggalSelesai
-                    ? new Date(formData.tanggalSelesai)
-                    : null
-                }
-                onChange={(date) =>
-                  setFormData({
-                    ...formData,
-                    tanggalSelesai: date
-                      ? date.toISOString().split("T")[0]
-                      : "",
-                  })
-                }
-                dateFormat="dd/MM/yyyy"
-                placeholderText="Pilih tanggal selesai"
-              />
-            </div>
-          </div>
-
-          <Label>Progress (%)</Label>
-          <Input
-            type="number"
-            value={formData.progress}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                progress: Math.min(
-                  100,
-                  Math.max(0, parseInt(e.target.value) || 0)
-                ),
-              })
-            }
-            placeholder="0–100"
-          />
-
-          <Label>Deskripsi Catatan</Label>
-          <textarea
-            value={formData.deskripsiCatatan}
-            onChange={(e) =>
-              setFormData({ ...formData, deskripsiCatatan: e.target.value })
-            }
-            placeholder="Deskripsi catatan proyek..."
-            rows={3}
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:bg-gray-800 dark:text-gray-300"
-          />
-
-          <Label>Dokumen Catatan</Label>
-          <input
-            type="file"
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                dokumenCatatan: e.target.files?.[0] || null,
-              })
-            }
-            accept=".pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png"
-            className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-          />
-          {formData.dokumenCatatan && (
-            <p className="mt-1 text-xs text-green-600">
-              ✓ {formData.dokumenCatatan.name} (
-              {(formData.dokumenCatatan.size / 1024 / 1024).toFixed(2)} MB)
-            </p>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={closeModal}>
-              Batal
-            </Button>
-            <Button variant="primary" onClick={handleSubmit}>
-              {editingProyek ? "Simpan Perubahan" : "Simpan Catatan"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Detail Modal dengan preview dokumen */}
-{selectedData && (
-  <DetailsModal
-    isOpen={viewDetailsOpen}
-    onClose={() => setViewDetailsOpen(false)}
-    title="Detail Catatan Proyek"
-    sections={detailsSections}
-  >
-    {/* Inline Preview */}
-    {selectedData?.dokumenCatatan && (
-      <div className="border-t mt-4 pt-4">
-        <h4 className="font-medium mb-2">Dokumen Catatan Proyek</h4>
-
-        {selectedData.dokumenCatatan.endsWith(".pdf") ? (
-          <iframe
-            src={selectedData.dokumenCatatan}
-            className="w-full h-[500px] border rounded-lg"
-            title="Preview PDF"
-          ></iframe>
-        ) : selectedData.dokumenCatatan.match(/\.(jpg|jpeg|png)$/i) ? (
-          <img
-            src={selectedData.dokumenCatatan}
-            alt="Preview Dokumen"
-            className="w-full rounded-lg border"
-          />
-        ) : (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">
-              {selectedData.dokumenCatatan.split("/").pop()}
-            </p>
-            <a
-              href={selectedData.dokumenCatatan}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm"
-            >
-              Lihat / Unduh
-            </a>
-          </div>
-        )}
-      </div>
-    )}
-  </DetailsModal>
-)}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Hapus Catatan Proyek"
+        message={`Apakah Anda yakin ingin menghapus catatan proyek "${deletingProyek?.namaProyek}"?`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        loading={isSubmitting}
+      />
     </>
   );
 }
-

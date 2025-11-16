@@ -8,6 +8,20 @@ import App from "./App.tsx";
 import { AppWrapper } from "./components/common/PageMeta.tsx";
 import { ThemeProvider } from "./context/ThemeContext.tsx";
 
+import * as Sentry from "@sentry/react";
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  integrations: [
+    Sentry.browserTracingIntegration(), 
+    Sentry.replayIntegration(),
+  ],
+  tracesSampleRate: 0.2,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+  environment: import.meta.env.MODE,
+});
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>

@@ -18,6 +18,7 @@ import { DetailsModal } from "../components/common/DetailsModal";
 import { FolderOpen, CheckCircle2, AlertTriangle } from "lucide-react";
 import { StatsCard } from "../components/common/StatsCard";
 import toast from "react-hot-toast";
+import * as Sentry from "@sentry/react";
 
 interface Paket {
   id: string;
@@ -95,13 +96,26 @@ export default function ManajemenPaket() {
       const res = await fetch(`${API_BASE_URL}/api/paket`, {
         credentials: "include",
       });
-      if (res.ok) {
-        const data = await res.json();
-        setPakets(data);
-      } else {
+
+      if (!res.ok) {
+        Sentry.captureMessage("Fetch paket gagal", {
+          level: "warning",
+          extra: { status: res.status, url: `${API_BASE_URL}/api/paket` },
+        });
         toast.error("Gagal memuat data paket");
+        return;
+      }
+
+      const data = await res.json();
+      setPakets(data);
+
+      if (!data || data.length === 0) {
+        Sentry.captureMessage("Data paket kosong", { level: "info" });
       }
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { module: "ManajemenPaket", action: "fetchPakets" },
+      });
       toast.error("Terjadi kesalahan saat memuat paket");
     } finally {
       setLoading(false);
@@ -163,6 +177,7 @@ export default function ManajemenPaket() {
   };
 
   const handleEdit = (paket: Paket) => {
+    Sentry.captureMessage(`User membuka edit paket ${paket.kodePaket}`, { level: "info" });
     setEditingPaket(paket);
     setFormData({
       kodePaket: paket.kodePaket,
@@ -180,6 +195,7 @@ export default function ManajemenPaket() {
   };
 
   const handleDelete = (paket: Paket) => {
+    Sentry.captureMessage(`User klik hapus paket ${paket.kodePaket}`, { level: "info" });
     setDeletingPaket(paket);
     setIsConfirmModalOpen(true);
   };
@@ -207,7 +223,10 @@ export default function ManajemenPaket() {
         );
       }
     } catch (error) {
-      console.error("Error deleting dokumen:", error);
+      Sentry.captureException(error, {
+        tags: { module: "ManajemenPaket", action: "confirmDelete" },
+        extra: { paketId: deletingPaket?.id },
+      });
       toast.error("Terjadi kesalahan saat menghapus dokumen");
     } finally {
       setLoading(false);
@@ -291,6 +310,10 @@ export default function ManajemenPaket() {
           : "Paket berhasil ditambahkan!"
       );
     } catch (err: any) {
+      Sentry.captureException(err, {
+        tags: { module: "ManajemenPaket", action: "handleSubmit" },
+        extra: { payload: formData, editing: Boolean(editingPaket) },
+      });
       toast.error(err.message || "Terjadi kesalahan saat menyimpan paket");
     } finally {
       setLoading(false);
@@ -423,9 +446,10 @@ export default function ManajemenPaket() {
 
   return (
     <>
-      <PageMeta 
+      <PageMeta
         title="SIPAKAT-PBJ - Manajemen Paket"
-        description="Kelola dan manajemen paket" />
+        description="Kelola dan manajemen paket"
+      />
       <PageBreadcrumb pageTitle="Manajemen Paket" />
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -458,13 +482,13 @@ export default function ManajemenPaket() {
             toColor="to-yellow-600"
           />
         </div>
-      
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white/90">
               Daftar Paket Pengadaan
-              </h2>
+            </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Kelola semua paket pengadaan dan dokumennya
             </p>
@@ -481,7 +505,6 @@ export default function ManajemenPaket() {
             Tambah Paket
           </Button>
         </div>
-
 
         {/* Filters + Data Table */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">

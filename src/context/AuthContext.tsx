@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import * as Sentry from "@sentry/react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -40,69 +41,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
-  // Idle timeout logic
-  useEffect(() => {
-    let idleTimer: NodeJS.Timeout;
-    const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes
-
-    const resetTimer = () => {
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        console.log('Idle timeout reached, logging out...');
-        logout();
-      }, IDLE_TIMEOUT);
-    };
-
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-
-    const handleActivity = () => {
-      resetTimer();
-    };
-
-    if (isAuthenticated) {
-      events.forEach(event => {
-        document.addEventListener(event, handleActivity, true);
-      });
-      resetTimer();
-    }
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleActivity, true);
-      });
-      clearTimeout(idleTimer);
-    };
-  }, [isAuthenticated]);
-
+  // ========================
+  // CHECK AUTH (ON APP LOAD)
+  // ========================
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('Checking authentication...'); // Debug log
         const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
-          credentials: 'include',
+          credentials: "include",
           headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          }
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
         });
-        console.log('Auth response status:', res.status); // Debug log
 
         const data = await res.json();
-        console.log('Auth response data:', data); // Debug log
 
-        if (data.user) {
+        if (data?.user) {
           setIsAuthenticated(true);
           setUser(data.user);
-          setUserName(data.user.firstName + ' ' + data.user.lastName);
-          console.log('User authenticated:', data.user); // Debug log
+          setUserName(`${data.user.firstName} ${data.user.lastName}`);
+
+          // Add user context to Sentry
+          Sentry.setUser({
+            id: data.user.id,
+            email: data.user.email,
+            username: `${data.user.firstName} ${data.user.lastName}`,
+            role: data.user.role,
+          });
         } else {
           setIsAuthenticated(false);
           setUser(null);
           setUserName(null);
-          console.log('User not authenticated'); // Debug log
+          Sentry.setUser(null);
         }
       } catch (e) {
-        console.error('Auth check failed:', e);
+        Sentry.captureException(e, {
+          tags: { module: "AuthContext", action: "checkAuth" },
+        });
         setIsAuthenticated(false);
         setUser(null);
         setUserName(null);
@@ -114,12 +90,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
+  // ========================
+  // IDLE TIMEOUT LOGIC
+  // ========================
+  useEffect(() => {
+    let idleTimer: NodeJS.Timeout;
+    const IDLE_TIMEOUT = 15 * 60 * 1000;
+
+    const resetTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        Sentry.captureMessage("User logged out due to inactivity", {
+          level: "info",
+        });
+        logout();
+      }, IDLE_TIMEOUT);
+    };
+
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+    const handleActivity = () => resetTimer();
+
+    if (isAuthenticated) {
+      events.forEach((ev) => document.addEventListener(ev, handleActivity, true));
+      resetTimer();
+    }
+
+    return () => {
+      events.forEach((ev) =>
+        document.removeEventListener(ev, handleActivity, true)
+      );
+      clearTimeout(idleTimer);
+    };
+  }, [isAuthenticated]);
+
+  // ========================
+  // LOGIN
+  // ========================
+  const login = async (
+    email: string,
+    password: string,
+    rememberMe: boolean = false
+  ): Promise<boolean> => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password, rememberMe }),
       });
 
@@ -127,30 +143,69 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const data = await response.json();
         setIsAuthenticated(true);
         setUser(data.user);
-        setUserName(data.user.firstName + ' ' + data.user.lastName);
+        setUserName(`${data.user.firstName} ${data.user.lastName}`);
+
+        Sentry.setUser({
+          id: data.user.id,
+          email: data.user.email,
+          username: `${data.user.firstName} ${data.user.lastName}`,
+          role: data.user.role,
+        });
+
+        Sentry.captureMessage("User logged in successfully", {
+          level: "info",
+          extra: { email },
+        });
+
         return true;
       }
+
+      Sentry.captureMessage("Login failed", {
+        level: "warning",
+        extra: { email, responseStatus: response.status },
+      });
+
       return false;
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (error: any) {
+      Sentry.captureException(error, {
+        tags: { module: "AuthContext", action: "login" },
+        extra: { email },
+      });
       return false;
     }
   };
 
+  // ========================
+  // LOGOUT
+  // ========================
   const logout = () => {
-    // call backend to clear cookie
-    fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+    fetch(`${API_BASE_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
+
+    Sentry.captureMessage("User logged out", { level: "info" });
+    Sentry.setUser(null);
+
     setIsAuthenticated(false);
     setUser(null);
     setUserName(null);
   };
 
-  const signup = async (email: string, password: string, firstName: string, lastName: string): Promise<boolean> => {
+  // ========================
+  // SIGNUP
+  // ========================
+  const signup = async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string
+  ): Promise<boolean> => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password, firstName, lastName }),
       });
 
@@ -158,18 +213,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const data = await response.json();
         setIsAuthenticated(true);
         setUser(data.user);
-        setUserName(data.user.firstName + ' ' + data.user.lastName);
+        setUserName(`${data.user.firstName} ${data.user.lastName}`);
+
+        Sentry.setUser({
+          id: data.user.id,
+          email: data.user.email,
+          username: `${data.user.firstName} ${data.user.lastName}`,
+          role: data.user.role,
+        });
+
+        Sentry.captureMessage("User registered successfully", {
+          level: "info",
+          extra: { email },
+        });
+
         return true;
       }
+
+      Sentry.captureMessage("Signup failed", {
+        level: "warning",
+        extra: { email, status: response.status },
+      });
+
       return false;
-    } catch (error) {
-      console.error('Signup error:', error);
+    } catch (error: any) {
+      Sentry.captureException(error, {
+        tags: { module: "AuthContext", action: "signup" },
+        extra: { email },
+      });
       return false;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, userName, login, logout, signup }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        isLoading,
+        user,
+        userName,
+        login,
+        logout,
+        signup,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
