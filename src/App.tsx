@@ -36,6 +36,7 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
   return isAuthenticated ? children : <Navigate to="/signin" replace />;
 }
 
+
 export default function App() {
   return (
     <AuthProvider>
