@@ -8,7 +8,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import expressListEndpoints from 'express-list-endpoints';
-import { prisma } from './lib/prisma.ts';
+import { prisma } from './lib/prisma.js';
 import path from 'path';
 import fs from 'fs';
 
