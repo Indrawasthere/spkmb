@@ -1871,20 +1871,20 @@ app.get('/', (req, res) => {
   res.json(routes);
 });
 
-// Serve static uploads FIRST
+// Serve uploads FIRST
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Serve React build
-app.use(express.static('dist'));
+app.use(express.static(path.join(process.cwd(), 'dist')));
 
-// API 404 handler (ONLY for /api)
+// API 404 only
 app.use(/^\/api\/.*/, (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Fallback for React Router
-app.use((req, res) => {
-  res.sendFile('index.html', { root: 'dist' });
+// React fallback (HARUS pakai GET, bukan USE)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
 });
 
 // Start server
