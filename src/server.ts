@@ -1871,20 +1871,18 @@ app.get('/', (req, res) => {
   res.json(routes);
 });
 
-// Serve uploads FIRST
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-// Serve React build
-app.use(express.static(path.join(process.cwd(), 'dist')));
-
-// API 404 only
-app.use(/^\/api\/.*/, (req, res) => {
+// 404 handler
+app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// React fallback
-app.get('/.*/', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+// Serve static files from the React app build directory
+app.use(express.static('dist'));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Catch all handler: send back React's index.html file for any non-API routes
+app.use((req, res) => {
+  res.sendFile('index.html', { root: 'dist' });
 });
 
 // Start server
