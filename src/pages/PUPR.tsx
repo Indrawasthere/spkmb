@@ -1,4 +1,4 @@
-// src/pages/PUPR.tsx - REFACTORED VERSION
+// src/pages/PUPR.tsx - FIXED VERSION
 import { useState, useMemo } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
@@ -8,12 +8,19 @@ import { useModal } from "../hooks/useModal";
 import { DataTable } from "../components/common/DataTable";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { StatsCard } from "../components/common/StatsCard";
-import { FolderOpen, TrendingUp, CheckCircle2 } from "lucide-react";
+import { FolderOpen, TrendingUp, DollarSign } from "lucide-react";
 import { createColumns, ProyekPUPR } from "./PUPR/components/columns";
 import { PreviewProyekModal } from "./PUPR/components/PreviewProyekModal";
 import { ProyekFormModal } from "./PUPR/components/ProyekFormModal";
 import { useProyekData } from "./PUPR/hooks/useProyekData";
 import { useProyekActions } from "./PUPR/hooks/useProyekActions";
+
+const formatCurrency = (value: number): string =>
+  value.toLocaleString("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  });
 
 export default function PUPR() {
   const { proyek, loading, fetchProyek } = useProyekData();
@@ -89,21 +96,13 @@ export default function PUPR() {
     openFormModal();
   };
 
-  // Stats
+  // Stats (3 cards only)
   const totalProyek = proyek.length;
-  const proyekSelesai = proyek.filter((p) => p.status === "SELESAI").length;
   const proyekBerjalan = proyek.filter((p) => p.status === "PELAKSANAAN").length;
   const totalAnggaran = proyek.reduce((sum, p) => sum + p.anggaran, 0);
   const avgProgress = proyek.length > 0 
     ? Math.round(proyek.reduce((sum, p) => sum + p.progress, 0) / proyek.length)
     : 0;
-
-  const formatCurrency = (value: number): string =>
-    value.toLocaleString("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    });
 
   // Table columns
   const columns = createColumns(
@@ -113,7 +112,7 @@ export default function PUPR() {
       const proyekItem = proyek.find((p) => p.id === id);
       if (proyekItem) handleDeleteClick(proyekItem);
     },
-    true // canDelete - adjust based on user role if needed
+    true
   );
 
   return (
@@ -122,8 +121,8 @@ export default function PUPR() {
       <PageBreadcrumb pageTitle="PUPR" />
 
       <div className="space-y-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Stats Cards - 3 CARDS ONLY */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatsCard
             title="Total Proyek"
             value={totalProyek}
@@ -133,20 +132,12 @@ export default function PUPR() {
             toColor="to-blue-600"
           />
           <StatsCard
-            title="Proyek Selesai"
-            value={proyekSelesai}
-            subtitle="Proyek yang telah diselesaikan"
-            icon={CheckCircle2}
-            fromColor="from-green-500"
-            toColor="to-green-600"
-          />
-          <StatsCard
             title="Total Anggaran"
             value={formatCurrency(totalAnggaran)}
             subtitle="Total nilai investasi"
-            icon={TrendingUp}
-            fromColor="from-purple-500"
-            toColor="to-purple-600"
+            icon={DollarSign}
+            fromColor="from-green-500"
+            toColor="to-green-600"
           />
           <StatsCard
             title="Rata-rata Progress"
@@ -179,7 +170,7 @@ export default function PUPR() {
           </Button>
         </div>
 
-        {/* Filter */}
+        {/* Filter - STANDARDIZED LAYOUT */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3 w-full md:w-auto">
             <select
@@ -196,7 +187,7 @@ export default function PUPR() {
           </div>
         </div>
 
-        {/* DataTable */}
+        {/* DataTable - STANDARDIZED */}
         <DataTable
           columns={columns}
           data={filteredProyek}

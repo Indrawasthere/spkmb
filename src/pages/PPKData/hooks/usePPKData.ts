@@ -1,64 +1,51 @@
 // src/pages/PPKData/hooks/usePPKData.ts
-import { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
-import { PPKData } from '../components/columns';
+import { useCallback, useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import type { PPKDataRow } from "../components/columns";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-interface Paket {
-  id: string;
-  kodePaket: string;
-  namaPaket: string;
-}
-
 export const usePPKData = () => {
-  const [ppkData, setPpkData] = useState<PPKData[]>([]);
-  const [pakets, setPakets] = useState<Paket[]>([]);
+  const [ppkData, setPpkData] = useState<PPKDataRow[]>([]);
+  const [pakets, setPakets] = useState<Array<{ id: string; kodePaket: string; namaPaket: string }>>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchPPKData = async () => {
+  const fetchPPKData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/ppk-data`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
+      const res = await fetch(`${API_BASE_URL}/api/ppk-data`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
         setPpkData(data);
       } else {
-        toast.error('Gagal memuat data PPK');
+        const text = await res.text();
+        console.error("fetchPPKData error:", text);
+        toast.error("Gagal memuat data PPK");
       }
-    } catch (error) {
-      console.error('Error fetching PPK data:', error);
-      toast.error('Terjadi kesalahan saat memuat data PPK');
+    } catch (err) {
+      console.error(err);
+      toast.error("Terjadi kesalahan koneksi");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchPakets = async () => {
+  const fetchPakets = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/paket`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
+      const res = await fetch(`${API_BASE_URL}/api/paket`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
         setPakets(data);
       }
-    } catch (error) {
-      console.error('Error fetching pakets:', error);
+    } catch (err) {
+      console.error(err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPPKData();
     fetchPakets();
-  }, []);
+  }, [fetchPPKData, fetchPakets]);
 
-  return {
-    ppkData,
-    pakets,
-    loading,
-    fetchPPKData,
-  };
+  return { ppkData, pakets, loading, fetchPPKData, fetchPakets, setPpkData };
 };
