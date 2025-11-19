@@ -1882,8 +1882,8 @@ app.use(/^\/api\/.*/, (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// React fallback (HARUS pakai GET, bukan USE)
-app.get('*', (req, res) => {
+// React fallback
+app.get('/.*/', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
 });
 
