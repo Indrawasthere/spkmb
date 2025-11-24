@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracking Pengaduan - SIPAKAT BPJ</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tracking-container {
+        background: white;
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+      }
+      h1 {
+        margin-bottom: 30px;
+        color: #2c3e50;
+      }
+      input {
+        width: 100%;
+        padding: 15px;
+        margin: 10px 0;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+      }
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+      }
+      .result {
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: 8px;
+        display: none;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tracking-container">
+      <h1>🔍 Tracking Pengaduan</h1>
+      <input
+        type="text"
+        id="ticketInput"
+        placeholder="Masukkan Nomor Tiket (contoh: TKT-20241225001)"
+      />
+      <button onclick="trackPengaduan()">Cek Status</button>
+      <div id="result" class="result"></div>
+      <div style="margin-top: 20px">
+        <a href="/" style="color: #667eea">⬅️ Kembali ke Form Pengaduan</a>
+      </div>
+    </div>
+
+    <script>
+      // Auto-detect base URL
+      const getBaseUrl = () => {
+        if (window.location.hostname.includes('portal.localhost')) {
+          return 'http://localhost:3001';
+        }
+        if (window.location.hostname.includes('portal.sipakat-bpj.com')) {
+          return 'https://sipakat-bpj.com';
+        }
+        return '';
+      };
+
+      const API_BASE = getBaseUrl();
+
+      async function trackPengaduan() {
+        // ... kode tracking yang sama
+        const response = await fetch(
+          `${API_BASE}/api/pengaduan/masyarakat/tracking/${ticketNumber}`
+        );
+        // ...
+      }
+    </script>
+  </body>
+</html>

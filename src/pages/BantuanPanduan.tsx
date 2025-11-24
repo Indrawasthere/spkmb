@@ -26,7 +26,7 @@ export default function BantuanPanduan() {
   return (
     <>
       <PageMeta
-        title="SIPAKAT-PBJ - Bantuan & Panduan"
+        title="Bantuan & Panduan - Sistem Pengawasan"
         description="Panduan penggunaan sistem dan kanal komunikasi"
       />
       <PageBreadcrumb pageTitle="Bantuan & Panduan" />

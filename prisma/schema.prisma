@@ -343,6 +343,13 @@ model ProyekPUPR {
   @@map("proyek_pupr")
 }
 
+enum ProyekStatus {
+  PERENCANAAN
+  PELAKSANAAN
+  SELESAI
+  DITUNDA
+}
+
 model PPKData {
   id               String   @id @default(cuid())
   paketId          String
@@ -366,18 +373,23 @@ model PPKData {
 }
 
 model Pengaduan {
-  id        String      @id @default(cuid())
-  judul     String
-  isi       String
-  status    PengaduanStatus @default(BARU)
-  tanggal   DateTime    @default(now())
-  pelapor   String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id          String          @id @default(cuid())
+  judul       String
+  isi         String
+  status      PengaduanStatus @default(BARU)
+  tanggal     DateTime        @default(now())
+  pelapor     String
+  email       String?         // Tambahkan field baru
+  telepon     String?         // Tambahkan field baru
+  kategori    String?         // Tambahkan field baru
+  nomor_tiket String?         @unique // Tambahkan field baru
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@map("pengaduan")
 }
 
+// Update enum PengaduanStatus (jika perlu tambah DITOLAK)
 enum PengaduanStatus {
   BARU
   DIPROSES
@@ -385,12 +397,7 @@ enum PengaduanStatus {
   DITOLAK
 }
 
-enum ProyekStatus {
-  PERENCANAAN
-  PELAKSANAAN
-  SELESAI
-  DITUNDA
-}
+
 
 // Pengaturan & Hak Akses
 model Role {

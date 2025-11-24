@@ -31,9 +31,29 @@ declare global {
 // Load environment variables
 dotenv.config();
 
+const validateEnvironment = () => {
+  const required = ['JWT_SECRET', 'DATABASE_URL'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.error('❌ Missing required environment variables:', missing);
+    console.error('💡 Please check your .env file');
+    
+    // Jangan exit di development
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    } else {
+      console.log('🔄 Continuing in development mode with default values...');
+    }
+  }
+};
+
+validateEnvironment();
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_DEVELOPMENT = !IS_PRODUCTION;
 
 // Security: Rate limiting
 const limiter = rateLimit({
@@ -85,9 +105,19 @@ app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
       'http://localhost:5173',
-      'https://localhost:5173',
+      'https://localhost:5173', 
+      'http://localhost:3000',
+      'https://localhost:3000',
+      'http://localhost:3001',
+      'https://localhost:3001',
+      'http://portal.localhost:3001',    // ✅ DEV SUBDOMAIN
+      'https://portal.localhost:3001',   // ✅ DEV SUBDOMAIN HTTPS
+      'http://sipakat.localhost:3001',   // ✅ DEV MAIN DOMAIN
+      'https://sipakat.localhost:3001',  // ✅ DEV MAIN DOMAIN HTTPS
       'https://sipakat-bpj.com',
       'https://www.sipakat-bpj.com',
+      'https://portal.sipakat-bpj.com',
+      /\.sipakat-bpj\.com$/,
       /\.devtunnels\.ms$/,
       /\.ngrok-free\.app$/,
     ];
@@ -110,6 +140,44 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   exposedHeaders: ['set-cookie'],
 }));
+
+// Middleware untuk detect domain
+app.use((req, res, next) => {
+  const host = req.get('host') || '';
+  req.isPortalSubdomain = host.includes('portal.') || false;
+  req.isDevelopment = IS_DEVELOPMENT;
+  next();
+});
+
+// Serve portal pengaduan untuk subdomain portal
+app.get('/', (req, res) => {
+  if (req.isPortalSubdomain || (req.isDevelopment && req.get('host')?.includes('portal.localhost'))) {
+    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan.html'));
+  }
+  
+  // Default behavior untuk domain utama
+  if (IS_PRODUCTION) {
+    res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+  } else {
+    // Di development, serve admin dashboard atau API info
+    res.json({ 
+      message: 'SIPAKAT BPJ API - Development Mode',
+      endpoints: {
+        admin: 'http://sipakat.localhost:3001',
+        portal: 'http://portal.localhost:3001', 
+        api: 'http://localhost:3001/api'
+      }
+    });
+  }
+});
+
+// Route tracking untuk subdomain portal
+app.get('/tracking', (req, res) => {
+  if (req.isPortalSubdomain || (req.isDevelopment && req.get('host')?.includes('portal.localhost'))) {
+    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan-tracking.html'));
+  }
+  res.status(404).json({ error: 'Not found' });
+});
 
 // Trust proxy for production
 app.set('trust proxy', 1);
@@ -260,6 +328,84 @@ const deleteFile = (filePath: string): boolean => {
     return false;
   }
 };
+// ============================================
+// PORTAL PENGADUAN ROUTES (ADVANCED)
+// ============================================
+
+// Serve portal pengaduan utama
+app.get('/portal', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan.html'));
+});
+
+// Serve tracking page
+app.get('/portal/tracking', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan-tracking.html'));
+});
+
+// API untuk get history pengaduan by email
+app.get('/api/pengaduan/history/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const pengaduan = await prisma.pengaduan.findMany({
+      where: { email },
+      select: {
+        id: true,
+        nomor_tiket: true,
+        judul: true,
+        status: true,
+        tanggal: true,
+        createdAt: true,
+        kategori: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
+    
+    res.json({
+      success: true,
+      data: pengaduan
+    });
+  } catch (error) {
+    console.error('Fetch history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengambil history pengaduan'
+    });
+  }
+});
+
+// ============================================
+// PORTAL PENGADUAN SUBDOMAIN ROUTES
+// ============================================
+
+// Middleware untuk detect subdomain
+app.use((req, res, next) => {
+  req.isPortalSubdomain = req.get('host')?.includes('portal.') || false;
+  next();
+});
+
+// Serve portal pengaduan ketika akses dari portal.sipakat-bpj.com
+app.get('/', (req, res) => {
+  if (req.isPortalSubdomain) {
+    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan.html'));
+  }
+  
+  // Default behavior untuk domain utama
+  if (IS_PRODUCTION) {
+    res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+  } else {
+    res.json({ message: 'SIPAKAT BPJ API' });
+  }
+});
+
+// Route tracking untuk subdomain
+app.get('/tracking', (req, res) => {
+  if (req.isPortalSubdomain) {
+    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan-tracking.html'));
+  }
+  next();
+});
 
 // ============================================
 // AUTH ROUTES
@@ -2322,9 +2468,104 @@ app.delete('/api/monitoring/:id', authenticateToken, authorizeRoles('admin'), as
 });
 
 // ============================================
-// PENGADUAN ROUTES
+// PENGADUAN MASYARAKAT ROUTES (TANPA AUTH)
 // ============================================
 
+// POST pengaduan dari masyarakat (tanpa auth)
+app.post('/api/pengaduan/masyarakat', async (req, res) => {
+  try {
+    const { nama, email, telepon, judul, isi, kategori } = req.body;
+
+    if (!nama || !judul || !isi) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Nama, judul, dan isi pengaduan wajib diisi' 
+      });
+    }
+
+    // Generate ticket number
+    function generateTicketNumber() {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      return `TKT-${year}${month}${day}${random}`;
+    }
+
+    const pengaduan = await prisma.pengaduan.create({
+      data: {
+        judul,
+        isi,
+        pelapor: nama,
+        status: 'BARU',
+        tanggal: new Date(),
+        email: email || null,
+        telepon: telepon || null,
+        kategori: kategori || 'UMUM',
+        nomor_tiket: generateTicketNumber(),
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Pengaduan berhasil dikirim',
+      data: {
+        id: pengaduan.id,
+        nomor_tiket: pengaduan.nomor_tiket,
+        tanggal: pengaduan.tanggal
+      }
+    });
+  } catch (error) {
+    console.error('Create pengaduan masyarakat error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengirim pengaduan'
+    });
+  }
+});
+
+// Tracking pengaduan by ticket number (tanpa auth)
+app.get('/api/pengaduan/masyarakat/tracking/:nomorTiket', async (req, res) => {
+  try {
+    const { nomorTiket } = req.params;
+
+    const pengaduan = await prisma.pengaduan.findFirst({
+      where: {
+        nomor_tiket: nomorTiket.toUpperCase()
+      },
+      select: {
+        id: true,
+        judul: true,
+        status: true,
+        tanggal: true,
+        nomor_tiket: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!pengaduan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Nomor tiket tidak ditemukan'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: pengaduan
+    });
+  } catch (error) {
+    console.error('Tracking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal memeriksa status pengaduan'
+    });
+  }
+});
+
+// GET semua pengaduan untuk admin (dengan auth)
 app.get('/api/pengaduan', authenticateToken, async (req, res) => {
   try {
     const pengaduan = await prisma.pengaduan.findMany({
@@ -2337,6 +2578,7 @@ app.get('/api/pengaduan', authenticateToken, async (req, res) => {
   }
 });
 
+// POST pengaduan dari admin (dengan auth)
 app.post('/api/pengaduan', authenticateToken, async (req, res) => {
   try {
     const { judul, isi, status, pelapor } = req.body;
@@ -2351,6 +2593,7 @@ app.post('/api/pengaduan', authenticateToken, async (req, res) => {
         isi,
         status: status || 'BARU',
         pelapor: pelapor || `${req.user!.firstName} ${req.user!.lastName}`,
+        tanggal: new Date(),
       },
     });
 
@@ -2374,6 +2617,143 @@ app.post('/api/pengaduan', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// PENGADUAN ROUTES
+// ============================================
+
+// GET all pengaduan (untuk admin)
+app.get('/api/pengaduan', authenticateToken, async (req, res) => {
+  try {
+    const pengaduan = await prisma.pengaduan.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(pengaduan);
+  } catch (error) {
+    console.error('Fetch pengaduan error:', error);
+    res.status(500).json({ error: 'Failed to fetch pengaduan' });
+  }
+});
+
+// POST pengaduan dari masyarakat (tanpa auth)
+app.post('/api/pengaduan/masyarakat', async (req, res) => {
+  try {
+    const { nama, email, telepon, judul, isi, kategori } = req.body;
+
+    // Generate ticket number
+    function generateTicketNumber() {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      return `TKT-${year}${month}${day}${random}`;
+    }
+
+    const pengaduan = await prisma.pengaduan.create({
+      data: {
+        judul,
+        isi,
+        pelapor: nama,
+        status: 'BARU',
+        tanggal: new Date(),
+        email,
+        telepon,
+        kategori,
+        nomor_tiket: generateTicketNumber(),
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Pengaduan berhasil dikirim',
+      id: pengaduan.id,
+      nomor_tiket: pengaduan.nomor_tiket
+    });
+  } catch (error) {
+    console.error('Create pengaduan error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengirim pengaduan'
+    });
+  }
+});
+
+// Tracking pengaduan by ticket number (tanpa auth)
+app.get('/api/pengaduan/tracking/:nomorTiket', async (req, res) => {
+  try {
+    const { nomorTiket } = req.params;
+
+    const pengaduan = await prisma.pengaduan.findFirst({
+      where: {
+        nomor_tiket: nomorTiket.toUpperCase()
+      },
+      select: {
+        id: true,
+        judul: true,
+        status: true,
+        tanggal: true,
+        nomor_tiket: true,
+        createdAt: true
+      }
+    });
+
+    if (!pengaduan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Nomor tiket tidak ditemukan'
+      });
+    }
+
+    res.json(pengaduan);
+  } catch (error) {
+    console.error('Tracking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal memeriksa status pengaduan'
+    });
+  }
+});
+
+// POST pengaduan dari admin (dengan auth)
+app.post('/api/pengaduan', authenticateToken, async (req, res) => {
+  try {
+    const { judul, isi, status, pelapor } = req.body;
+    
+    if (!judul || !isi) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const pengaduan = await prisma.pengaduan.create({
+      data: {
+        judul,
+        isi,
+        status: status || 'BARU',
+        pelapor: pelapor || `${req.user!.firstName} ${req.user!.lastName}`,
+        tanggal: new Date(),
+      },
+    });
+
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'CREATE',
+        entity: 'PENGADUAN',
+        entityId: pengaduan.id,
+        details: { judul },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    });
+
+    res.json(pengaduan);
+  } catch (error) {
+    console.error('Create pengaduan error:', error);
+    res.status(500).json({ error: 'Failed to create pengaduan' });
+  }
+});
+
+// PUT update pengaduan
 app.put('/api/pengaduan/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -2415,6 +2795,7 @@ app.put('/api/pengaduan/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE pengaduan
 app.delete('/api/pengaduan/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -2881,8 +3262,36 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/health/deep', async (req, res) => {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+
+    // Test file system
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const canWrite = fs.accessSync(uploadsDir, fs.constants.W_OK);
+
+    res.json({
+      status: 'HEALTHY',
+      timestamp: new Date().toISOString(),
+      database: 'CONNECTED',
+      fileSystem: canWrite ? 'WRITABLE' : 'READ_ONLY',
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      environment: process.env.NODE_ENV || 'development',
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'UNHEALTHY',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      uptime: process.uptime(),
+    });
+  }
+});
+
 app.get('/api/welcome', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Welcome, this is endpoint API for SIPAKAT-PBJ',
     version: '1.2.0',
     endpoints: '/api/endpoints',
@@ -2958,31 +3367,44 @@ const server = app.listen(Number(PORT), '0.0.0.0', () => {
   console.log('='.repeat(60));
 });
 
+server.keepAliveTimeout = 60000; // 60 seconds
+server.headersTimeout = 65000; // 65 seconds
+
 // ============================================
 // GRACEFUL SHUTDOWN
 // ============================================
 
 const gracefulShutdown = async (signal: string) => {
-  console.log(`\n${signal} received, shutting down gracefully...`);
+  console.log(`\n${signal} received, starting graceful shutdown...`);
   
-  server.close(async () => {
-    console.log('HTTP server closed');
-    
-    try {
-      await prisma.$disconnect();
-      console.log('Database connection closed');
-      process.exit(0);
-    } catch (error) {
-      console.error('Error during shutdown:', error);
-      process.exit(1);
-    }
+  // Stop accepting new requests
+  server.close(() => {
+    console.log('✅ HTTP server closed');
   });
 
-  // Force shutdown after 10 seconds
+  try {
+    // Close database connections
+    await prisma.$disconnect();
+    console.log('✅ Database connection closed');
+    
+    // Beri waktu untuk cleanup lainnya
+    setTimeout(() => {
+      console.log('✅ Graceful shutdown completed');
+      process.exit(0);
+    }, 3000);
+    
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    setTimeout(() => {
+      process.exit(1);
+    }, 3000);
+  }
+
+  // Force shutdown after 30 seconds (dari 10 jadi 30)
   setTimeout(() => {
-    console.error('Could not close connections in time, forcefully shutting down');
+    console.error('❌ Could not close connections in time, forceful shutdown');
     process.exit(1);
-  }, 10000);
+  }, 30000); // 30 seconds
 };
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
@@ -2990,10 +3412,20 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Jangan panggil process.exit() di sini
 });
 
+// Handle uncaught exceptions (jangan selalu exit)
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  gracefulShutdown('UNCAUGHT_EXCEPTION');
+  console.error('⚠️ Uncaught Exception:', error);
+  
+  // Hanya exit jika error critical
+  if (error.message.includes('EADDRINUSE') || error.message.includes('PORT')) {
+    console.error('❌ Critical error, shutting down...');
+    gracefulShutdown('UNCAUGHT_EXCEPTION');
+  } else {
+    console.log('🔄 Non-critical error, continuing...');
+    // Log error tapi jangan exit
+  }
 });

@@ -3,15 +3,26 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, PencilIcon, TrashBinIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import TextArea from "../components/form/input/TextArea";
 import Select from "../components/form/Select";
-import BarChartOne from "../components/charts/bar/BarChartOne";
-import LineChartOne from "../components/charts/line/LineChartOne";
+import { PlusIcon, DocumentDownloadIcon } from "../icons";
+import { DetailsModal } from "../components/common/DetailsModal";
+import { DataTable } from "../components/common/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
+import { StatsCard } from "../components/common/StatsCard";
+import { ActionButtons } from "../components/common/ActionButtons";
+import { useToast } from "../hooks/useToast";
+import {
+  ChartBarIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -33,6 +44,14 @@ interface Monitoring {
     namaPaket: string;
     status: string;
   };
+  dokumen?: Dokumen[];
+}
+
+interface Dokumen {
+  id: string;
+  namaDokumen: string;
+  filePath: string;
+  uploadedAt: string;
 }
 
 interface Paket {
@@ -63,9 +82,16 @@ export default function MonitoringEvaluasi() {
   const [pakets, setPakets] = useState<Paket[]>([]);
   const [laporanItwasda, setLaporanItwasda] = useState<LaporanItwasda[]>([]);
   const [eligiblePakets, setEligiblePakets] = useState<Paket[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedData, setSelectedData] = useState<Monitoring | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [editingMonitoring, setEditingMonitoring] = useState<Monitoring | null>(null);
+  const [deletingMonitoring, setDeletingMonitoring] = useState<Monitoring | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterJenis, setFilterJenis] = useState("all");
+
   const [formData, setFormData] = useState({
     paketId: "",
     jenisMonitoring: "",
@@ -77,9 +103,9 @@ export default function MonitoringEvaluasi() {
     tanggalMonitoring: new Date().toISOString().split('T')[0],
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [editingMonitoring, setEditingMonitoring] = useState<Monitoring | null>(null);
 
   const { isOpen, openModal, closeModal } = useModal();
+  const { success, error, info, loading } = useToast();
 
   useEffect(() => {
     fetchMonitorings();
@@ -88,8 +114,6 @@ export default function MonitoringEvaluasi() {
   }, []);
 
   useEffect(() => {
-    // Filter paket yang eligible untuk monitoring
-    // Hanya paket yang sudah punya laporan Itwasda dengan status SELESAI
     const eligible = pakets.filter((paket) => {
       const hasCompletedLaporan = laporanItwasda.some(
         l => l.paketId === paket.id && l.status === 'SELESAI'
@@ -100,19 +124,41 @@ export default function MonitoringEvaluasi() {
   }, [pakets, laporanItwasda]);
 
   const fetchMonitorings = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/monitoring`, {
         credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
-        setMonitorings(data);
+        // Pastikan data paket ada, jika tidak coba fetch ulang
+        const monitoringsWithPaket = await Promise.all(
+          data.map(async (monitoring: Monitoring) => {
+            if (monitoring.paketId && !monitoring.paket) {
+              try {
+                const paketResponse = await fetch(
+                  `${API_BASE_URL}/api/paket/${monitoring.paketId}`,
+                  {
+                    credentials: 'include',
+                  }
+                );
+                if (paketResponse.ok) {
+                  const paketData = await paketResponse.json();
+                  return { ...monitoring, paket: paketData };
+                }
+              } catch (err) {
+                console.warn(`Gagal fetch paket untuk monitoring ${monitoring.id}`);
+              }
+            }
+            return monitoring;
+          })
+        );
+        setMonitorings(monitoringsWithPaket);
       }
-    } catch (error) {
-      console.error('Error fetching monitorings:', error);
+    } catch (err) {
+      error('Gagal memuat data monitoring');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -125,8 +171,8 @@ export default function MonitoringEvaluasi() {
         const data = await response.json();
         setPakets(data);
       }
-    } catch (error) {
-      console.error('Error fetching pakets:', error);
+    } catch (err) {
+      error("Gagal memuat data paket");
     }
   };
 
@@ -139,12 +185,11 @@ export default function MonitoringEvaluasi() {
         const data = await response.json();
         setLaporanItwasda(data);
       }
-    } catch (error) {
-      console.error('Error fetching laporan itwasda:', error);
+    } catch (err) {
+      error("Gagal memuat data laporan itwasda");
     }
   };
 
-  // Form validation
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
     
@@ -173,7 +218,6 @@ export default function MonitoringEvaluasi() {
       errors.tanggalMonitoring = "Tanggal monitoring wajib diisi";
     }
 
-    // Validate paket eligibility
     if (formData.paketId) {
       const hasCompletedLaporan = laporanItwasda.some(
         l => l.paketId === formData.paketId && l.status === 'SELESAI'
@@ -192,7 +236,9 @@ export default function MonitoringEvaluasi() {
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
+    loading("Menyimpan monitoring...");
+
     try {
       const monitoringData = {
         paketId: formData.paketId,
@@ -226,20 +272,29 @@ export default function MonitoringEvaluasi() {
         await fetchMonitorings();
         closeModal();
         resetForm();
-        alert('Monitoring berhasil disimpan!');
+        setEditingMonitoring(null);
+        success("Monitoring berhasil disimpan!");
       } else {
         const errorData = await response.json();
-        alert('Gagal menyimpan monitoring: ' + (errorData.error || 'Unknown error'));
+        error("Gagal menyimpan monitoring: " + (errorData.error || "Unknown error"));
       }
-    } catch (error) {
-      console.error('Error saving monitoring:', error);
-      alert('Terjadi kesalahan saat menyimpan monitoring');
+    } catch (err) {
+      error("Terjadi kesalahan saat menyimpan monitoring");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleEdit = (monitoring: Monitoring) => {
+    // Cek apakah paket masih eligible
+    const isPaketStillEligible = eligiblePakets.some((p) => p.id === monitoring.paketId);
+
+    if (!isPaketStillEligible) {
+      error(
+        'Paket ini sudah tidak eligible untuk monitoring. Status laporan Itwasda mungkin berubah.'
+      );
+      return;
+    }
     setEditingMonitoring(monitoring);
     setFormData({
       paketId: monitoring.paketId,
@@ -247,40 +302,54 @@ export default function MonitoringEvaluasi() {
       periode: monitoring.periode,
       status: monitoring.status,
       progress: monitoring.progress.toString(),
-      issues: monitoring.issues || "",
-      rekomendasi: monitoring.rekomendasi || "",
+      issues: monitoring.issues || '',
+      rekomendasi: monitoring.rekomendasi || '',
       tanggalMonitoring: new Date(monitoring.tanggalMonitoring).toISOString().split('T')[0],
     });
     setFormErrors({});
     openModal();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus monitoring ini?')) return;
+  const handleViewDetails = (data: Monitoring) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
 
-    setLoading(true);
+  const handleDelete = (monitoring: Monitoring) => {
+    setDeletingMonitoring(monitoring);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingMonitoring) return;
+    setIsLoading(true);
+    loading("Menghapus monitoring...");
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/monitoring/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/monitoring/${deletingMonitoring.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
+
       if (response.ok) {
         await fetchMonitorings();
-        alert('Monitoring berhasil dihapus!');
+        success("Monitoring berhasil dihapus!");
       } else {
         const errorData = await response.json();
-        alert('Gagal menghapus monitoring: ' + (errorData.error || 'Unknown error'));
+        error("Gagal menghapus: " + (errorData.error || "Unknown error"));
       }
-    } catch (error) {
-      console.error('Error deleting monitoring:', error);
-      alert('Terjadi kesalahan saat menghapus monitoring');
+    } catch (err) {
+      error("Terjadi kesalahan saat menghapus monitoring");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+      setIsConfirmModalOpen(false);
+      setDeletingMonitoring(null);
     }
   };
 
-  const handleUpload = (id: string) => {
-    alert(`Upload dokumen untuk monitoring ${id}`);
+  const handleDownloadDocument = (filePath: string, fileName: string) => {
+    window.open(`${API_BASE_URL}${filePath}`, "_blank");
+    info("📄 Dokumen sedang diunduh...");
   };
 
   const resetForm = () => {
@@ -300,21 +369,14 @@ export default function MonitoringEvaluasi() {
 
   const openAddModal = () => {
     if (eligiblePakets.length === 0) {
-      alert('Tidak ada paket yang eligible untuk monitoring. Paket harus memiliki laporan Itwasda dengan status "Selesai".');
+      error(
+        'Tidak ada paket yang eligible untuk monitoring. Paket harus memiliki laporan Itwasda dengan status "Selesai".'
+      );
       return;
     }
     resetForm();
     openModal();
   };
-
-  const filteredMonitorings = monitorings.filter((m) => {
-    const matchSearch =
-      m.paket?.kodePaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.paket?.namaPaket.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.jenisMonitoring.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchFilter = filterStatus === "all" || m.status === filterStatus;
-    return matchSearch && matchFilter;
-  });
 
   const getStatusColor = (status: Monitoring["status"]) => {
     switch (status) {
@@ -331,6 +393,39 @@ export default function MonitoringEvaluasi() {
     }
   };
 
+  const getStatusIcon = (status: Monitoring["status"]) => {
+    switch (status) {
+      case "COMPLETED":
+        return <CheckCircleIcon className="w-4 h-4" />;
+      case "ON_TRACK":
+        return <ChartBarIcon className="w-4 h-4" />;
+      case "DELAYED":
+        return <ClockIcon className="w-4 h-4" />;
+      case "CRITICAL":
+        return <ExclamationTriangleIcon className="w-4 h-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const ProgressBar = ({ progress }: { progress: number }) => (
+    <div className="flex items-center gap-3">
+      <div className="w-20 bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+        <div
+          className={`h-2 rounded-full ${
+            progress >= 80 ? 'bg-success-500' :
+            progress >= 60 ? 'bg-info-500' :
+            progress >= 40 ? 'bg-warning-500' : 'bg-error-500'
+          }`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[40px]">
+        {progress}%
+      </span>
+    </div>
+  );
+
   const jenisMonitoringOptions = [
     { value: "Kinerja", label: "Monitoring Kinerja" },
     { value: "Keuangan", label: "Monitoring Keuangan" },
@@ -346,32 +441,153 @@ export default function MonitoringEvaluasi() {
     { value: "COMPLETED", label: "Completed" },
   ];
 
-  const paketOptions = eligiblePakets.map(paket => ({
-    value: paket.id,
-    label: `${paket.kodePaket} - ${paket.namaPaket}`
-  }));
+  const paketOptions = (() => {
+    const baseOptions = eligiblePakets.map((paket) => ({
+      value: paket.id,
+      label: `${paket.kodePaket} - ${paket.namaPaket}`,
+    }));
 
-  // Stats Cards
+    
+    if (
+      editingMonitoring &&
+      editingMonitoring.paketId &&
+      !eligiblePakets.some((p) => p.id === editingMonitoring.paketId)
+    ) {
+      // Coba cari paket dari semua pakets (bukan cuma eligible)
+      const paketFromAll = pakets.find((p) => p.id === editingMonitoring.paketId);
+      if (paketFromAll) {
+        const currentPaketOption = {
+          value: editingMonitoring.paketId,
+          label: `${paketFromAll.kodePaket} - ${paketFromAll.namaPaket}`,
+        };
+        return [currentPaketOption, ...baseOptions];
+      }
+    }
+
+    return baseOptions;
+  })();
+
+  const filteredMonitorings = monitorings.filter((m) => {
+    const matchSearch =
+      searchQuery === "" ||
+      (m.paket?.kodePaket || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.paket?.namaPaket || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.jenisMonitoring.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.periode.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchStatus = filterStatus === "all" || m.status === filterStatus;
+    const matchJenis = filterJenis === "all" || m.jenisMonitoring === filterJenis;
+    
+    return matchSearch && matchStatus && matchJenis;
+  });
+
+  // Stats Cards Data
   const stats = [
     {
-      label: "Total Monitoring",
-      value: monitorings.length,
-      color: "text-brand-500",
+      title: "Monitoring Terkait Paket",
+      value: monitorings.filter(m => m.paketId).length,
+      subtitle: "Monitoring dengan paket terkait",
+      icon: ChartBarIcon,
+      fromColor: "from-blue-500",
+      toColor: "to-blue-600",
     },
     {
-      label: "On Track",
+      title: "On Track",
       value: monitorings.filter((m) => m.status === "ON_TRACK").length,
-      color: "text-info-500",
+      subtitle: "Monitoring berjalan sesuai rencana",
+      icon: CheckCircleIcon,
+      fromColor: "from-green-500",
+      toColor: "to-green-600",
     },
     {
-      label: "Delayed",
-      value: monitorings.filter((m) => m.status === "DELAYED").length,
-      color: "text-warning-500",
+      title: "Perlu Perhatian",
+      value: monitorings.filter((m) => m.status === "DELAYED" || m.status === "CRITICAL").length,
+      subtitle: "Monitoring bermasalah",
+      icon: ExclamationTriangleIcon,
+      fromColor: "from-orange-500",
+      toColor: "to-orange-600",
     },
     {
-      label: "Critical",
-      value: monitorings.filter((m) => m.status === "CRITICAL").length,
-      color: "text-error-500",
+      title: "Selesai",
+      value: monitorings.filter((m) => m.status === "COMPLETED").length,
+      subtitle: "Monitoring telah selesai",
+      icon: CheckCircleIcon,
+      fromColor: "from-purple-500",
+      toColor: "to-purple-600",
+    },
+  ];
+
+  // Columns DataTable
+  const columns: ColumnDef<Monitoring>[] = [
+    {
+      accessorKey: "paket",
+      header: "Paket",
+      cell: ({ getValue }) => {
+        const paket = getValue() as Monitoring["paket"];
+        return (
+          <div>
+            <p className="font-medium text-gray-800 dark:text-white/90">
+              {paket?.kodePaket || "N/A"}
+            </p>
+            <p className="text-xs text-gray-500">{paket?.namaPaket || "Paket tidak tersedia"}</p>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "jenisMonitoring",
+      header: "Jenis Monitoring",
+      cell: ({ getValue }) => (
+        <Badge size="sm" color="info">
+          {getValue() as string}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "periode",
+      header: "Periode",
+    },
+    {
+      accessorKey: "progress",
+      header: "Progress",
+      cell: ({ getValue }) => <ProgressBar progress={getValue() as number} />,
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => {
+        const status = getValue() as Monitoring["status"];
+        return (
+          <Badge 
+            size="sm" 
+            color={getStatusColor(status)}
+            startIcon={getStatusIcon(status)}
+          >
+            {status.replace('_', ' ')}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "tanggalMonitoring",
+      header: "Tanggal Monitoring",
+      cell: ({ getValue }) =>
+        new Date(getValue() as string).toLocaleDateString("id-ID"),
+    },
+    {
+      accessorKey: "monitoredBy",
+      header: "Monitor By",
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original)}
+        />
+      ),
     },
   ];
 
@@ -394,40 +610,18 @@ export default function MonitoringEvaluasi() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
-            <div
+            <StatsCard
               key={index}
-              className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {stat.label}
-                  </p>
-                  <p className={`text-2xl font-bold ${stat.color}`}>
-                    {stat.value}
-                  </p>
-                </div>
-              </div>
-            </div>
+              title={stat.title}
+              value={stat.value}
+              subtitle={stat.subtitle}
+              icon={stat.icon}
+              fromColor={stat.fromColor}
+              toColor={stat.toColor}
+            />
           ))}
-        </div>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-            <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
-              Progress Monitoring per Paket
-            </h3>
-            <BarChartOne />
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-            <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
-              Tren Monitoring Bulanan
-            </h3>
-            <LineChartOne />
-          </div>
         </div>
 
         {/* Header Section */}
@@ -445,150 +639,57 @@ export default function MonitoringEvaluasi() {
             variant="primary"
             startIcon={<PlusIcon />}
             onClick={openAddModal}
-            disabled={loading || eligiblePakets.length === 0}
+            disabled={isLoading || eligiblePakets.length === 0}
           >
             Tambah Monitoring
           </Button>
         </div>
 
-        {/* Search and Filter */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              type="text"
-              placeholder="Cari monitoring..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96"
-            />
-            <div className="flex gap-2">
-              <select
-                className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Semua Status</option>
-                <option value="ON_TRACK">On Track</option>
-                <option value="DELAYED">Delayed</option>
-                <option value="CRITICAL">Critical</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
-            </div>
+        {/* Filter Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="ON_TRACK">On Track</option>
+              <option value="DELAYED">Delayed</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+            
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
+              value={filterJenis}
+              onChange={(e) => setFilterJenis(e.target.value)}
+            >
+              <option value="all">Semua Jenis</option>
+              {jenisMonitoringOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          {loading ? (
-            <div className="p-6 text-center">Loading...</div>
-          ) : filteredMonitorings.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
-              Tidak ada monitoring ditemukan
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Paket
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Jenis
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Periode
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Progress
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Tanggal
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {filteredMonitorings.map((m) => (
-                    <tr
-                      key={m.id}
-                      className="hover:bg-gray-50 dark:hover:bg-white/5"
-                    >
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        <div>
-                          <p className="font-medium text-gray-800 dark:text-white/90">
-                            {m.paket?.kodePaket}
-                          </p>
-                          <p className="text-xs text-gray-500">{m.paket?.namaPaket}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {m.jenisMonitoring}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {m.periode}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                            <div
-                              className="bg-brand-600 h-2 rounded-full"
-                              style={{ width: `${m.progress}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-gray-700 dark:text-gray-400">
-                            {m.progress}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge size="sm" color={getStatusColor(m.status)}>
-                          {m.status.replace('_', ' ')}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
-                        {new Date(m.tanggalMonitoring).toLocaleDateString('id-ID')}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        <div className="flex gap-2">
-                          <button
-                            className="text-green-600 hover:text-green-900 dark:text-green-400"
-                            onClick={() => handleUpload(m.id)}
-                            disabled={loading}
-                            title="Upload"
-                          >
-                            Upload
-                          </button>
-                          <button
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-                            onClick={() => handleEdit(m)}
-                            disabled={loading}
-                            title="Edit"
-                          >
-                            <PencilIcon className="size-5" />
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-900 dark:text-red-400"
-                            onClick={() => handleDelete(m.id)}
-                            disabled={loading}
-                            title="Hapus"
-                          >
-                            <TrashBinIcon className="size-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {/* DataTable */}
+        <DataTable
+          columns={columns}
+          data={filteredMonitorings}
+          loading={isLoading}
+          enableExport={true}
+          enableColumnVisibility={true}
+          pageSize={10}
+          searchPlaceholder="Cari paket, jenis monitoring, atau periode..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          fixedHeight="750px"
+          fixedWidth="1300px"
+          minVisibleRows={10}
+        />
       </div>
 
       {/* Modal Form */}
@@ -596,12 +697,12 @@ export default function MonitoringEvaluasi() {
         isOpen={isOpen}
         onClose={closeModal}
         size="2xl"
-        title={editingMonitoring ? "" : ""}
+        title={editingMonitoring ? "Edit Monitoring" : "Tambah Monitoring Baru"}
         showHeader={true}
       >
-        <div className="p-6">
+        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingMonitoring ? '' : ''}
+            {editingMonitoring ? "Edit Monitoring" : "Tambah Monitoring Baru"}
           </h3>
 
           <div className="space-y-4">
@@ -613,7 +714,7 @@ export default function MonitoringEvaluasi() {
                 onChange={(value) =>
                   setFormData({ ...formData, paketId: value })
                 }
-                defaultValue={formData.paketId}
+                value={formData.paketId}
               />
               {formErrors.paketId && (
                 <p className="mt-1 text-xs text-error-500">{formErrors.paketId}</p>
@@ -632,7 +733,7 @@ export default function MonitoringEvaluasi() {
                   onChange={(value) =>
                     setFormData({ ...formData, jenisMonitoring: value })
                   }
-                  defaultValue={formData.jenisMonitoring}
+                  value={formData.jenisMonitoring}
                 />
                 {formErrors.jenisMonitoring && (
                   <p className="mt-1 text-xs text-error-500">{formErrors.jenisMonitoring}</p>
@@ -665,7 +766,7 @@ export default function MonitoringEvaluasi() {
                       status: value as Monitoring["status"],
                     })
                   }
-                  defaultValue={formData.status}
+                  value={formData.status}
                 />
                 {formErrors.status && (
                   <p className="mt-1 text-xs text-error-500">{formErrors.status}</p>
@@ -727,15 +828,103 @@ export default function MonitoringEvaluasi() {
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={closeModal} disabled={loading}>
+            <Button size="sm" variant="outline" onClick={closeModal} disabled={isLoading}>
               Batal
             </Button>
-            <Button size="sm" variant="primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Menyimpan...' : 'Simpan Monitoring'}
+            <Button size="sm" variant="primary" onClick={handleSubmit} disabled={isLoading}>
+              {isLoading ? 'Menyimpan...' : editingMonitoring ? 'Update' : 'Simpan'}
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Hapus Monitoring"
+        message={`Apakah Anda yakin ingin menghapus monitoring ${
+          deletingMonitoring?.paket 
+            ? `untuk paket "${deletingMonitoring.paket.kodePaket}"`
+            : "ini"
+        }?`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        loading={isLoading}
+      />
+
+      {/* Details Modal */}
+      {selectedData && (
+        <DetailsModal
+          isOpen={viewDetailsOpen}
+          onClose={() => setViewDetailsOpen(false)}
+          title="Detail Monitoring"
+          sections={[
+            {
+              title: "Informasi Monitoring",
+              fields: [
+                {
+                  label: "Paket", 
+                  value: selectedData.paket 
+                    ? `${selectedData.paket.kodePaket} - ${selectedData.paket.namaPaket}`
+                    : "Tidak terkait paket"
+                },
+                { 
+                  label: "Jenis Monitoring", 
+                  value: (
+                    <Badge size="sm" color="info">
+                      {selectedData.jenisMonitoring}
+                    </Badge>
+                  ) 
+                },
+                { label: "Periode", value: selectedData.periode },
+                { 
+                  label: "Status", 
+                  value: (
+                    <Badge 
+                      size="sm" 
+                      color={getStatusColor(selectedData.status)}
+                      startIcon={getStatusIcon(selectedData.status)}
+                    >
+                      {selectedData.status.replace('_', ' ')}
+                    </Badge>
+                  ) 
+                },
+                { 
+                  label: "Progress", 
+                  value: <ProgressBar progress={selectedData.progress} />
+                },
+                { 
+                  label: "Tanggal Monitoring", 
+                  value: new Date(selectedData.tanggalMonitoring).toLocaleDateString("id-ID") 
+                },
+                { label: "Dimonitor Oleh", value: selectedData.monitoredBy },
+              ],
+            },
+            {
+              title: "Issues & Rekomendasi",
+              fields: [
+                { 
+                  label: "Issues", 
+                  value: selectedData.issues || "Tidak ada issues" 
+                },
+                { 
+                  label: "Rekomendasi", 
+                  value: selectedData.rekomendasi || "Tidak ada rekomendasi" 
+                },
+              ],
+            },
+          ]}
+          documents={selectedData.dokumen?.map(doc => ({
+            id: doc.id,
+            namaDokumen: doc.namaDokumen,
+            filePath: doc.filePath,
+            uploadedAt: doc.uploadedAt,
+          })) || []}
+          onDownloadDocument={handleDownloadDocument}
+        />
+      )}
     </>
   );
 }

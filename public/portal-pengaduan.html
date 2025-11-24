@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Pengaduan Masyarakat - SIPAKAT BPJ</title>
+    <link rel="icon" href="https://sipakat-bpj.com/favicon.ico">
+    
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-dark: #1e3a8a;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .portal-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--card);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            min-height: 90vh;
+        }
+
+        /* Header */
+        .portal-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .portal-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="%23ffffff" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+            background-size: cover;
+        }
+
+        .portal-header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .portal-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 400;
+            position: relative;
+        }
+
+        .logo {
+            font-size: 2rem;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        /* Main Content */
+        .portal-content {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            min-height: 600px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--background);
+            padding: 40px 30px;
+            border-right: 1px solid var(--border);
+            position: relative;
+        }
+
+        .stats-grid {
+            display: grid;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: white;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            background: var(--border);
+            border-radius: 10px;
+            height: 8px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, var(--success) 0%, #34d399 100%);
+            height: 100%;
+            width: 89%;
+            border-radius: 10px;
+        }
+
+        .info-section {
+            background: linear-gradient(135deg, #dbeafe 0%, #e0f2fe 100%);
+            padding: 24px;
+            border-radius: 16px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .info-section h4 {
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-list {
+            list-style: none;
+        }
+
+        .info-list li {
+            padding: 8px 0;
+            display: flex;
+            align-items: start;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .info-list li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* Main Form Section */
+        .main-section {
+            padding: 40px;
+            background: var(--card);
+        }
+
+        .section-header {
+            margin-bottom: 32px;
+        }
+
+        .section-header h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .section-header p {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            background: var(--background);
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-light);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.2);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .required::after {
+            content: " *";
+            color: var(--error);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            background: var(--card);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            line-height: 1.5;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(30, 64, 175, 0.4);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* History Table */
+        .history-table {
+            background: var(--card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: var(--background);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-header h3 {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .table-content {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover {
+            background: var(--background);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .ticket-info h4 {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text);
+        }
+
+        .ticket-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .ticket-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-new { background: #dbeafe; color: var(--primary); }
+        .status-process { background: #fef3c7; color: var(--warning); }
+        .status-done { background: #d1fae5; color: var(--success); }
+        .status-rejected { background: #fee2e2; color: var(--error); }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .toast {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--success);
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            border-left-color: var(--error);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning);
+        }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+
+        .toast.success .toast-icon { background: var(--success); color: white; }
+        .toast.error .toast-icon { background: var(--error); color: white; }
+        .toast.warning .toast-icon { background: var(--warning); color: white; }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-content h4 {
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+        }
+
+        .toast-content p {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            line-height: 1.4;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .toast-close:hover {
+            background: var(--border);
+        }
+
+        /* Success Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--success) 0%, #34d399 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .modal h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .modal p {
+            color: var(--text-light);
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .ticket-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 16px 0;
+            padding: 16px;
+            background: var(--background);
+            border-radius: 12px;
+            border: 2px dashed var(--border);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            flex: 2;
+        }
+
+        .btn-secondary {
+            background: var(--background);
+            color: var(--text);
+            flex: 1;
+            border: 1px solid var(--border);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .portal-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .portal-header {
+                padding: 30px 20px;
+            }
+            
+            .portal-header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .main-section, .sidebar {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Success Modal -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal">
+            <div class="modal-icon">
+                <i data-feather="check"></i>
+            </div>
+            <h3>Pengaduan Berhasil Dikirim!</h3>
+            <p>Pengaduan Anda telah berhasil direkam dan akan segera diproses oleh tim kami.</p>
+            <div class="ticket-number" id="modalTicketNumber">TKT-20241225001</div>
+            <p><small>Simpan nomor tiket ini untuk melakukan tracking</small></p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Tutup</button>
+                <button class="btn btn-primary" onclick="trackNewTicket()">Lacak Sekarang</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="portal-container">
+        <!-- Header -->
+        <div class="portal-header">
+            <div class="logo">
+                <i data-feather="shield"></i>
+            </div>
+            <h1>Portal Pengaduan Masyarakat</h1>
+            <p>Layanan Pengaduan Resmi SIPAKAT BPJ</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="portal-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i data-feather="file-text"></i>
+                        </div>
+                        <div class="stat-number">1.247</div>
+                        <div class="stat-label">Total Pengaduan 2024</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i data-feather="trending-up"></i>
+                        </div>
+                        <div class="stat-number">89%</div>
+                        <div class="stat-label">Rate Penyelesaian</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i data-feather="clock"></i>
+                        </div>
+                        <div class="stat-number">1-3</div>
+                        <div class="stat-label">Hari Waktu Respon</div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h4><i data-feather="info"></i> Informasi Penting</h4>
+                    <ul class="info-list">
+                        <li>Pengaduan diproses maksimal 3 hari kerja</li>
+                        <li>Simpan nomor tiket untuk tracking status</li>
+                        <li>Respon akan dikirim via email yang didaftarkan</li>
+                        <li>Data pelapor dijamin kerahasiaannya</li>
+                        <li>Pastikan data yang diisi valid dan lengkap</li>
+                    </ul>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <p style="font-size: 0.9rem; color: var(--text-light);">
+                        <i data-feather="phone"></i> (027) 1234-5678<br>
+                        <i data-feather="mail"></i> pengaduan@sipakat-bpj.com
+                    </p>
+                </div>
+            </div>
+
+            <!-- Main Section -->
+            <div class="main-section">
+                <div class="section-header">
+                    <h2>Formulir Pengaduan Online</h2>
+                    <p>Silakan lengkapi form di bawah ini untuk mengajukan pengaduan</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('form')">Buat Pengaduan Baru</button>
+                    <button class="tab" onclick="switchTab('history')">Riwayat Pengaduan</button>
+                    <button class="tab" onclick="switchTab('tracking')">Lacak Pengaduan</button>
+                </div>
+
+                <!-- Form Tab -->
+                <div class="tab-content active" id="formTab">
+                    <form id="pengaduanForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="required">Nama Lengkap</label>
+                                <input type="text" name="nama" required placeholder="Masukkan nama lengkap">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="required">Alamat Email</label>
+                                <input type="email" name="email" required placeholder="nama@email.com">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Nomor Telepon/HP</label>
+                                <input type="tel" name="telepon" placeholder="08xxxxxxxxxx">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Kategori Pengaduan</label>
+                                <select name="kategori">
+                                    <option value="UMUM">Umum</option>
+                                    <option value="PELAYANAN">Pelayanan Publik</option>
+                                    <option value="PROYEK">Proyek Konstruksi</option>
+                                    <option value="PENGADAAN">Pengadaan Barang/Jasa</option>
+                                    <option value="LAINNYA">Lainnya</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label class="required">Judul Pengaduan</label>
+                                <input type="text" name="judul" required placeholder="Ringkasan singkat pengaduan Anda">
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label class="required">Isi Pengaduan</label>
+                                <textarea name="isi" required placeholder="Jelaskan detail pengaduan Anda secara lengkap dan jelas..."></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            <i data-feather="send"></i>
+                            <span>Kirim Pengaduan</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- History Tab -->
+                <div class="tab-content" id="historyTab">
+                    <div class="form-group">
+                        <label>Masukkan Email untuk Melihat Riwayat</label>
+                        <div style="display: flex; gap: 12px;">
+                            <input type="email" id="historyEmail" placeholder="nama@email.com" style="flex: 1;">
+                            <button class="btn btn-primary" onclick="loadHistory()" style="width: auto;">
+                                <i data-feather="search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="history-table">
+                        <div class="table-header">
+                            <h3>Riwayat Pengaduan</h3>
+                        </div>
+                        <div class="table-content" id="historyContent">
+                            <div style="padding: 40px; text-align: center; color: var(--text-light);">
+                                <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                                <p>Masukkan email untuk melihat riwayat pengaduan</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tracking Tab -->
+                <div class="tab-content" id="trackingTab">
+                    <div class="form-group">
+                        <label>Nomor Tiket Pengaduan</label>
+                        <div style="display: flex; gap: 12px;">
+                            <input type="text" id="trackingInput" placeholder="TKT-20241225001" style="flex: 1;">
+                            <button class="btn btn-primary" onclick="trackPengaduan()" style="width: auto;">
+                                <i data-feather="search"></i> Lacak
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="trackingResult"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Feather Icons
+        feather.replace();
+        
+        // Auto-detect base URL
+        const getBaseUrl = () => {
+            if (window.location.hostname.includes('localhost')) {
+                return 'http://localhost:3001';
+            }
+            return 'https://sipakat-bpj.com';
+        };
+
+        const API_BASE = getBaseUrl();
+        let currentTicketNumber = '';
+
+        // Tab Switching
+        function switchTab(tabName) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // Toast Notification
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div class="toast-icon">
+                    <i data-feather="${type === 'success' ? 'check' : type === 'error' ? 'x' : 'alert-triangle'}"></i>
+                </div>
+                <div class="toast-content">
+                    <h4>${type === 'success' ? 'Berhasil' : type === 'error' ? 'Error' : 'Peringatan'}</h4>
+                    <p>${message}</p>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">
+                    <i data-feather="x"></i>
+                </button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            feather.replace();
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Modal Functions
+        function showModal(ticketNumber) {
+            currentTicketNumber = ticketNumber;
+            document.getElementById('modalTicketNumber').textContent = ticketNumber;
+            document.getElementById('successModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.remove('show');
+        }
+
+        function trackNewTicket() {
+            closeModal();
+            switchTab('tracking');
+            document.getElementById('trackingInput').value = currentTicketNumber;
+            setTimeout(() => trackPengaduan(), 300);
+        }
+
+        // Form Submission
+        document.getElementById('pengaduanForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            const submitBtn = document.getElementById('submitBtn');
+            
+            submitBtn.innerHTML = '<i data-feather="loader"></i><span>Mengirim...</span>';
+            submitBtn.disabled = true;
+            feather.replace();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/pengaduan/masyarakat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('Pengaduan berhasil dikirim!', 'success');
+                    this.reset();
+                    showModal(result.data.nomor_tiket);
+                    
+                    // Pre-fill email for history
+                    document.getElementById('historyEmail').value = data.email;
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Gagal mengirim pengaduan. Silakan coba lagi.', 'error');
+                console.error('Error:', error);
+            } finally {
+                submitBtn.innerHTML = '<i data-feather="send"></i><span>Kirim Pengaduan</span>';
+                submitBtn.disabled = false;
+                feather.replace();
+            }
+        });
+
+        // Load History
+        async function loadHistory() {
+            const email = document.getElementById('historyEmail').value.trim();
+            if (!email) {
+                showToast('Masukkan alamat email terlebih dahulu', 'warning');
+                return;
+            }
+
+            const historyContent = document.getElementById('historyContent');
+            historyContent.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-light);">
+                    <i data-feather="loader" class="spin"></i>
+                    <p style="margin-top: 12px;">Memuat riwayat pengaduan...</p>
+                </div>
+            `;
+            feather.replace();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/pengaduan/history/${encodeURIComponent(email)}`);
+                const result = await response.json();
+
+                if (result.success && result.data.length > 0) {
+                    let html = '';
+                    result.data.forEach(item => {
+                        const statusClass = `status-${item.status.toLowerCase()}`;
+                        const statusText = {
+                            'BARU': 'Baru',
+                            'DIPROSES': 'Diproses',
+                            'SELESAI': 'Selesai',
+                            'DITOLAK': 'Ditolak'
+                        }[item.status] || item.status;
+                        
+                        html += `
+                            <div class="history-item">
+                                <div class="ticket-info">
+                                    <h4>${item.judul}</h4>
+                                    <div class="ticket-meta">
+                                        <span>${item.nomor_tiket}</span>
+                                        <span>${new Date(item.tanggal).toLocaleDateString('id-ID')}</span>
+                                        <span>${item.kategori}</span>
+                                    </div>
+                                </div>
+                                <div class="ticket-status ${statusClass}">${statusText}</div>
+                            </div>
+                        `;
+                    });
+                    historyContent.innerHTML = html;
+                } else {
+                    historyContent.innerHTML = `
+                        <div style="padding: 40px; text-align: center; color: var(--text-light);">
+                            <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                            <p>Tidak ada riwayat pengaduan untuk email ini</p>
+                        </div>
+                    `;
+                    feather.replace();
+                }
+            } catch (error) {
+                historyContent.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: var(--error);">
+                        <i data-feather="alert-triangle" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                        <p>Gagal memuat riwayat pengaduan</p>
+                    </div>
+                `;
+                feather.replace();
+                console.error('Error:', error);
+            }
+        }
+
+        // Track Pengaduan
+        async function trackPengaduan() {
+            const ticketNumber = document.getElementById('trackingInput').value.trim();
+            const trackingResult = document.getElementById('trackingResult');
+            
+            if (!ticketNumber) {
+                showToast('Masukkan nomor tiket terlebih dahulu', 'warning');
+                return;
+            }
+
+            trackingResult.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-light);">
+                    <i data-feather="loader" class="spin"></i>
+                    <p style="margin-top: 12px;">Mencari data pengaduan...</p>
+                </div>
+            `;
+            feather.replace();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/pengaduan/masyarakat/tracking/${ticketNumber}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const statusColors = {
+                        'BARU': 'status-new',
+                        'DIPROSES': 'status-process', 
+                        'SELESAI': 'status-done',
+                        'DITOLAK': 'status-rejected'
+                    };
+                    
+                    const statusText = {
+                        'BARU': 'Baru',
+                        'DIPROSES': 'Diproses',
+                        'SELESAI': 'Selesai',
+                        'DITOLAK': 'Ditolak'
+                    };
+
+                    trackingResult.innerHTML = `
+                        <div class="history-table">
+                            <div class="history-item">
+                                <div class="ticket-info">
+                                    <h4>${result.data.judul}</h4>
+                                    <div class="ticket-meta">
+                                        <span><strong>Nomor Tiket:</strong> ${result.data.nomor_tiket}</span>
+                                        <span><strong>Tanggal:</strong> ${new Date(result.data.tanggal).toLocaleDateString('id-ID')}</span>
+                                        <span><strong>Update Terakhir:</strong> ${new Date(result.data.updatedAt).toLocaleDateString('id-ID')}</span>
+                                    </div>
+                                </div>
+                                <div class="ticket-status ${statusColors[result.data.status]}">
+                                    ${statusText[result.data.status]}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    trackingResult.innerHTML = `
+                        <div style="padding: 40px; text-align: center; color: var(--error);">
+                            <i data-feather="x-circle" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                            <p>${result.message}</p>
+                        </div>
+                    `;
+                    feather.replace();
+                }
+            } catch (error) {
+                trackingResult.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: var(--error);">
+                        <i data-feather="alert-triangle" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                        <p>Gagal memeriksa status pengaduan</p>
+                    </div>
+                `;
+                feather.replace();
+                console.error('Error:', error);
+            }
+        }
+
+        // Enter key support for tracking
+        document.getElementById('trackingInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') trackPengaduan();
+        });
+
+        document.getElementById('historyEmail').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loadHistory();
+        });
+
+        // Add spinning animation
+        const style = document.createElement('style');
+        style.textContent = `
+            .spin {
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
