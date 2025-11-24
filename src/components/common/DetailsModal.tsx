@@ -1,5 +1,5 @@
 import { Modal } from '../ui/modal';
-import { X, Download, FileText } from 'lucide-react';
+import { X, Download, FileText, ExternalLink } from 'lucide-react';
 import Badge from '../ui/badge/Badge';
 
 interface DetailField {
@@ -28,15 +28,63 @@ interface DetailsModalProps {
   documents?: Document[];
 }
 
+// Helper function to get the correct base URL
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+};
+
+// Helper function to get full file URL
+const getFileUrl = (filePath: string) => {
+  if (!filePath) return '';
+  
+  // If filePath already contains full URL, return as is
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    return filePath;
+  }
+  
+  // If filePath starts with /uploads, construct full URL
+  if (filePath.startsWith('/uploads')) {
+    return `${getBaseUrl()}${filePath}`;
+  }
+  
+  // If filePath doesn't start with /, add it
+  return `${getBaseUrl()}/uploads/${filePath}`;
+};
+
 export const DetailsModal = ({ isOpen, onClose, title, sections, documents }: DetailsModalProps) => {
   const handleDownload = (filePath: string, fileName: string) => {
-    const link = document.createElement('a');
-    link.href = `http://localhost:3001${filePath}`;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const fullUrl = getFileUrl(filePath);
+      const link = document.createElement('a');
+      link.href = fullUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Gagal mengunduh file. Silakan coba lagi.');
+    }
+  };
+
+  const handlePreview = (filePath: string) => {
+    try {
+      const fullUrl = getFileUrl(filePath);
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Preview error:', error);
+      alert('Gagal membuka preview. Silakan coba lagi.');
+    }
+  };
+
+  const getFileType = (filePath: string) => {
+    const extension = filePath.split('.').pop()?.toLowerCase();
+    return extension || '';
   };
 
   return (
@@ -74,31 +122,54 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents }: De
                 Dokumen Terlampir
               </h3>
               <div className="space-y-2">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {doc.namaDokumen}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(doc.uploadedAt).toLocaleDateString('id-ID')}
-                        </p>
+                {documents.map((doc) => {
+                  const fileType = getFileType(doc.filePath);
+                  const isPDF = fileType === 'pdf';
+                  const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(fileType);
+                  
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {doc.namaDokumen}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(doc.uploadedAt).toLocaleDateString('id-ID', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {(isPDF || isImage) && (
+                          <button
+                            onClick={() => handlePreview(doc.filePath)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20"
+                            title="Preview"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Preview
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDownload(doc.filePath, doc.namaDokumen)}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:bg-blue-900/20"
+                          title="Download"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDownload(doc.filePath, doc.namaDokumen)}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:bg-blue-900/20"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

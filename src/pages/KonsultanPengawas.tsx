@@ -12,10 +12,16 @@ import Label from "../components/form/Label";
 import Select from "../components/form/Select";
 import { DataTable } from "../components/common/DataTable";
 import { useToast } from "../hooks/useToast";
-import { FileUploadPreview } from "../components/ui/FileUploadPreview";
 import { ActionButtons } from "../components/common/ActionButtons";
 import { DetailsModal } from "../components/common/DetailsModal";
-import toast from "react-hot-toast";
+import { ColumnDef } from "@tanstack/react-table";
+import { StatsCard } from "../components/common/StatsCard";
+import {
+  DocumentChartBarIcon as DocumentIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  EyeIcon,
+} from "@heroicons/react/24/outline";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -35,7 +41,6 @@ interface KonsultanPengawas {
   lamaKontrak?: number;
   namaProyek?: string;
   deskripsiLaporan?: string;
-  dokumenLaporan?: string;
   deskripsiProgress?: string;
   uploadDokumen?: string;
   uploadFoto?: string;
@@ -43,11 +48,37 @@ interface KonsultanPengawas {
   createdAt: string;
 }
 
+interface KonsultanFormData {
+  namaVendor: string;
+  nomorIzin: string;
+  spesialisasi: string;
+  kontak: string;
+  alamat: string;
+  namaProyek: string;
+  deskripsiLaporan: string;
+  lamaKontrak: string;
+  dokumenLaporan: File | null;
+}
+
+interface FormErrors {
+  namaVendor?: string;
+  nomorIzin?: string;
+  alamat?: string;
+  dokumenLaporan?: string;
+}
+
 export default function KonsultanPengawas() {
   const [konsultanPengawas, setKonsultanPengawas] = useState<KonsultanPengawas[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedData, setSelectedData] = useState<KonsultanPengawas | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
-  const [formData, setFormData] = useState({
+  const [editingKonsultan, setEditingKonsultan] = useState<KonsultanPengawas | null>(null);
+  const [deletingKonsultan, setDeletingKonsultan] = useState<KonsultanPengawas | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [formData, setFormData] = useState<KonsultanFormData>({
     namaVendor: "",
     nomorIzin: "",
     spesialisasi: "",
@@ -56,24 +87,12 @@ export default function KonsultanPengawas() {
     namaProyek: "",
     deskripsiLaporan: "",
     lamaKontrak: "",
-    dokumenLaporan: null as File | null,
+    dokumenLaporan: null,
   });
-  const [editingKonsultan, setEditingKonsultan] = useState<KonsultanPengawas | null>(null);
-  const [deletingKonsultan, setDeletingKonsultan] = useState<KonsultanPengawas | null>(null);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const { isOpen, openModal, closeModal } = useModal();
-  // details modal state injected
-  const [selectedData, setSelectedData] = useState<any | null>(null);
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
-
-  const handleViewDetails = (data: KonsultanPengawas) => {
-    setSelectedData(data);
-    setViewDetailsOpen(true);
-  };
-
-
-  const { success: showSuccessToast, error: showErrorToast } = useToast();
+  const { success, error, info, loading } = useToast();
 
   // Fetch konsultan data from API
   useEffect(() => {
@@ -81,6 +100,7 @@ export default function KonsultanPengawas() {
   }, []);
 
   const fetchKonsultan = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/vendor?jenis=KONSULTAN_PENGAWAS`, {
         credentials: 'include',
@@ -89,58 +109,83 @@ export default function KonsultanPengawas() {
         const data = await response.json();
         setKonsultanPengawas(data);
       }
-    } catch (error) {
-      console.error('Error fetching konsultan:', error);
+    } catch (err) {
+      error("Gagal memuat data konsultan pengawas");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubmit = async () => {
-  try {
-    const fd = new FormData();
-    fd.append('namaVendor', formData.namaVendor);
-    fd.append('jenisVendor', "KONSULTAN_PENGAWAS");
-    fd.append('nomorIzin', formData.nomorIzin);
-    fd.append('spesialisasi', formData.spesialisasi || "");
-    fd.append('kontak', formData.kontak || "");
-    fd.append('alamat', formData.alamat || "");
-    fd.append('namaProyek', formData.namaProyek || "");          
-    fd.append('deskripsiLaporan', formData.deskripsiLaporan || "");  
-    fd.append('lamaKontrak', formData.lamaKontrak || "0");        
-    
-    if (formData.dokumenLaporan) {                                
-      fd.append('dokumenLaporan', formData.dokumenLaporan);
+  const validateForm = () => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.namaVendor.trim()) {
+      newErrors.namaVendor = "Nama konsultan wajib diisi";
+    }
+    if (!formData.nomorIzin.trim()) {
+      newErrors.nomorIzin = "Nomor izin wajib diisi";
+    }
+    if (!formData.alamat.trim()) {
+      newErrors.alamat = "Alamat wajib diisi";
     }
 
-    let response;
-    if (editingKonsultan) {
-      response = await fetch(`${API_BASE_URL}/api/vendor/${editingKonsultan.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        body: fd,
-      });
-    } else {
-      response = await fetch(`${API_BASE_URL}/api/vendor`, {
-        method: 'POST',
-        credentials: 'include',
-        body: fd,
-      });
-    }
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    if (response.ok) {
-      await fetchKonsultan();
-      closeModal();
-      resetForm();
-      toast.success('Konsultan berhasil disimpan!');
-    } else {
-      toast.error('Gagal menyimpan konsultan');
+  const onSubmit = async (data: KonsultanFormData) => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    loading(editingKonsultan ? "Memperbarui konsultan..." : "Menyimpan konsultan...");
+
+    try {
+      const fd = new FormData();
+      fd.append('namaVendor', data.namaVendor);
+      fd.append('jenisVendor', "KONSULTAN_PENGAWAS");
+      fd.append('nomorIzin', data.nomorIzin);
+      fd.append('spesialisasi', data.spesialisasi || "");
+      fd.append('kontak', data.kontak || "");
+      fd.append('alamat', data.alamat || "");
+      fd.append('namaProyek', data.namaProyek || "");
+      fd.append('deskripsiLaporan', data.deskripsiLaporan || "");
+      fd.append('lamaKontrak', data.lamaKontrak || "0");
+
+      if (data.dokumenLaporan) {
+        fd.append('dokumenLaporan', data.dokumenLaporan);
+      }
+
+      let response;
+      if (editingKonsultan) {
+        response = await fetch(`${API_BASE_URL}/api/vendor/${editingKonsultan.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          body: fd,
+        });
+      } else {
+        response = await fetch(`${API_BASE_URL}/api/vendor`, {
+          method: 'POST',
+          credentials: 'include',
+          body: fd,
+        });
+      }
+
+      if (response.ok) {
+        await fetchKonsultan();
+        closeModal();
+        resetForm();
+        setEditingKonsultan(null);
+        success(editingKonsultan ? "Konsultan berhasil diperbarui!" : "Konsultan berhasil disimpan!");
+      } else {
+        const errorText = await response.text();
+        error("Gagal menyimpan konsultan: " + errorText);
+      }
+    } catch (err) {
+      error("Terjadi kesalahan saat menyimpan konsultan");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Error saving konsultan:', error);
-    toast.error('Terjadi kesalahan');
-  }
-};
+  };
 
   const handleEdit = (konsultan: KonsultanPengawas) => {
     setEditingKonsultan(konsultan);
@@ -158,6 +203,11 @@ export default function KonsultanPengawas() {
     openModal();
   };
 
+  const handleViewDetails = (data: KonsultanPengawas) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
   const handleDelete = (konsultan: KonsultanPengawas) => {
     setDeletingKonsultan(konsultan);
     setIsConfirmModalOpen(true);
@@ -165,8 +215,9 @@ export default function KonsultanPengawas() {
 
   const confirmDelete = async () => {
     if (!deletingKonsultan) return;
+    setIsLoading(true);
+    loading("Menghapus konsultan...");
 
-    setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/vendor/${deletingKonsultan.id}`, {
         method: 'DELETE',
@@ -175,73 +226,45 @@ export default function KonsultanPengawas() {
 
       if (response.ok) {
         await fetchKonsultan();
-        showSuccessToast('Konsultan berhasil dihapus!');
+        success("Konsultan berhasil dihapus!");
       } else {
         const errorData = await response.json();
-        showErrorToast('Gagal menghapus konsultan: ' + (errorData.error || 'Unknown error'));
+        error("Gagal menghapus: " + (errorData.error || 'Unknown error'));
       }
-    } catch (error) {
-      console.error('Error deleting konsultan:', error);
-      showErrorToast('Terjadi kesalahan saat menghapus konsultan');
+    } catch (err) {
+      error("Terjadi kesalahan saat menghapus konsultan");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
       setIsConfirmModalOpen(false);
       setDeletingKonsultan(null);
     }
   };
 
-  const [uploadingKonsultan, setUploadingKonsultan] = useState<KonsultanPengawas | null>(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [uploadFormData, setUploadFormData] = useState({
-    jenisDokumen: "",
-    file: null as File | null,
-  });
+  const handleSubmit = () => onSubmit(formData);
 
-  const handleUpload = (konsultan: KonsultanPengawas) => {
-    setUploadingKonsultan(konsultan);
-    setUploadFormData({
-      jenisDokumen: "",
-      file: null,
-    });
-    setIsUploadModalOpen(true);
-  };
-
-  const handleUploadSubmit = async () => {
-    if (!uploadingKonsultan || !uploadFormData.file || !uploadFormData.jenisDokumen || uploadFormData.jenisDokumen.trim() === '') {
-      showErrorToast('Paket ID dan jenis dokumen harus diisi');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('paketId', uploadingKonsultan.id);
-      formDataToSend.append('jenisDokumen', uploadFormData.jenisDokumen);
-      formDataToSend.append('file', uploadFormData.file);
-
-      const response = await fetch(`${API_BASE_URL}/api/dokumen/upload`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formDataToSend,
-      });
-
-      if (response.ok) {
-        setIsUploadModalOpen(false);
-        setUploadingKonsultan(null);
-        setUploadFormData({
-          jenisDokumen: "",
-          file: null,
-        });
-        showSuccessToast('Dokumen berhasil diupload!');
-      } else {
-        const errorData = await response.json();
-        showErrorToast('Gagal mengupload dokumen: ' + (errorData.error || 'Unknown error'));
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setFormErrors({ ...formErrors, dokumenLaporan: "Ukuran file maksimal 10MB" });
+        return;
       }
-    } catch (error) {
-      console.error('Error uploading dokumen:', error);
-      showErrorToast('Terjadi kesalahan saat mengupload dokumen');
-    } finally {
-      setLoading(false);
+
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        setFormErrors({ ...formErrors, dokumenLaporan: "Format file tidak didukung" });
+        return;
+      }
+
+      setFormData({ ...formData, dokumenLaporan: file });
+      setFormErrors({ ...formErrors, dokumenLaporan: undefined });
     }
   };
 
@@ -257,10 +280,9 @@ export default function KonsultanPengawas() {
       lamaKontrak: "",
       dokumenLaporan: null,
     });
+    setFormErrors({});
     setEditingKonsultan(null);
   };
-
-
 
   const getStatusColor = (status: KonsultanPengawas["status"]) => {
     switch (status) {
@@ -276,7 +298,7 @@ export default function KonsultanPengawas() {
   };
 
   const renderStars = (rating: number | null) => {
-  if (!rating) return <span className="text-gray-400">-</span>;
+    if (!rating) return <span className="text-gray-400">-</span>;
 
     return (
       <div className="flex items-center gap-1">
@@ -299,33 +321,88 @@ export default function KonsultanPengawas() {
         </span>
       </div>
     );
-  }; 
-    
-  const detailsSections = [
-    {
-      title: "Informasi Dasar",
-      fields: [
-        { label: "Nama Vendor", value: selectedData?.namaVendor ?? "-" },
-        { label: "No. Izin", value: selectedData?.nomorIzin ?? "-" },
-        { label: "Spesialisasi", value: selectedData?.spesialisasi ?? "-" },
-        { label: "Jumlah Proyek", value: selectedData?.jumlahProyek ?? "-" },
-        { label: "Rating", value: selectedData?.rating ?? "-" },
-        { label: "Status", value: selectedData?.status ?? "-" },
-        { 
-          label: "Warning Temuan", 
-          value: selectedData?.warningTemuan ? (
-            <Badge color="error">⚠️ Ada Temuan Audit</Badge>
-          ) : (
-            <Badge color="success">✓ Tidak Ada Temuan</Badge>
-          ),
-        },
-        { label: "Deskripsi", value: selectedData?.deskripsi ?? "-", fullWidth: true },
-        { label: "Lama Kontrak", value: selectedData?.lamaKontrak ? `${selectedData.lamaKontrak} hari` : "-" }
-      ]
-    }
-  ];
-  const detailsDocuments = selectedData?.dokumen || (selectedData?.dokumenLaporan ? [{ id: selectedData.id + '-ded', namaDokumen: 'Dokumen Laporan', filePath: selectedData.dokumenLaporan, uploadedAt: selectedData?.updatedAt || selectedData.tanggalUpload || new Date().toISOString() }] : []);
+  };
 
+  const filteredKonsultan = konsultanPengawas.filter((kons) => {
+    const matchSearch =
+      searchQuery === "" ||
+      kons.namaVendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kons.nomorIzin.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kons.spesialisasi?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kons.namaProyek?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchFilter =
+      filterStatus === "all" || kons.status === filterStatus;
+    return matchSearch && matchFilter;
+  });
+
+  const columns: ColumnDef<KonsultanPengawas>[] = [
+    {
+      accessorKey: "namaVendor",
+      header: "Nama Konsultan",
+      cell: ({ getValue }) => (
+        <span className="font-medium">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "nomorIzin",
+      header: "No. Izin",
+    },
+    {
+      accessorKey: "spesialisasi",
+      header: "Spesialisasi",
+      cell: ({ getValue }) => getValue() as string || "-",
+    },
+    {
+      accessorKey: "namaProyek",
+      header: "Nama Proyek",
+      cell: ({ getValue }) => getValue() as string || "-",
+    },
+    {
+      accessorKey: "jumlahProyek",
+      header: "Jumlah Proyek",
+      cell: ({ getValue }) => `${getValue() as number} proyek`,
+    },
+    {
+      accessorKey: "rating",
+      header: "Rating",
+      cell: ({ row }) => renderStars(row.original.rating),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => (
+        <Badge size="sm" color={getStatusColor(getValue() as KonsultanPengawas["status"])}>
+          {getValue() as string}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "warningTemuan",
+      header: "Warning",
+      cell: ({ row }) => (
+        row.original.warningTemuan ? (
+          <Badge size="sm" color="error">
+            ⚠️ Ada Temuan
+          </Badge>
+        ) : (
+          <Badge size="sm" color="success">
+            ✓ Aman
+          </Badge>
+        )
+      ),
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original)}
+        />
+      ),
+    },
+  ];
 
   // Stats Cards
   const stats = [
@@ -335,14 +412,14 @@ export default function KonsultanPengawas() {
       color: "text-brand-500",
     },
     {
-      label: "Total Proyek",
-      value: konsultanPengawas.reduce((acc, k) => acc + k.jumlahProyek, 0),
-      color: "text-blue-light-500",
-    },
-    {
       label: "Konsultan Aktif",
       value: konsultanPengawas.filter((k) => k.status === "AKTIF").length,
       color: "text-success-500",
+    },
+    {
+      label: "Total Proyek",
+      value: konsultanPengawas.reduce((acc, k) => acc + k.jumlahProyek, 0),
+      color: "text-blue-light-500",
     },
     {
       label: "Rating Rata-rata",
@@ -350,6 +427,52 @@ export default function KonsultanPengawas() {
       color: "text-warning-500",
     },
   ];
+
+  const detailsSections = selectedData ? [
+    {
+      title: "Informasi Dasar",
+      fields: [
+        { label: "Nama Vendor", value: selectedData.namaVendor },
+        { label: "No. Izin", value: selectedData.nomorIzin },
+        { label: "Spesialisasi", value: selectedData.spesialisasi || "-" },
+        { label: "Nama Proyek", value: selectedData.namaProyek || "-" },
+        { label: "Jumlah Proyek", value: selectedData.jumlahProyek },
+        { 
+          label: "Rating", 
+          value: renderStars(selectedData.rating)
+        },
+        { 
+          label: "Status", 
+          value: (
+            <Badge color={getStatusColor(selectedData.status)}>
+              {selectedData.status}
+            </Badge>
+          ),
+        },
+        { 
+          label: "Warning Temuan", 
+          value: selectedData.warningTemuan ? (
+            <Badge color="error">⚠️ Ada Temuan Audit</Badge>
+          ) : (
+            <Badge color="success">✓ Tidak Ada Temuan</Badge>
+          ),
+        },
+        { label: "Kontak", value: selectedData.kontak || "-" },
+        { label: "Alamat", value: selectedData.alamat || "-", fullWidth: true },
+        { label: "Deskripsi Laporan", value: selectedData.deskripsiLaporan || "-", fullWidth: true },
+        { label: "Lama Kontrak", value: selectedData.lamaKontrak ? `${selectedData.lamaKontrak} hari` : "-" },
+      ]
+    }
+  ] : [];
+
+  const detailsDocuments = selectedData?.dokumenLaporan ? [
+    { 
+      id: selectedData.id + '-laporan', 
+      namaDokumen: 'Dokumen Laporan', 
+      filePath: selectedData.dokumenLaporan, 
+      uploadedAt: selectedData.createdAt 
+    }
+  ] : [];
 
   return (
     <>
@@ -361,20 +484,39 @@ export default function KonsultanPengawas() {
 
       <div className="space-y-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
-            >
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {stat.label}
-              </p>
-              <h3 className={`mt-2 text-3xl font-bold ${stat.color}`}>
-                {stat.value}
-              </h3>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatsCard
+            title="Total Konsultan"
+            value={konsultanPengawas.length}
+            subtitle="Konsultan pengawas terdaftar"
+            icon={UserGroupIcon}
+            fromColor="from-blue-500"
+            toColor="to-blue-600"
+          />
+          <StatsCard
+            title="Konsultan Aktif"
+            value={konsultanPengawas.filter((k) => k.status === "AKTIF").length}
+            subtitle="Sedang aktif mengawasi"
+            icon={EyeIcon}
+            fromColor="from-green-500"
+            toColor="to-green-600"
+          />
+          <StatsCard
+            title="Total Proyek"
+            value={konsultanPengawas.reduce((acc, k) => acc + k.jumlahProyek, 0)}
+            subtitle="Proyek yang diawasi"
+            icon={DocumentIcon}
+            fromColor="from-purple-500"
+            toColor="to-purple-600"
+          />
+          <StatsCard
+            title="Rating Rata-rata"
+            value={konsultanPengawas.length > 0 ? (konsultanPengawas.reduce((sum, k) => sum + (k.rating || 0), 0) / konsultanPengawas.length).toFixed(1) : "0.0"}
+            subtitle="Rata-rata rating konsultan"
+            icon={ChartBarIcon}
+            fromColor="from-warning-500"
+            toColor="to-warning-600"
+          />
         </div>
 
         {/* Header Section */}
@@ -392,97 +534,41 @@ export default function KonsultanPengawas() {
             variant="primary"
             startIcon={<PlusIcon />}
             onClick={openModal}
+            disabled={isLoading}
           >
             Tambah Konsultan
           </Button>
         </div>
 
-        {/* Filter */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-2">
-              <select
-                className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Semua Status</option>
-                <option value="AKTIF">Aktif</option>
-                <option value="NON_AKTIF">Nonaktif</option>
-                <option value="SUSPENDED">Ditangguhkan</option>
-              </select>
-            </div>
+        {/* Filter + Data Table */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="AKTIF">Aktif</option>
+              <option value="NON_AKTIF">Nonaktif</option>
+              <option value="SUSPENDED">Ditangguhkan</option>
+            </select>
           </div>
         </div>
 
-        {/* DataTable */}
         <DataTable
-          data={filterStatus === "all" ? konsultanPengawas : konsultanPengawas.filter(k => k.status === filterStatus)}
-          columns={[
-            {
-              accessorKey: "namaVendor",
-              header: "Nama Konsultan",
-              cell: ({ row }) => (
-                <div>
-                  <p className="font-medium">{row.original.namaVendor}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {row.original.alamat}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              accessorKey: "nomorIzin",
-              header: "No. Izin",
-            },
-            {
-              accessorKey: "spesialisasi",
-              header: "Spesialisasi",
-            },
-            {
-              accessorKey: "jumlahProyek",
-              header: "Jumlah Proyek",
-              cell: ({ row }) => `${row.original.jumlahProyek} proyek`,
-            },
-            {
-              accessorKey: "rating",
-              header: "Rating",
-              cell: ({ row }) => renderStars(row.original.rating),
-            },
-            {
-              accessorKey: "status",
-              header: "Status",
-              cell: ({ row }) => (
-                <Badge size="sm" color={getStatusColor(row.original.status)}>
-                  {row.original.status}
-                </Badge>
-              ),
-            },
-            {
-              accessorKey: "warningTemuan",
-              header: "Warning",
-              cell: ({ row }) => (
-                row.original.warningTemuan ? (
-                  <Badge size="sm" color="error">
-                    ⚠️ Ada Temuan
-                  </Badge>
-                ) : (
-                  <Badge size="sm" color="success">
-                    ✓ Aman
-                  </Badge>
-                )
-              ),
-            },
-            { id: 'actions', header: 'Aksi', cell: ({ row }) => (
-        <ActionButtons
-          onView={() => handleViewDetails(row.original)}
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original.id)}
-        />
-      ), },,
-          ]}
-          loading={loading}
-          searchPlaceholder="Cari konsultan..."
+          columns={columns}
+          data={filteredKonsultan}
+          loading={isLoading}
+          enableExport={true}
+          enableColumnVisibility={false}
+          pageSize={10}
+          searchPlaceholder="Cari nama, nomor izin, spesialisasi, atau proyek..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          fixedHeight="750px"
+          fixedWidth="1300px"
+          minVisibleRows={10}
         />
       </div>
 
@@ -491,17 +577,17 @@ export default function KonsultanPengawas() {
         isOpen={isOpen}
         onClose={closeModal}
         size="2xl"
-        title={editingKonsultan ? "" : ""}
+        title={editingKonsultan ? "Edit Konsultan Pengawas" : "Tambah Konsultan Pengawas Baru"}
         showHeader={true}
       >
-        <div className="p-6">
+        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingKonsultan ? 'Edit Konsultan Pengawas' : 'Tambah Konsultan Pengawas Baru'}
+            {editingKonsultan ? "Edit Konsultan Pengawas" : "Tambah Konsultan Pengawas Baru"}
           </h3>
 
           <div className="space-y-4">
             <div>
-              <Label>Nama Konsultan</Label>
+              <Label>Nama Konsultan *</Label>
               <Input
                 type="text"
                 value={formData.namaVendor}
@@ -509,12 +595,14 @@ export default function KonsultanPengawas() {
                   setFormData({ ...formData, namaVendor: e.target.value })
                 }
                 placeholder="PT/CV Nama Konsultan"
+                error={!!formErrors.namaVendor}
+                hint={formErrors.namaVendor}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Nomor Izin</Label>
+                <Label>Nomor Izin *</Label>
                 <Input
                   type="text"
                   value={formData.nomorIzin}
@@ -522,6 +610,8 @@ export default function KonsultanPengawas() {
                     setFormData({ ...formData, nomorIzin: e.target.value })
                   }
                   placeholder="IUJK-SUP-XXX/2024"
+                  error={!!formErrors.nomorIzin}
+                  hint={formErrors.nomorIzin}
                 />
               </div>
               <div>
@@ -538,7 +628,7 @@ export default function KonsultanPengawas() {
             </div>
 
             <div>
-              <Label>Alamat</Label>
+              <Label>Alamat *</Label>
               <Input
                 type="text"
                 value={formData.alamat}
@@ -546,8 +636,11 @@ export default function KonsultanPengawas() {
                   setFormData({ ...formData, alamat: e.target.value })
                 }
                 placeholder="Kota/Kabupaten"
+                error={!!formErrors.alamat}
+                hint={formErrors.alamat}
               />
             </div>
+
             <div>
               <Label>Nama Proyek</Label>
               <Input
@@ -559,28 +652,31 @@ export default function KonsultanPengawas() {
                 placeholder="Nama proyek yang diawasi"
               />
             </div>
+
             <div>
-             <Label>Deskripsi Laporan Kemajuan Fisik</Label>
-             <textarea
-               className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-               value={formData.deskripsiLaporan}
-               onChange={(e) =>
-                 setFormData({ ...formData, deskripsiLaporan: e.target.value })
-               }
-               placeholder="Laporan kemajuan fisik harian, mingguan, bulanan..."
-             />
-          </div>
-          <div>
-            <Label>Lama Kontrak (hari)</Label>
-            <Input
-              type="number"
-              value={formData.lamaKontrak}
-              onChange={(e) =>
-                setFormData({ ...formData, lamaKontrak: e.target.value })
-              }
-              placeholder="180"
-            />
-          </div>
+              <Label>Deskripsi Laporan Kemajuan Fisik</Label>
+              <textarea
+                className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                value={formData.deskripsiLaporan}
+                onChange={(e) =>
+                  setFormData({ ...formData, deskripsiLaporan: e.target.value })
+                }
+                placeholder="Laporan kemajuan fisik harian, mingguan, bulanan..."
+              />
+            </div>
+
+            <div>
+              <Label>Lama Kontrak (hari)</Label>
+              <Input
+                type="number"
+                value={formData.lamaKontrak}
+                onChange={(e) =>
+                  setFormData({ ...formData, lamaKontrak: e.target.value })
+                }
+                placeholder="180"
+              />
+            </div>
+
             <div>
               <Label>Kontak</Label>
               <Input
@@ -592,104 +688,69 @@ export default function KonsultanPengawas() {
                 placeholder="email@konsultan.com"
               />
             </div>
-          </div>
-          <div>
-            <Label>Upload Dokumen Laporan</Label>
-            <input
-              type="file"
-              onChange={(e) =>
-                setFormData({ ...formData, dokumenLaporan: e.target.files?.[0] || null })
-              }
-              accept=".pdf,.doc,.docx,.xlsx"
-              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-            />
-            {formData.dokumenLaporan && (
-              <p className="mt-1 text-xs text-green-600">
-                ✓ {formData.dokumenLaporan.name}
-              </p>
-            )}
+
+            <div>
+              <Label>Upload Dokumen Laporan {!editingKonsultan && "*"}</Label>
+              <input
+                type="file"
+                onChange={handleFileChange}
+                accept=".pdf,.doc,.docx,.xlsx,.xls"
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              />
+              {formErrors.dokumenLaporan && (
+                <p className="mt-1 text-xs text-error-500">
+                  {formErrors.dokumenLaporan}
+                </p>
+              )}
+              {editingKonsultan && (
+                <p className="mt-1 text-xs text-warning-600">
+                  Kosongkan jika tidak ingin mengubah file
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={closeModal}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={closeModal}
+              disabled={isLoading}
+            >
               Batal
             </Button>
-            <Button size="sm" variant="primary" onClick={handleSubmit}>
-              {editingKonsultan ? 'Update Konsultan' : 'Simpan Konsultan'}
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={isLoading}
+            >
+              {isLoading
+                ? "Menyimpan..."
+                : editingKonsultan
+                ? "Update"
+                : "Simpan"}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Konfirmasi Hapus"
-        message={`Apakah Anda yakin ingin menghapus konsultan "${deletingKonsultan?.namaVendor}"? Tindakan ini tidak dapat dibatalkan.`}
+        title="Hapus Konsultan"
+        message={`Apakah Anda yakin ingin menghapus konsultan "${deletingKonsultan?.namaVendor}"?`}
         confirmText="Hapus"
         cancelText="Batal"
-        variant="danger"
+        loading={isLoading}
       />
 
-      {/* Upload Modal */}
-      <Modal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        size="lg"
-        title="Upload Dokumen"
-        showHeader={true}
-      >
-        <div className="p-6">
-          <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            Upload Dokumen untuk {uploadingKonsultan?.namaVendor}
-          </h3>
-
-          <div className="space-y-4">
-            <div>
-              <Label>Jenis Dokumen</Label>
-              <Select
-                value={uploadFormData.jenisDokumen}
-                onChange={(value) => setUploadFormData({ ...uploadFormData, jenisDokumen: value })}
-                options={[
-                  { value: "SIUP", label: "SIUP" },
-                  { value: "SIUJK", label: "SIUJK" },
-                  { value: "Sertifikat_Keahlian", label: "Sertifikat Keahlian" },
-                  { value: "NPWP", label: "NPWP" },
-                  { value: "Laporan_Keuangan", label: "Laporan Keuangan" },
-                  { value: "Dokumen_Lainnya", label: "Dokumen Lainnya" },
-                ]}
-                placeholder="Pilih jenis dokumen"
-              />
-            </div>
-
-            <div>
-              <Label>File Dokumen</Label>
-              <FileUploadPreview
-                onFileSelect={(file) => setUploadFormData({ ...uploadFormData, file })}
-                accept="application/pdf,image/jpeg,image/png"
-                maxSize={5}
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={() => setIsUploadModalOpen(false)}>
-              Batal
-            </Button>
-            <Button size="sm" variant="primary" onClick={handleUploadSubmit}>
-              Upload Dokumen
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    
       {selectedData && (
         <DetailsModal
           isOpen={viewDetailsOpen}
           onClose={() => setViewDetailsOpen(false)}
-          title={`Detail Konsultan Pengawas`}
+          title="Detail Konsultan Pengawas"
           sections={detailsSections}
           documents={detailsDocuments}
         />

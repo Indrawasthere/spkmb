@@ -6,12 +6,21 @@ import Badge from "../components/ui/badge/Badge";
 import { PlusIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import { DataTable } from "../components/common/DataTable";
+import { useToast } from "../hooks/useToast";
 import { ActionButtons } from "../components/common/ActionButtons";
 import { DetailsModal } from "../components/common/DetailsModal";
-import toast from "react-hot-toast";
+import { ColumnDef } from "@tanstack/react-table";
+import { StatsCard } from "../components/common/StatsCard";
+import {
+  DocumentChartBarIcon as DocumentIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  BuildingStorefrontIcon,
+} from "@heroicons/react/24/outline";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -39,11 +48,38 @@ interface Kontraktor {
   createdAt: string;
 }
 
+interface KontraktorFormData {
+  namaVendor: string;
+  nomorIzin: string;
+  spesialisasi: string;
+  kontak: string;
+  alamat: string;
+  namaProyek: string;
+  deskripsiProgress: string;
+  uploadDokumen: File | null;
+  uploadFoto: File | null;
+}
+
+interface FormErrors {
+  namaVendor?: string;
+  nomorIzin?: string;
+  alamat?: string;
+  uploadDokumen?: string;
+  uploadFoto?: string;
+}
+
 export default function Konstruksi() {
   const [kontraktor, setKontraktor] = useState<Kontraktor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedData, setSelectedData] = useState<Kontraktor | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
-  const [formData, setFormData] = useState({
+  const [editingKontraktor, setEditingKontraktor] = useState<Kontraktor | null>(null);
+  const [deletingKontraktor, setDeletingKontraktor] = useState<Kontraktor | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [formData, setFormData] = useState<KontraktorFormData>({
     namaVendor: "",
     nomorIzin: "",
     spesialisasi: "",
@@ -51,22 +87,13 @@ export default function Konstruksi() {
     alamat: "",
     namaProyek: "",
     deskripsiProgress: "",
-    uploadDokumen: null as File | null,
-    uploadFoto: null as File | null,
+    uploadDokumen: null,
+    uploadFoto: null,
   });
-  const [editingKontraktor, setEditingKontraktor] = useState<Kontraktor | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const { isOpen, openModal, closeModal } = useModal();
-  // details modal state injected
-  const [selectedData, setSelectedData] = useState<any | null>(null);
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
-
-  const handleViewDetails = (data: any) => {
-    setSelectedData(data);
-    setViewDetailsOpen(true);
-  };
-
-
+  const { success, error, info, loading } = useToast();
 
   // Fetch kontraktor data from API
   useEffect(() => {
@@ -74,6 +101,7 @@ export default function Konstruksi() {
   }, []);
 
   const fetchKontraktor = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/vendor?jenis=KONSTRUKSI`, {
         credentials: 'include',
@@ -82,58 +110,83 @@ export default function Konstruksi() {
         const data = await response.json();
         setKontraktor(data);
       }
-    } catch (error) {
-      console.error('Error fetching kontraktor:', error);
+    } catch (err) {
+      error("Gagal memuat data kontraktor");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubmit = async () => {
-  try {
-    const fd = new FormData();
-    fd.append('namaVendor', formData.namaVendor);
-    fd.append('jenisVendor', "KONSTRUKSI");
-    fd.append('nomorIzin', formData.nomorIzin);
-    fd.append('spesialisasi', formData.spesialisasi || "");
-    fd.append('kontak', formData.kontak || "");
-    fd.append('alamat', formData.alamat || "");
-    fd.append('namaProyek', formData.namaProyek || "");        
-    fd.append('deskripsiProgress', formData.deskripsiProgress || "");  
-    
-    if (formData.uploadDokumen) {                               
-      fd.append('uploadDokumen', formData.uploadDokumen);
+  const validateForm = () => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.namaVendor.trim()) {
+      newErrors.namaVendor = "Nama kontraktor wajib diisi";
     }
-    if (formData.uploadFoto) {                                  
-      fd.append('uploadFoto', formData.uploadFoto);
+    if (!formData.nomorIzin.trim()) {
+      newErrors.nomorIzin = "Nomor izin wajib diisi";
+    }
+    if (!formData.alamat.trim()) {
+      newErrors.alamat = "Alamat wajib diisi";
     }
 
-    let response;
-    if (editingKontraktor) {
-      response = await fetch(`${API_BASE_URL}/api/vendor/${editingKontraktor.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        body: fd,
-      });
-    } else {
-      response = await fetch(`${API_BASE_URL}/api/vendor`, {
-        method: 'POST',
-        credentials: 'include',
-        body: fd,
-      });
-    }
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    if (response.ok) {
-      await fetchKontraktor();
-      closeModal();
-      resetForm();
-      toast.success('Kontraktor berhasil disimpan!');
-    } else {
-      toast.error('Gagal menyimpan kontraktor');
-    }
-  } catch (error) {
-    console.error('Error saving kontraktor:', error);
-    toast.error('Terjadi kesalahan');
+  const onSubmit = async (data: KontraktorFormData) => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    loading(editingKontraktor ? "Memperbarui kontraktor..." : "Menyimpan kontraktor...");
+
+    try {
+      const fd = new FormData();
+      fd.append('namaVendor', data.namaVendor);
+      fd.append('jenisVendor', "KONSTRUKSI");
+      fd.append('nomorIzin', data.nomorIzin);
+      fd.append('spesialisasi', data.spesialisasi || "");
+      fd.append('kontak', data.kontak || "");
+      fd.append('alamat', data.alamat || "");
+      fd.append('namaProyek', data.namaProyek || "");
+      fd.append('deskripsiProgress', data.deskripsiProgress || "");
+
+      if (data.uploadDokumen) {
+        fd.append('uploadDokumen', data.uploadDokumen);
+      }
+      if (data.uploadFoto) {
+        fd.append('uploadFoto', data.uploadFoto);
+      }
+
+      let response;
+      if (editingKontraktor) {
+        response = await fetch(`${API_BASE_URL}/api/vendor/${editingKontraktor.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          body: fd,
+        });
+      } else {
+        response = await fetch(`${API_BASE_URL}/api/vendor`, {
+          method: 'POST',
+          credentials: 'include',
+          body: fd,
+        });
+      }
+
+      if (response.ok) {
+        await fetchKontraktor();
+        closeModal();
+        resetForm();
+        setEditingKontraktor(null);
+        success(editingKontraktor ? "Kontraktor berhasil diperbarui!" : "Kontraktor berhasil disimpan!");
+      } else {
+        const errorText = await response.text();
+        error("Gagal menyimpan kontraktor: " + errorText);
+      }
+    } catch (err) {
+      error("Terjadi kesalahan saat menyimpan kontraktor");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -153,30 +206,91 @@ export default function Konstruksi() {
     openModal();
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus kontraktor ini?')) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/vendor/${id}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-        if (response.ok) {
-          await fetchKontraktor();
-          toast.error('Kontraktor berhasil dihapus!');
-        } else {
-          const errorText = await response.text();
-          toast.error('Gagal menghapus kontraktor: ' + errorText);
-        }
-      } catch (error) {
-        console.error('Error deleting kontraktor:', error);
-        toast.error('Terjadi kesalahan saat menghapus kontraktor');
+  const handleViewDetails = (data: Kontraktor) => {
+    setSelectedData(data);
+    setViewDetailsOpen(true);
+  };
+
+  const handleDelete = (kontraktor: Kontraktor) => {
+    setDeletingKontraktor(kontraktor);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingKontraktor) return;
+    setIsLoading(true);
+    loading("Menghapus kontraktor...");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/vendor/${deletingKontraktor.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        await fetchKontraktor();
+        success("Kontraktor berhasil dihapus!");
+      } else {
+        const errorData = await response.json();
+        error("Gagal menghapus: " + (errorData.error || 'Unknown error'));
       }
+    } catch (err) {
+      error("Terjadi kesalahan saat menghapus kontraktor");
+    } finally {
+      setIsLoading(false);
+      setIsConfirmModalOpen(false);
+      setDeletingKontraktor(null);
     }
   };
 
-  const handleUpload = (id: string) => {
-    // Placeholder untuk modal upload
-    toast.error(`Upload dokumen untuk kontraktor ${id}`);
+  const handleSubmit = () => onSubmit(formData);
+
+  const handleDokumenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setFormErrors({ ...formErrors, uploadDokumen: "Ukuran file maksimal 10MB" });
+        return;
+      }
+
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        setFormErrors({ ...formErrors, uploadDokumen: "Format file tidak didukung. Hanya PDF dan DOC/DOCX" });
+        return;
+      }
+
+      setFormData({ ...formData, uploadDokumen: file });
+      setFormErrors({ ...formErrors, uploadDokumen: undefined });
+    }
+  };
+
+  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setFormErrors({ ...formErrors, uploadFoto: "Ukuran foto maksimal 5MB" });
+        return;
+      }
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        setFormErrors({ ...formErrors, uploadFoto: "Format foto tidak didukung. Hanya JPG, JPEG, dan PNG" });
+        return;
+      }
+
+      setFormData({ ...formData, uploadFoto: file });
+      setFormErrors({ ...formErrors, uploadFoto: undefined });
+    }
   };
 
   const resetForm = () => {
@@ -191,10 +305,9 @@ export default function Konstruksi() {
       uploadDokumen: null,
       uploadFoto: null,
     });
+    setFormErrors({});
     setEditingKontraktor(null);
   };
-
-
 
   const getStatusColor = (status: Kontraktor["status"]) => {
     switch (status) {
@@ -211,55 +324,110 @@ export default function Konstruksi() {
 
   const renderStars = (rating: number | null) => {
     if (!rating) return <span className="text-gray-400">-</span>;
+
+    return (
+      <div className="flex items-center gap-1">
+        {[...Array(5)].map((_, index) => (
+          <svg
+            key={index}
+            className={`size-4 ${
+              index < Math.floor(rating)
+                ? "fill-warning-500 text-warning-500"
+                : "fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600"
+            }`}
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+          </svg>
+        ))}
+        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
+          {rating.toFixed(1)}
+        </span>
+      </div>
+    );
   };
-    
-  // details sections injected
-  const detailsSections = selectedData
-  ? [
-      {
-        title: "Informasi Kontraktor",
-        fields: [
-          { label: "Nama Vendor", value: selectedData.namaVendor ?? "-" },
-          { label: "Nomor Izin", value: selectedData.nomorIzin ?? "-" },
-          { label: "Spesialisasi", value: selectedData.spesialisasi ?? "-" },
-          { label: "Jumlah Proyek", value: selectedData.jumlahProyek ?? 0 },
-          {
-            label: "Rating",
-            value: selectedData.rating
-              ? `${selectedData.rating.toFixed(1)} / 5`
-              : "-",
-          },
-          { 
-            label: "Status", 
-            value: (
-              <Badge color={getStatusColor(selectedData.status)}>
-                {selectedData.status}
-              </Badge>
-            ),
-          },
-          { label: "Lokasi", value: selectedData.lokasi ?? "-" },
-          { label: "Alamat", value: selectedData.alamat ?? "-", fullWidth: true },
-        ],
-      },
-    ]
-  : [];
 
-  const detailsDocuments = [
-  ...(selectedData?.dokumen || []),
-  ...(selectedData?.uploadDokumen ? [{
-    id: selectedData.id + '-jaminan',
-    namaDokumen: 'Dokumen Jaminan',
-    filePath: selectedData.uploadDokumen,
-    uploadedAt: selectedData.updatedAt || new Date().toISOString(),
-  }] : []),
-  ...(selectedData?.uploadFoto ? [{
-    id: selectedData.id + '-foto',
-    namaDokumen: 'Foto Progress',
-    filePath: selectedData.uploadFoto,
-    uploadedAt: selectedData.updatedAt || new Date().toISOString(),
-  }] : []),
-];
+  const filteredKontraktor = kontraktor.filter((kontrak) => {
+    const matchSearch =
+      searchQuery === "" ||
+      kontrak.namaVendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kontrak.nomorIzin.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kontrak.spesialisasi?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kontrak.namaProyek?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchFilter =
+      filterStatus === "all" || kontrak.status === filterStatus;
+    return matchSearch && matchFilter;
+  });
 
+  const columns: ColumnDef<Kontraktor>[] = [
+    {
+      accessorKey: "namaVendor",
+      header: "Nama Kontraktor",
+      cell: ({ getValue }) => (
+        <span className="font-medium">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "nomorIzin",
+      header: "No. Izin",
+    },
+    {
+      accessorKey: "spesialisasi",
+      header: "Spesialisasi",
+      cell: ({ getValue }) => getValue() as string || "-",
+    },
+    {
+      accessorKey: "namaProyek",
+      header: "Nama Proyek",
+      cell: ({ getValue }) => getValue() as string || "-",
+    },
+    {
+      accessorKey: "jumlahProyek",
+      header: "Jumlah Proyek",
+      cell: ({ getValue }) => `${getValue() as number} proyek`,
+    },
+    {
+      accessorKey: "rating",
+      header: "Rating",
+      cell: ({ row }) => renderStars(row.original.rating),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => (
+        <Badge size="sm" color={getStatusColor(getValue() as Kontraktor["status"])}>
+          {getValue() as string}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "warningTemuan",
+      header: "Warning",
+      cell: ({ row }) => (
+        row.original.warningTemuan ? (
+          <Badge size="sm" color="error">
+            ⚠️ Ada Temuan
+          </Badge>
+        ) : (
+          <Badge size="sm" color="success">
+            ✓ Aman
+          </Badge>
+        )
+      ),
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <ActionButtons
+          onView={() => handleViewDetails(row.original)}
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original)}
+        />
+      ),
+    },
+  ];
 
   // Stats Cards
   const stats = [
@@ -285,6 +453,64 @@ export default function Konstruksi() {
     },
   ];
 
+  const detailsSections = selectedData ? [
+    {
+      title: "Informasi Kontraktor",
+      fields: [
+        { label: "Nama Vendor", value: selectedData.namaVendor },
+        { label: "Nomor Izin", value: selectedData.nomorIzin },
+        { label: "Spesialisasi", value: selectedData.spesialisasi || "-" },
+        { label: "Nama Proyek", value: selectedData.namaProyek || "-" },
+        { label: "Jumlah Proyek", value: selectedData.jumlahProyek },
+        { 
+          label: "Rating", 
+          value: renderStars(selectedData.rating)
+        },
+        { 
+          label: "Status", 
+          value: (
+            <Badge color={getStatusColor(selectedData.status)}>
+              {selectedData.status}
+            </Badge>
+          ),
+        },
+        { 
+          label: "Warning Temuan", 
+          value: selectedData.warningTemuan ? (
+            <Badge color="error">⚠️ Ada Temuan Audit</Badge>
+          ) : (
+            <Badge color="success">✓ Tidak Ada Temuan</Badge>
+          ),
+        },
+        { label: "Kontak", value: selectedData.kontak || "-" },
+        { label: "Alamat", value: selectedData.alamat || "-", fullWidth: true },
+        { label: "Deskripsi Progress", value: selectedData.deskripsiProgress || "-", fullWidth: true },
+        { label: "Lama Kontrak", value: selectedData.lamaKontrak ? `${selectedData.lamaKontrak} hari` : "-" },
+      ]
+    }
+  ] : [];
+
+  const detailsDocuments = [
+    ...(selectedData?.uploadDokumen ? [{
+      id: selectedData.id + '-dokumen',
+      namaDokumen: 'Dokumen Jaminan',
+      filePath: selectedData.uploadDokumen,
+      uploadedAt: selectedData.createdAt,
+    }] : []),
+    ...(selectedData?.uploadFoto ? [{
+      id: selectedData.id + '-foto',
+      namaDokumen: 'Foto Progress',
+      filePath: selectedData.uploadFoto,
+      uploadedAt: selectedData.createdAt,
+    }] : []),
+    ...(selectedData?.dokumenLaporan ? [{
+      id: selectedData.id + '-laporan',
+      namaDokumen: 'Dokumen Laporan',
+      filePath: selectedData.dokumenLaporan,
+      uploadedAt: selectedData.createdAt,
+    }] : []),
+  ];
+
   return (
     <>
       <PageMeta
@@ -295,20 +521,39 @@ export default function Konstruksi() {
 
       <div className="space-y-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
-            >
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {stat.label}
-              </p>
-              <h3 className={`mt-2 text-3xl font-bold ${stat.color}`}>
-                {stat.value}
-              </h3>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatsCard
+            title="Total Kontraktor"
+            value={kontraktor.length}
+            subtitle="Kontraktor terdaftar"
+            icon={UserGroupIcon}
+            fromColor="from-blue-500"
+            toColor="to-blue-600"
+          />
+          <StatsCard
+            title="Kontraktor Aktif"
+            value={kontraktor.filter((k) => k.status === "AKTIF").length}
+            subtitle="Sedang aktif bekerja"
+            icon={BuildingStorefrontIcon}
+            fromColor="from-green-500"
+            toColor="to-green-600"
+          />
+          <StatsCard
+            title="Total Proyek"
+            value={kontraktor.reduce((acc, k) => acc + k.jumlahProyek, 0)}
+            subtitle="Proyek yang dikerjakan"
+            icon={DocumentIcon}
+            fromColor="from-purple-500"
+            toColor="to-purple-600"
+          />
+          <StatsCard
+            title="Rating Rata-rata"
+            value={kontraktor.length > 0 ? (kontraktor.reduce((sum, k) => sum + (k.rating || 0), 0) / kontraktor.length).toFixed(1) : "0.0"}
+            subtitle="Rata-rata rating kontraktor"
+            icon={ChartBarIcon}
+            fromColor="from-warning-500"
+            toColor="to-warning-600"
+          />
         </div>
 
         {/* Header Section */}
@@ -326,16 +571,17 @@ export default function Konstruksi() {
             variant="primary"
             startIcon={<PlusIcon />}
             onClick={openModal}
+            disabled={isLoading}
           >
             Tambah Kontraktor
           </Button>
         </div>
 
-        {/* Filter */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex gap-2">
+        {/* Filter + Data Table */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3 w-full md:w-auto">
             <select
-              className="h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -348,95 +594,18 @@ export default function Konstruksi() {
         </div>
 
         <DataTable
-          data={kontraktor.filter((k) => filterStatus === "all" || k.status === filterStatus)}
-          columns={[
-            {
-              header: "Nama Kontraktor",
-              accessorKey: "namaVendor",
-              cell: ({ row }) => (
-                <div>
-                  <p className="font-medium">{row.original.namaVendor}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {row.original.alamat}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              header: "No. Izin",
-              accessorKey: "nomorIzin",
-            },
-            {
-              header: "Spesialisasi",
-              accessorKey: "spesialisasi",
-            },
-            {
-              header: "Jumlah Proyek",
-              accessorKey: "jumlahProyek",
-              cell: ({ getValue }) => `${getValue()} proyek`,
-            },
-            {
-              header: "Pendapatan",
-              accessorKey: "pendapatan",
-              cell: () => "-",
-            },
-            {
-              header: "Rating",
-              accessorKey: "rating",
-              cell: ({ getValue }) => renderStars(getValue() as number | null),
-            },
-            {
-              header: "Status",
-              accessorKey: "status",
-              cell: ({ getValue }) => {
-                const status = getValue() as Kontraktor["status"];
-                return (
-                  <Badge size="sm" color={getStatusColor(status)}>
-                    {status}
-                  </Badge>
-                );
-              },
-            },
-            {
-              header: "Dokumen",
-              accessorKey: "dokumen",
-              cell: () => (
-                <div className="space-y-1">
-                  <span className="text-xs">Dokumen terkait: 5 file</span>
-                  <button className="text-blue-600 hover:text-blue-900 text-xs">
-                    Lihat Dokumen
-                  </button>
-                </div>
-              ),
-            },
-            {
-              accessorKey: "warningTemuan",
-              header: "Warning",
-              cell: ({ row }) => (
-                row.original.warningTemuan ? (
-                  <Badge size="sm" color="error">
-                    ⚠️ Ada Temuan
-                  </Badge>
-                ) : (
-                  <Badge size="sm" color="success">
-                    ✓ Aman
-                  </Badge>
-                )
-              ),
-            },
-            {
-              header: "Aksi",
-              accessorKey: "actions",
-              cell: ({ row }) => (
-                <ActionButtons
-                  onView={() => handleViewDetails(row.original)}
-                  onEdit={() => handleEdit(row.original)}
-                  onDelete={() => handleDelete(row.original.id)}
-                />
-              ),
-            },
-          ]}
-          loading={loading}
+          columns={columns}
+          data={filteredKontraktor}
+          loading={isLoading}
+          enableExport={true}
+          enableColumnVisibility={false}
+          pageSize={10}
+          searchPlaceholder="Cari nama, nomor izin, spesialisasi, atau proyek..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          fixedHeight="750px"
+          fixedWidth="1300px"
+          minVisibleRows={10}
         />
       </div>
 
@@ -445,17 +614,17 @@ export default function Konstruksi() {
         isOpen={isOpen}
         onClose={closeModal}
         size="2xl"
-        title={editingKontraktor ? "" : ""}
+        title={editingKontraktor ? "Edit Kontraktor" : "Tambah Kontraktor Baru"}
         showHeader={true}
       >
-        <div className="p-6">
+        <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingKontraktor ? 'Edit Kontraktor' : 'Tambah Kontraktor Baru'}
+            {editingKontraktor ? "Edit Kontraktor" : "Tambah Kontraktor Baru"}
           </h3>
 
           <div className="space-y-4">
             <div>
-              <Label>Nama Kontraktor</Label>
+              <Label>Nama Kontraktor *</Label>
               <Input
                 type="text"
                 value={formData.namaVendor}
@@ -463,12 +632,14 @@ export default function Konstruksi() {
                   setFormData({ ...formData, namaVendor: e.target.value })
                 }
                 placeholder="PT/CV Nama Kontraktor"
+                error={!!formErrors.namaVendor}
+                hint={formErrors.namaVendor}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Nomor Izin</Label>
+                <Label>Nomor Izin *</Label>
                 <Input
                   type="text"
                   value={formData.nomorIzin}
@@ -476,6 +647,8 @@ export default function Konstruksi() {
                     setFormData({ ...formData, nomorIzin: e.target.value })
                   }
                   placeholder="IUJK-KON-XXX/2024"
+                  error={!!formErrors.nomorIzin}
+                  hint={formErrors.nomorIzin}
                 />
               </div>
               <div>
@@ -492,7 +665,7 @@ export default function Konstruksi() {
             </div>
 
             <div>
-              <Label>Alamat</Label>
+              <Label>Alamat *</Label>
               <Input
                 type="text"
                 value={formData.alamat}
@@ -500,68 +673,90 @@ export default function Konstruksi() {
                   setFormData({ ...formData, alamat: e.target.value })
                 }
                 placeholder="Kota/Kabupaten"
+                error={!!formErrors.alamat}
+                hint={formErrors.alamat}
               />
             </div>
-            <div>
-            <Label>Nama Proyek</Label>
-            <Input
-              type="text"
-              value={formData.namaProyek}
-              onChange={(e) =>
-                setFormData({ ...formData, namaProyek: e.target.value })
-              }
-              placeholder="Nama proyek konstruksi"
-            />
-          </div>
 
-          <div>
-            <Label>Deskripsi Laporan Progress</Label>
-            <textarea
-              className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              value={formData.deskripsiProgress}
-              onChange={(e) =>
-                setFormData({ ...formData, deskripsiProgress: e.target.value })
-              }
-              placeholder="Laporan progress mingguan, bulanan, akhir..."
-            />
-          </div>
-            
-          <div>
-            <Label>Upload Dokumen Jaminan</Label>
-            <p className="text-xs text-gray-500 mb-2">
-              (Jaminan Uang Muka, Pelaksanaan, Pemeliharaan)
-            </p>
-            <input
-              type="file"
-              onChange={(e) =>
-                setFormData({ ...formData, uploadDokumen: e.target.files?.[0] || null })
-              }
-              accept=".pdf,.doc,.docx"
-              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-            />
-            {formData.uploadDokumen && (
-              <p className="mt-1 text-xs text-green-600">
-                ✓ {formData.uploadDokumen.name}
+            <div>
+              <Label>Nama Proyek</Label>
+              <Input
+                type="text"
+                value={formData.namaProyek}
+                onChange={(e) =>
+                  setFormData({ ...formData, namaProyek: e.target.value })
+                }
+                placeholder="Nama proyek konstruksi"
+              />
+            </div>
+
+            <div>
+              <Label>Deskripsi Laporan Progress</Label>
+              <textarea
+                className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                value={formData.deskripsiProgress}
+                onChange={(e) =>
+                  setFormData({ ...formData, deskripsiProgress: e.target.value })
+                }
+                placeholder="Laporan progress mingguan, bulanan, akhir..."
+              />
+            </div>
+
+            <div>
+              <Label>Upload Dokumen Jaminan {!editingKontraktor && "*"}</Label>
+              <p className="text-xs text-gray-500 mb-2">
+                (Jaminan Uang Muka, Pelaksanaan, Pemeliharaan) - Maksimal 10MB, format PDF/DOC/DOCX
               </p>
-            )}
-          </div>
-          
-          <div>
-            <Label>Upload Foto Progress</Label>
-            <input
-              type="file"
-              onChange={(e) =>
-                setFormData({ ...formData, uploadFoto: e.target.files?.[0] || null })
-              }
-              accept=".jpg,.jpeg,.png"
-              className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-            />
-            {formData.uploadFoto && (
-              <p className="mt-1 text-xs text-green-600">
-                ✓ {formData.uploadFoto.name}
+              <input
+                type="file"
+                onChange={handleDokumenChange}
+                accept=".pdf,.doc,.docx"
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              />
+              {formErrors.uploadDokumen && (
+                <p className="mt-1 text-xs text-error-500">
+                  {formErrors.uploadDokumen}
+                </p>
+              )}
+              {editingKontraktor && (
+                <p className="mt-1 text-xs text-warning-600">
+                  Kosongkan jika tidak ingin mengubah file
+                </p>
+              )}
+              {formData.uploadDokumen && (
+                <p className="mt-1 text-xs text-green-600">
+                  ✓ {formData.uploadDokumen.name}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label>Upload Foto Progress</Label>
+              <p className="text-xs text-gray-500 mb-2">
+                Maksimal 5MB, format JPG/JPEG/PNG
               </p>
-            )}
-          </div>
+              <input
+                type="file"
+                onChange={handleFotoChange}
+                accept=".jpg,.jpeg,.png"
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+              />
+              {formErrors.uploadFoto && (
+                <p className="mt-1 text-xs text-error-500">
+                  {formErrors.uploadFoto}
+                </p>
+              )}
+              {editingKontraktor && (
+                <p className="mt-1 text-xs text-warning-600">
+                  Kosongkan jika tidak ingin mengubah foto
+                </p>
+              )}
+              {formData.uploadFoto && (
+                <p className="mt-1 text-xs text-green-600">
+                  ✓ {formData.uploadFoto.name}
+                </p>
+              )}
+            </div>
 
             <div>
               <Label>Kontak</Label>
@@ -577,21 +772,46 @@ export default function Konstruksi() {
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={closeModal}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={closeModal}
+              disabled={isLoading}
+            >
               Batal
             </Button>
-            <Button size="sm" variant="primary" onClick={handleSubmit}>
-              {editingKontraktor ? 'Update Kontraktor' : 'Simpan Kontraktor'}
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={isLoading}
+            >
+              {isLoading
+                ? "Menyimpan..."
+                : editingKontraktor
+                ? "Update"
+                : "Simpan"}
             </Button>
           </div>
         </div>
       </Modal>
 
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Hapus Kontraktor"
+        message={`Apakah Anda yakin ingin menghapus kontraktor "${deletingKontraktor?.namaVendor}"?`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        loading={isLoading}
+      />
+
       {selectedData && (
         <DetailsModal
           isOpen={viewDetailsOpen}
           onClose={() => setViewDetailsOpen(false)}
-          title={`Detail Konstruksi`}
+          title="Detail Kontraktor Konstruksi"
           sections={detailsSections}
           documents={detailsDocuments}
         />
