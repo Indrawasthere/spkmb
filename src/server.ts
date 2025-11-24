@@ -3375,7 +3375,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 // ============================================
 // 404 HANDLER - API Routes (harus SEBELUM static serving)
 // ============================================
-app.use('/api/*', (req, res) => {
+app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
