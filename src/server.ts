@@ -24,6 +24,8 @@ declare global {
         lastName: string;
         role: string;
       };
+      isPortalSubdomain?: boolean;  
+      isDevelopment?: boolean;      
     }
   }
 }
@@ -37,13 +39,12 @@ const validateEnvironment = () => {
   
   if (missing.length > 0) {
     console.error('❌ Missing required environment variables:', missing);
-    console.error('💡 Please check your .env file');
     
-    // Jangan exit di development
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
+    if (IS_PRODUCTION) {
+      console.error('🚨 CRITICAL: Cannot start in production without env vars');
+      process.exit(1); 
     } else {
-      console.log('🔄 Continuing in development mode with default values...');
+      console.log('⚠️  Development mode: Using default values');
     }
   }
 };
@@ -81,23 +82,26 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
+      connectSrc: ["'self'", 
+        "https://sipakat-bpj.com",
+        "https://portal.sipakat-bpj.com",  
+        "https://www.sipakat-bpj.com"
+      ],
+      fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"], 
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
     },
   },
+  crossOriginEmbedderPolicy: false, // ✅ TAMBAH untuk file serving
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // ✅ TAMBAH
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
     preload: true,
   },
-  noSniff: true,
-  xssFilter: true,
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
 // CORS Configuration
@@ -110,13 +114,15 @@ app.use(cors({
       'https://localhost:3000',
       'http://localhost:3001',
       'https://localhost:3001',
-      'http://portal.localhost:3001',    // ✅ DEV SUBDOMAIN
-      'https://portal.localhost:3001',   // ✅ DEV SUBDOMAIN HTTPS
-      'http://sipakat.localhost:3001',   // ✅ DEV MAIN DOMAIN
-      'https://sipakat.localhost:3001',  // ✅ DEV MAIN DOMAIN HTTPS
+      // PRODUCTION DOMAINS
       'https://sipakat-bpj.com',
       'https://www.sipakat-bpj.com',
-      'https://portal.sipakat-bpj.com',
+      'https://portal.sipakat-bpj.com', 
+      // Development subdomains
+      'http://portal.localhost:3001',
+      'https://portal.localhost:3001',
+      'http://sipakat.localhost:3001',
+      'https://sipakat.localhost:3001',
       /\.sipakat-bpj\.com$/,
       /\.devtunnels\.ms$/,
       /\.ngrok-free\.app$/,
@@ -132,51 +138,76 @@ app.use(cors({
       callback(null, true);
     } else {
       console.warn(`❌ Blocked by CORS: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   exposedHeaders: ['set-cookie'],
+  maxAge: 86400, // 24 hours
 }));
 
-// Middleware untuk detect domain
+// ============================================
+// MIDDLEWARE: Domain & Environment Detection
+// ============================================
 app.use((req, res, next) => {
   const host = req.get('host') || '';
-  req.isPortalSubdomain = host.includes('portal.') || false;
-  req.isDevelopment = IS_DEVELOPMENT;
+  
+  // ✅ Detect portal subdomain (works for both dev & prod)
+  req.isPortalSubdomain = host.includes('portal.');
+  
+  // ✅ Set environment flag
+  req.isDevelopment = !IS_PRODUCTION;
+  
   next();
 });
 
-// Serve portal pengaduan untuk subdomain portal
+// ============================================
+// ROOT ROUTE HANDLER
+// ============================================
 app.get('/', (req, res) => {
-  if (req.isPortalSubdomain || (req.isDevelopment && req.get('host')?.includes('portal.localhost'))) {
-    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan.html'));
+  if (req.isPortalSubdomain) {
+    return res.sendFile(
+      path.join(process.cwd(), 'public', 'portal-pengaduan.html')
+    );
   }
   
-  // Default behavior untuk domain utama
   if (IS_PRODUCTION) {
-    res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
-  } else {
-    // Di development, serve admin dashboard atau API info
-    res.json({ 
-      message: 'SIPAKAT BPJ API - Development Mode',
-      endpoints: {
-        admin: 'http://sipakat.localhost:3001',
-        portal: 'http://portal.localhost:3001', 
-        api: 'http://localhost:3001/api'
-      }
-    });
+    return res.sendFile(
+      path.join(process.cwd(), 'dist', 'index.html')
+    );
   }
+  
+  return res.json({
+    message: 'SIPAKAT BPJ API - Development Mode',
+    version: '2.0.1',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      admin: 'http://sipakat.localhost:3001',
+      portal: 'http://portal.localhost:3001',
+      api: 'http://localhost:3001/api',
+      health: 'http://localhost:3001/api/health',
+      docs: 'http://localhost:3001/api/endpoints'
+    },
+    status: 'running',
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
-// Route tracking untuk subdomain portal
+// ============================================
+// TRACKING PAGE (untuk portal subdomain)
+// ============================================
 app.get('/tracking', (req, res) => {
-  if (req.isPortalSubdomain || (req.isDevelopment && req.get('host')?.includes('portal.localhost'))) {
-    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan-tracking.html'));
+  // Only serve tracking page on portal subdomain
+  if (req.isPortalSubdomain) {
+    return res.sendFile(
+      path.join(process.cwd(), 'public', 'portal-pengaduan-tracking.html')
+    );
   }
-  res.status(404).json({ error: 'Not found' });
+  
+  // Redirect to main domain if accessed from wrong domain
+  res.redirect('https://portal.sipakat-bpj.com/tracking');
 });
 
 // Trust proxy for production
@@ -196,20 +227,23 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Serve static files with proper headers
 app.use('/uploads', express.static(uploadsDir, {
-  setHeaders: (res, path) => {
+  setHeaders: (res, filePath) => {
     // Set proper content types
-    if (path.endsWith('.pdf')) {
+    if (filePath.endsWith('.pdf')) {
       res.setHeader('Content-Type', 'application/pdf');
-    } else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
       res.setHeader('Content-Type', 'image/jpeg');
-    } else if (path.endsWith('.png')) {
+    } else if (filePath.endsWith('.png')) {
       res.setHeader('Content-Type', 'image/png');
     }
     
-    // Allow CORS for file access
+    // Security headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  }
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); 
+  },
+  maxAge: '1y', 
+  immutable: true, 
 }));
 
 // Multer configuration with security enhancements
@@ -3338,18 +3372,45 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Serve React app in production
+// ============================================
+// 404 HANDLER - API Routes (harus SEBELUM static serving)
+// ============================================
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
+// ============================================
+// PRODUCTION: Serve React App
+// ============================================
 if (IS_PRODUCTION) {
-  app.use(express.static('dist'));
-  app.get('/*', (req, res) => {
+  // Serve static files dengan caching
+  app.use(express.static('dist', {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+      // No cache untuk HTML files
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    }
+  }));
+  
+  // SPA Fallback - HARUS di paling bawah
+  app.get('*', (req, res) => {
+    // Skip jika bukan untuk main domain
+    if (req.isPortalSubdomain) {
+      return res.status(404).send('Not Found');
+    }
+    
+    // Skip jika request untuk uploads
+    if (req.path.startsWith('/uploads')) {
+      return res.status(404).send('Not Found');
+    }
+    
+    // Serve React app
     res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
   });
 }
-
-// 404 handler for API routes
-app.use('/api/', (req, res) => {
-  res.status(404).json({ error: 'API endpoint not found' });
-});
 
 // ============================================
 // START SERVER
@@ -3357,75 +3418,14 @@ app.use('/api/', (req, res) => {
 
 const server = app.listen(Number(PORT), '0.0.0.0', () => {
   console.log('='.repeat(60));
-  console.log(`🚀 SIP-KPBJ API Server`);
+  console.log(`🚀 SIPAKAT BPJ API Server`);
   console.log('='.repeat(60));
-  console.log(`📍 Environment: ${IS_PRODUCTION ? 'PRODUCTION' : 'DEVELOPMENT'}`);
-  console.log(`🌐 Server running on: http://0.0.0.0:${PORT}`);
+  console.log(`📍 Environment: ${IS_PRODUCTION ? '🔴 PRODUCTION' : '🟢 DEVELOPMENT'}`);
+  console.log(`🌐 Main Domain: ${IS_PRODUCTION ? 'https://sipakat-bpj.com' : `http://localhost:${PORT}`}`);
+  console.log(`🌐 Portal Domain: ${IS_PRODUCTION ? 'https://portal.sipakat-bpj.com' : `http://portal.localhost:${PORT}`}`);
+  console.log(`🔌 API Endpoint: /api`);
   console.log(`📂 Upload directory: ${uploadsDir}`);
-  console.log(`🔒 Security: Rate limiting enabled`);
-  console.log(`📊 Database: Connected via Prisma`);
+  console.log(`🔒 Security: Rate limiting ${IS_PRODUCTION ? '✅ ENABLED' : '⚠️  RELAXED'}`);
+  console.log(`📊 Database: ${process.env.DATABASE_URL ? '✅ CONNECTED' : '❌ NOT CONFIGURED'}`);
   console.log('='.repeat(60));
-});
-
-server.keepAliveTimeout = 60000; // 60 seconds
-server.headersTimeout = 65000; // 65 seconds
-
-// ============================================
-// GRACEFUL SHUTDOWN
-// ============================================
-
-const gracefulShutdown = async (signal: string) => {
-  console.log(`\n${signal} received, starting graceful shutdown...`);
-  
-  // Stop accepting new requests
-  server.close(() => {
-    console.log('✅ HTTP server closed');
-  });
-
-  try {
-    // Close database connections
-    await prisma.$disconnect();
-    console.log('✅ Database connection closed');
-    
-    // Beri waktu untuk cleanup lainnya
-    setTimeout(() => {
-      console.log('✅ Graceful shutdown completed');
-      process.exit(0);
-    }, 3000);
-    
-  } catch (error) {
-    console.error('❌ Error during shutdown:', error);
-    setTimeout(() => {
-      process.exit(1);
-    }, 3000);
-  }
-
-  // Force shutdown after 30 seconds (dari 10 jadi 30)
-  setTimeout(() => {
-    console.error('❌ Could not close connections in time, forceful shutdown');
-    process.exit(1);
-  }, 30000); // 30 seconds
-};
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Handle unhandled rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
-  // Jangan panggil process.exit() di sini
-});
-
-// Handle uncaught exceptions (jangan selalu exit)
-process.on('uncaughtException', (error) => {
-  console.error('⚠️ Uncaught Exception:', error);
-  
-  // Hanya exit jika error critical
-  if (error.message.includes('EADDRINUSE') || error.message.includes('PORT')) {
-    console.error('❌ Critical error, shutting down...');
-    gracefulShutdown('UNCAUGHT_EXCEPTION');
-  } else {
-    console.log('🔄 Non-critical error, continuing...');
-    // Log error tapi jangan exit
-  }
 });
