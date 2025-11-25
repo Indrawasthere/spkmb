@@ -54,27 +54,6 @@ validateEnvironment();
 const app = express();
 const PORT = process.env.PORT || 3001;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const IS_DEVELOPMENT = !IS_PRODUCTION;
-
-// Security: Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5, // 5 login attempts per 15 minutes
-  message: 'Too many login attempts, please try again later.',
-  skipSuccessfulRequests: true,
-});
-
-// Apply rate limiting
-app.use('/api/auth/login', authLimiter);
-app.use('/api/', limiter);
 
 // Enhanced Helmet configuration
 app.use(helmet({
@@ -154,10 +133,10 @@ app.use(cors({
 app.use((req, res, next) => {
   const host = req.get('host') || '';
   
-  // ✅ Detect portal subdomain (works for both dev & prod)
+  
   req.isPortalSubdomain = host.includes('portal.');
   
-  // ✅ Set environment flag
+  
   req.isDevelopment = !IS_PRODUCTION;
   
   next();
@@ -211,7 +190,7 @@ app.get('/tracking', (req, res) => {
 });
 
 // Trust proxy for production
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 // Middleware
 app.use(cookieParser());
@@ -480,8 +459,8 @@ app.post('/api/auth/login', async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: IS_PRODUCTION,
-      sameSite: IS_PRODUCTION ? 'strict' : 'lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: cookieMaxAge,
     });
 
@@ -557,8 +536,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: IS_PRODUCTION,
-      sameSite: IS_PRODUCTION ? 'strict' : 'lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -608,18 +587,18 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     // Refresh token
-    const newToken = jwt.sign(
-      { userId: user.id }, 
-      process.env.JWT_SECRET || 'dev_jwt_secret', 
-      { expiresIn: '7d' }
-    );
-
-    res.cookie('token', newToken, {
-      httpOnly: true,
-      secure: IS_PRODUCTION,
-      sameSite: IS_PRODUCTION ? 'strict' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+  //  const newToken = jwt.sign(
+  //    { userId: user.id }, 
+  //    process.env.JWT_SECRET || 'dev_jwt_secret', 
+  //    { expiresIn: '7d' }
+  //  );
+//
+  //  res.cookie('token', newToken, {
+  //    httpOnly: true,
+  //    secure: IS_PRODUCTION,
+  //    sameSite: IS_PRODUCTION ? 'strict' : 'lax',
+  //    maxAge: 7 * 24 * 60 * 60 * 1000,
+  //  });
 
     res.json({
       user: {
