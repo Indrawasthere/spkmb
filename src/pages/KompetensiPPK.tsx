@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
@@ -24,14 +24,24 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+interface Dokumen {
+  id: string;
+  namaDokumen: string;
+  jenisDokumen: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+}
+
 interface PPK {
   id: string;
   namaLengkap: string;
   nip: string;
   jabatan: string;
   unitKerja: string;
-  kompetensi: any; // JSON
-  sertifikasi: any; // JSON
+  kompetensi: any;
+  sertifikasi: any;
   pengalaman: number;
   status: "AKTIF" | "NON_AKTIF" | "CUTI";
   createdAt: string;
@@ -65,7 +75,7 @@ interface FormErrors {
   syaratKhusus?: string;
 }
 
-export default function KompetensiPPK() {
+const KompetensiPPK: React.FC = () => {
   const [ppks, setPpks] = useState<PPK[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedData, setSelectedData] = useState<PPK | null>(null);
@@ -75,6 +85,7 @@ export default function KompetensiPPK() {
   const [deletingPPK, setDeletingPPK] = useState<PPK | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [detailsDocuments, setDetailsDocuments] = useState<Dokumen[]>([]);
 
   const [formData, setFormData] = useState<PPKFormData>({
     namaLengkap: "",
@@ -114,6 +125,21 @@ export default function KompetensiPPK() {
       error("Gagal memuat data PPK");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchPPKDocuments = async (ppkId: string): Promise<Dokumen[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/ppk/${ppkId}/dokumen`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+      return [];
+    } catch (err) {
+      console.error('Error fetching documents:', err);
+      return [];
     }
   };
 
@@ -214,9 +240,21 @@ export default function KompetensiPPK() {
     openModal();
   };
 
-  const handleViewDetails = (data: PPK) => {
+  const handleViewDetails = async (data: PPK) => {
     setSelectedData(data);
+    try {
+      const documents = await fetchPPKDocuments(data.id);
+      setDetailsDocuments(documents);
+    } catch (err) {
+      error("Gagal memuat dokumen");
+      setDetailsDocuments([]);
+    }
     setViewDetailsOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setViewDetailsOpen(false);
+    setDetailsDocuments([]);
   };
 
   const handleDelete = (ppk: PPK) => {
@@ -420,9 +458,9 @@ export default function KompetensiPPK() {
     },
     {
       title: "Kompetensi",
-      fields: selectedData.kompetensi && typeof selectedData.kompetensi === 'object' ? 
+      fields: selectedData.kompetensi && typeof selectedData.kompetensi === 'object' && Object.keys(selectedData.kompetensi).length > 0 ? 
         Object.entries(selectedData.kompetensi).map(([key, value]) => ({
-          label: key.charAt(0).toUpperCase() + key.slice(1),
+          label: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
           value: String(value),
         })) : [
         { label: "Kompetensi", value: "Tidak ada data kompetensi" }
@@ -430,30 +468,15 @@ export default function KompetensiPPK() {
     },
     {
       title: "Sertifikasi",
-      fields: selectedData.sertifikasi && typeof selectedData.sertifikasi === 'object' ? 
+      fields: selectedData.sertifikasi && typeof selectedData.sertifikasi === 'object' && Object.keys(selectedData.sertifikasi).length > 0 ? 
         Object.entries(selectedData.sertifikasi).map(([key, value]) => ({
-          label: key.charAt(0).toUpperCase() + key.slice(1),
+          label: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
           value: String(value),
         })) : [
         { label: "Sertifikasi", value: "Tidak ada data sertifikasi" }
       ]
     }
   ] : [];
-
-  const detailsDocuments = [
-    { 
-      id: 'kompetensi-doc', 
-      namaDokumen: 'Dokumen Kompetensi', 
-      filePath: '/documents/kompetensi.pdf', 
-      uploadedAt: selectedData?.createdAt || new Date().toISOString() 
-    },
-    { 
-      id: 'sertifikasi-doc', 
-      namaDokumen: 'Dokumen Sertifikasi', 
-      filePath: '/documents/sertifikasi.pdf', 
-      uploadedAt: selectedData?.createdAt || new Date().toISOString() 
-    }
-  ];
 
   return (
     <>
@@ -794,7 +817,7 @@ export default function KompetensiPPK() {
       {selectedData && (
         <DetailsModal
           isOpen={viewDetailsOpen}
-          onClose={() => setViewDetailsOpen(false)}
+          onClose={handleCloseDetails}
           title="Detail Kompetensi PPK"
           sections={detailsSections}
           documents={detailsDocuments}
@@ -802,4 +825,6 @@ export default function KompetensiPPK() {
       )}
     </>
   );
-}
+};
+
+export default KompetensiPPK;

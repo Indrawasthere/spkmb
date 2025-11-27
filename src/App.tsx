@@ -11,11 +11,9 @@ import { ToastProvider } from "./components/common/ToastProvider";
 
 import ManajemenPaket from "./pages/ManajemenPaket";
 import DokumenArsip from "./pages/DokumenArsip";
-import PengawasanAudit from "./pages/PengawasanAudit";
 import BPKP from "./pages/BPKP";
 import PUPR from "./pages/PUPR";
 import Itwasda from "./pages/Itwasda";
-import VendorPenyedia from "./pages/VendorPenyedia";
 import KonsultanPerencanaan from "./pages/KonsultanPerencanaan";
 import KonsultanPengawas from "./pages/KonsultanPengawas";
 import Konstruksi from "./pages/Konstruksi";
@@ -52,11 +50,9 @@ export default function App() {
             {/* Sistem Pengawasan Routes */}
             <Route path="manajemen-paket" element={<ManajemenPaket />} />
             <Route path="dokumen-arsip" element={<DokumenArsip />} />
-            <Route path="pengawasan-audit" element={<PengawasanAudit />} />
             <Route path="pengawasan-audit/itwasda" element={<Itwasda />} />
             <Route path="pengawasan-audit/bpkp" element={<BPKP />} />
             <Route path="pengawasan-audit/pupr" element={<PUPR />} />
-            <Route path="vendor-penyedia" element={<VendorPenyedia />} />
             <Route path="vendor-penyedia/konsultan-perencanaan" element={<KonsultanPerencanaan />} />
             <Route path="vendor-penyedia/konsultan-pengawas" element={<KonsultanPengawas />} />
             <Route path="vendor-penyedia/konstruksi" element={<Konstruksi />} />

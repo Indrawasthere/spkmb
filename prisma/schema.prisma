@@ -25,6 +25,7 @@ model User {
   // Relations
   auditLogs  AuditLog[]
   proyekPUPR ProyekPUPR[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -78,7 +79,8 @@ model Paket {
   laporan    LaporanItwasda[]
   temuanBPKP TemuanBPKP[]
   ppkData    PPKData[]
-  vendors    Vendor[]
+  vendorPakets VendorPaket[]
+  temuanVendor  TemuanVendor[]
 
   @@map("paket")
 }
@@ -202,6 +204,21 @@ enum LaporanStatus {
   DITUNDA
 }
 
+model VendorPaket {
+  id        String   @id @default(cuid())
+  vendorId  String
+  paketId   String
+  role      VendorType  // KONSULTAN_PERENCANAAN, KONSULTAN_PENGAWAS, KONSTRUKSI
+  startDate DateTime @default(now())
+  endDate   DateTime?
+  
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  paket  Paket  @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  
+  @@unique([vendorId, paketId, role])
+  @@map("vendor_paket")
+}
+
 // Vendor / Penyedia
 model Vendor {
   id              String       @id @default(cuid())
@@ -214,7 +231,6 @@ model Vendor {
   status          VendorStatus @default(AKTIF)
   kontak          String?
   alamat          String?
-  paketId         String?
   noKontrak       String?
   deskripsi       String?
   dokumenDED      String?
@@ -226,12 +242,15 @@ model Vendor {
   deskripsiProgress String?
   uploadDokumen   String?
   uploadFoto      String?
+  jumlahTemuan    Int          @default(0) 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
   // Relations
-  paket   Paket?    @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  vendorPakets VendorPaket[]    
   dokumen Dokumen[]
+  temuanVendor  TemuanVendor[]   
+  notifications Notification[]    
 
   @@map("vendor")
 }
@@ -397,8 +416,6 @@ enum PengaduanStatus {
   DITOLAK
 }
 
-
-
 // Pengaturan & Hak Akses
 model Role {
   id          String   @id @default(cuid())
@@ -421,4 +438,70 @@ model Permission {
   createdAt   DateTime @default(now())
 
   @@map("permissions")
+}
+
+// ============================================
+// TEMUAN VENDOR SYSTEM
+// ============================================
+
+// Bridge table untuk temuan ke vendor
+model TemuanVendor {
+  id          String   @id @default(cuid())
+  vendorId    String
+  paketId     String
+  
+  // Polymorphic reference ke source temuan
+  sourceType  String   // 'ITWASDA' | 'BPKP' | 'PUPR'
+  sourceId    String   // ID dari LaporanItwasda/TemuanBPKP/ProyekPUPR
+  
+  // Temuan details
+  nomorTemuan String
+  judul       String
+  deskripsi   String   @db.Text
+  tingkat     String   // RENDAH | SEDANG | TINGGI | KRITIS
+  
+  // Status tracking
+  status      String   @default("BARU") // BARU | DALAM_PERBAIKAN | DIPERBAIKI | DITOLAK
+  
+  // Response from vendor
+  tanggapanVendor  String? @db.Text
+  dokumenPerbaikan Json?   // Array of file paths
+  
+  // Timestamps
+  tanggalTemuan    DateTime @default(now())
+  tanggalDitanggapi DateTime?
+  tanggalSelesai   DateTime?
+  
+  // Relations
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  paket  Paket  @relation(fields: [paketId], references: [id], onDelete: Cascade)
+  
+  @@index([vendorId, status])
+  @@index([paketId])
+  @@index([sourceType, sourceId])
+  @@map("temuan_vendor")
+}
+
+// Notification system
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String?  // For PPK/Admin
+  vendorId    String?  // For Vendor
+  
+  type        String   // 'TEMUAN_BARU' | 'TEMUAN_DIPERBAIKI' | 'DOKUMEN_UPLOAD'
+  title       String
+  message     String   @db.Text
+  entityType  String   // 'TEMUAN' | 'PAKET' | 'DOKUMEN'
+  entityId    String
+  
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, isRead])
+  @@index([vendorId, isRead])
+  @@map("notifications")
 }

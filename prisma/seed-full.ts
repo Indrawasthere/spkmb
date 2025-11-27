@@ -287,7 +287,6 @@ async function main() {
       status: 'AKTIF' as const,
       jumlahProyek: 24,
       rating: 4.7,
-      paketId: createdPaket[0].id,
       namaProyek: 'Pembangunan Jalan Lingkar Utara',
       deskripsi: 'Kontraktor utama untuk pembangunan jalan lingkar dengan total panjang 12 kilometer',
       lamaKontrak: 365,
@@ -304,12 +303,11 @@ async function main() {
       status: 'AKTIF' as const,
       jumlahProyek: 18,
       rating: 4.5,
-      paketId: createdPaket[1].id,
-      namaProyek: 'Rehabilitasi Jembatan Sungai Besar',
-      deskripsi: 'Rehabilitasi struktur jembatan dengan panjang 180 meter',
-      lamaKontrak: 214,
-      deskripsiProgress: 'Progress fisik minggu ke-18: Perkuatan pondasi 100%, Struktur utama 75%, Finishing 30%',
-      warningTemuan: true, // Ada temuan audit
+      namaProyek: 'Pembangunan Jalan Lingkar Utara',
+      deskripsi: 'Kontraktor utama untuk pembangunan jalan lingkar dengan total panjang 12 kilometer',
+      lamaKontrak: 365,
+      deskripsiProgress: 'Progress fisik minggu ke-28: Pekerjaan tanah 100%, Pondasi 85%, Perkerasan 60%',
+      warningTemuan: false,
     },
     {
       namaVendor: 'PT Nindya Karya Persero',
@@ -321,13 +319,13 @@ async function main() {
       status: 'AKTIF' as const,
       jumlahProyek: 15,
       rating: 4.6,
-      paketId: createdPaket[2].id,
-      namaProyek: 'Pembangunan Gedung Kantor Dinas PUPR',
-      deskripsi: 'Pembangunan gedung kantor 3 lantai dengan luas total 2.500 m²',
+      namaProyek: 'Pembangunan Jalan Lingkar Utara',
+      deskripsi: 'Kontraktor utama untuk pembangunan jalan lingkar dengan total panjang 12 kilometer',
       lamaKontrak: 365,
-      deskripsiProgress: 'Progress fisik minggu ke-20: Pondasi 100%, Struktur lantai 1-2 100%, Lantai 3 70%, MEP 40%',
+      deskripsiProgress: 'Progress fisik minggu ke-28: Pekerjaan tanah 100%, Pondasi 85%, Perkerasan 60%',
       warningTemuan: false,
     },
+    
     {
       namaVendor: 'CV Intan Konsultan Engineering',
       jenisVendor: 'KONSULTAN_PERENCANAAN' as const,
@@ -338,10 +336,10 @@ async function main() {
       status: 'AKTIF' as const,
       jumlahProyek: 12,
       rating: 4.4,
-      paketId: createdPaket[6].id,
-      namaProyek: 'Perencanaan DED Jalan Tol Dalam Kota',
-      deskripsi: 'Penyusunan Detail Engineering Design untuk jalan tol sepanjang 25 kilometer termasuk analisis kelayakan teknis dan lingkungan',
-      lamaKontrak: 214,
+      namaProyek: 'Pembangunan Jalan Lingkar Utara',
+      deskripsi: 'Kontraktor utama untuk pembangunan jalan lingkar dengan total panjang 12 kilometer',
+      lamaKontrak: 365,
+      deskripsiProgress: 'Progress fisik minggu ke-28: Pekerjaan tanah 100%, Pondasi 85%, Perkerasan 60%',
       warningTemuan: false,
     },
     {
@@ -354,11 +352,10 @@ async function main() {
       status: 'AKTIF' as const,
       jumlahProyek: 16,
       rating: 4.6,
-      paketId: createdPaket[5].id,
-      namaProyek: 'Pengawasan Pembangunan Jalan Lingkar Utara',
-      deskripsi: 'Supervisi dan pengawasan teknis konstruksi jalan lingkar dengan dokumentasi harian, mingguan, dan bulanan',
-      deskripsiLaporan: 'Laporan Harian: Monitoring pekerjaan galian tanah dan pemadatan subgrade. Laporan Mingguan: Progress fisik 62%, volume pekerjaan sesuai kontrak, tidak ada deviasi material. Laporan Bulanan: Realisasi keuangan 58%, kualitas pekerjaan baik, rekomendasi percepatan pada segmen 3.',
+       namaProyek: 'Pembangunan Jalan Lingkar Utara',
+      deskripsi: 'Kontraktor utama untuk pembangunan jalan lingkar dengan total panjang 12 kilometer',
       lamaKontrak: 365,
+      deskripsiProgress: 'Progress fisik minggu ke-28: Pekerjaan tanah 100%, Pondasi 85%, Perkerasan 60%',
       warningTemuan: false,
     },
     {
@@ -371,10 +368,10 @@ async function main() {
       status: 'AKTIF' as const,
       jumlahProyek: 8,
       rating: 4.3,
-      paketId: createdPaket[8].id,
-      namaProyek: 'Penyusunan RTRW Kabupaten',
-      deskripsi: 'Penyusunan dokumen Rencana Tata Ruang Wilayah periode 2025-2045 meliputi analisis spasial, kajian daya dukung lingkungan, dan arahan pemanfaatan ruang',
+       namaProyek: 'Pembangunan Jalan Lingkar Utara',
+      deskripsi: 'Kontraktor utama untuk pembangunan jalan lingkar dengan total panjang 12 kilometer',
       lamaKontrak: 365,
+      deskripsiProgress: 'Progress fisik minggu ke-28: Pekerjaan tanah 100%, Pondasi 85%, Perkerasan 60%',
       warningTemuan: false,
     },
     {
@@ -387,12 +384,11 @@ async function main() {
       status: 'AKTIF' as const,
       jumlahProyek: 22,
       rating: 4.4,
-      paketId: createdPaket[7].id,
-      namaProyek: 'Pemeliharaan Rutin Jalan Kabupaten',
-      deskripsi: 'Pemeliharaan rutin jalan kabupaten sepanjang 50 KM meliputi patching, overlay, dan perbaikan drainase',
-      lamaKontrak: 184,
-      deskripsiProgress: 'Progress fisik minggu ke-12: Survei kondisi jalan 100%, Patching jalan rusak 80%, Overlay 45%, Perbaikan drainase 60%',
-      warningTemuan: true, // Ada temuan
+       namaProyek: 'Pembangunan Jalan Lingkar Utara',
+      deskripsi: 'Kontraktor utama untuk pembangunan jalan lingkar dengan total panjang 12 kilometer',
+      lamaKontrak: 365,
+      deskripsiProgress: 'Progress fisik minggu ke-28: Pekerjaan tanah 100%, Pondasi 85%, Perkerasan 60%',
+      warningTemuan: false,
     },
   ];
 
@@ -406,11 +402,62 @@ async function main() {
     }
   }
 
+  // ===== VENDOR PAKET (Relasi Many-to-Many) =====
+  const vendorPaketData = [
+    {
+      vendorId: createdVendor[0].id,
+      paketId: createdPaket[0].id,
+      role: 'KONSTRUKSI',
+    },
+    {
+      vendorId: createdVendor[1].id,
+      paketId: createdPaket[1].id,
+      role: 'KONSTRUKSI',
+    },
+    {
+      vendorId: createdVendor[2].id,
+      paketId: createdPaket[2].id,
+      role: 'KONSTRUKSI',
+    },
+    {
+      vendorId: createdVendor[3].id,
+      paketId: createdPaket[6].id,
+      role: 'KONSULTAN_PERENCANAAN',
+    },
+    {
+      vendorId: createdVendor[4].id,
+      paketId: createdPaket[5].id,
+      role: 'KONSULTAN_PENGAWAS',
+    },
+    {
+      vendorId: createdVendor[5].id,
+      paketId: createdPaket[8].id,
+      role: 'KONSULTAN_PERENCANAAN',
+    },
+    {
+      vendorId: createdVendor[6].id,
+      paketId: createdPaket[7].id,
+      role: 'KONSTRUKSI',
+    },
+  ];
+
+  for (const vp of vendorPaketData) {
+    const existing = await prisma.vendorPaket.findFirst({
+      where: {
+        vendorId: vp.vendorId,
+        paketId: vp.paketId
+      }
+    });
+    if (!existing) {
+      await prisma.vendorPaket.create({ data: vp });
+    }
+  }
+
   // ===== LAPORAN ITWASDA =====
   const laporanItwasdaData = [
     {
       nomorLaporan: 'ITW/2024/001/PUPR',
-      paketId: createdPaket[1].id, // Rehabilitasi Jembatan
+      paketId: createdPaket[1].id,
       jenisLaporan: 'Inspeksi Teknis',
       deskripsi: 'Ditemukan ketidaksesuaian spesifikasi beton ready mix K-350 pada pekerjaan struktur pier jembatan. Hasil uji lab menunjukkan mutu beton K-320. Rekomendasi: Peningkatan quality control dan pengujian material.',
       tingkatKualitasTemuan: 'TINGGI',
@@ -421,7 +468,7 @@ async function main() {
     },
     {
       nomorLaporan: 'ITW/2024/002/PUPR',
-      paketId: createdPaket[0].id, // Jalan Lingkar
+      paketId: createdPaket[0].id,
       jenisLaporan: 'Audit Kemajuan Fisik',
       deskripsi: 'Progress fisik pekerjaan pada minggu ke-28 adalah 62%, sedangkan progress rencana seharusnya 70%. Terdapat keterlambatan 8% terutama pada pekerjaan perkerasan akibat cuaca buruk dan keterlambatan material agregat.',
       tingkatKualitasTemuan: 'SEDANG',
@@ -432,7 +479,7 @@ async function main() {
     },
     {
       nomorLaporan: 'ITW/2024/003/PUPR',
-      paketId: createdPaket[7].id, // Pemeliharaan Jalan
+      paketId: createdPaket[7].id,
       jenisLaporan: 'Inspeksi Pelaksanaan',
       deskripsi: 'Ditemukan volume pekerjaan patching yang tidak sesuai kontrak. Kontrak menyebutkan 2.500 m² namun realisasi di lapangan hanya 2.100 m². Penyedia belum memberikan klarifikasi tertulis.',
       tingkatKualitasTemuan: 'TINGGI',
@@ -443,7 +490,7 @@ async function main() {
     },
     {
       nomorLaporan: 'ITW/2024/004/DISDIK',
-      paketId: createdPaket[3].id, // Pengadaan Laptop
+      paketId: createdPaket[3].id,
       jenisLaporan: 'Audit Administrasi',
       deskripsi: 'Dokumen BA Serah Terima barang tidak lengkap. Dari 150 unit laptop yang diterima, 12 unit tidak memiliki stiker inventaris dan nomor seri tidak tercatat dengan benar di BAST.',
       tingkatKualitasTemuan: 'RENDAH',
@@ -465,7 +512,7 @@ async function main() {
   const temuanBPKPData = [
     {
       nomorTemuan: 'BPKP/2024/001/PUPR',
-      paketId: createdPaket[1].id, // Rehabilitasi Jembatan
+      paketId: createdPaket[1].id,
       jenisTemuan: 'Keuangan',
       deskripsi: 'Terdapat selisih pembayaran termin 2 sebesar Rp 125.000.000 yang tidak didukung oleh volume pekerjaan di lapangan. Progress fisik tercatat 45% namun pembayaran sudah mencapai 55%. Rekomendasi: Verifikasi ulang volume pekerjaan dan perhitungan termin.',
       tingkatKualitasTemuan: 'KRITIS',
@@ -476,7 +523,7 @@ async function main() {
     },
     {
       nomorTemuan: 'BPKP/2024/002/PUPR',
-      paketId: createdPaket[7].id, // Pemeliharaan Jalan
+      paketId: createdPaket[7].id,
       jenisTemuan: 'Administrasi',
       deskripsi: 'Dokumen Jaminan Pelaksanaan yang diserahkan penyedia tidak sesuai format standar dan nilai jaminan hanya 4,5% dari nilai kontrak (seharusnya 5%). Perlu addendum kontrak atau penambahan nilai jaminan.',
       tingkatKualitasTemuan: 'SEDANG',
@@ -581,9 +628,9 @@ async function main() {
       noSertifikasi: 'LKPP-2023-001234',
       jumlahAnggaran: 15750000000,
       lamaProyek: 365,
-      realisasiTermin1: 3937500000, // 25%
-      realisasiTermin2: 3937500000, // 25%
-      realisasiTermin3: 2362500000, // 15% (total 65%)
+      realisasiTermin1: 3937500000,
+      realisasiTermin2: 3937500000,
+      realisasiTermin3: 2362500000,
       realisasiTermin4: null,
       PHO: null,
       FHO: null,
@@ -594,9 +641,9 @@ async function main() {
       noSertifikasi: 'LKPP-2023-001234',
       jumlahAnggaran: 8500000000,
       lamaProyek: 214,
-      realisasiTermin1: 2550000000, // 30%
-      realisasiTermin2: 2550000000, // 30%
-      realisasiTermin3: 1275000000, // 15% (total 75%)
+      realisasiTermin1: 2550000000,
+      realisasiTermin2: 2550000000,
+      realisasiTermin3: 1275000000,
       realisasiTermin4: null,
       PHO: null,
       FHO: null,
@@ -607,8 +654,8 @@ async function main() {
       noSertifikasi: 'LKPP-2023-001234',
       jumlahAnggaran: 12300000000,
       lamaProyek: 365,
-      realisasiTermin1: 3075000000, // 25%
-      realisasiTermin2: 3690000000, // 30% (total 55%)
+      realisasiTermin1: 3075000000,
+      realisasiTermin2: 3690000000,
       realisasiTermin3: null,
       realisasiTermin4: null,
       PHO: null,
@@ -620,8 +667,8 @@ async function main() {
       noSertifikasi: 'LKPP-2023-009012',
       jumlahAnggaran: 2850000000,
       lamaProyek: 75,
-      realisasiTermin1: 1425000000, // 50%
-      realisasiTermin2: 1425000000, // 50%
+      realisasiTermin1: 1425000000,
+      realisasiTermin2: 1425000000,
       realisasiTermin3: null,
       realisasiTermin4: null,
       PHO: new Date('2024-03-25'),
@@ -633,8 +680,8 @@ async function main() {
       noSertifikasi: 'LKPP-2023-009012',
       jumlahAnggaran: 1750000000,
       lamaProyek: 74,
-      realisasiTermin1: 875000000, // 50%
-      realisasiTermin2: 875000000, // 50%
+      realisasiTermin1: 875000000,
+      realisasiTermin2: 875000000,
       realisasiTermin3: null,
       realisasiTermin4: null,
       PHO: new Date('2024-04-10'),
@@ -758,6 +805,7 @@ async function main() {
   console.log(`- PPK: ${createdPPK.length} orang`);
   console.log(`- Paket: ${createdPaket.length} paket`);
   console.log(`- Vendor: ${createdVendor.length} vendor`);
+  console.log(`- VendorPaket: ${vendorPaketData.length} relasi`);
   console.log(`- Laporan Itwasda: ${laporanItwasdaData.length} laporan`);
   console.log(`- Temuan BPKP: ${temuanBPKPData.length} temuan`);
   console.log(`- Proyek PUPR: ${proyekPUPRData.length} proyek`);
