@@ -1,38 +1,39 @@
-import { useState, useEffect } from "react";
-import PageBreadcrumb from "../components/common/PageBreadCrumb";
-import PageMeta from "../components/common/PageMeta";
-import Button from "../components/ui/button/Button";
-import Badge from "../components/ui/badge/Badge";
-import { PlusIcon, AlertIcon } from "../icons";
-import { Modal } from "../components/ui/modal";
-import { useModal } from "../hooks/useModal";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
-import Input from "../components/form/input/InputField";
-import Label from "../components/form/Label";
-import { DataTable } from "../components/common/DataTable";
-import { useToast } from "../hooks/useToast";
-import { ActionButtons } from "../components/common/ActionButtons";
-import { DetailsModal } from "../components/common/DetailsModal";
-import { ColumnDef } from "@tanstack/react-table";
-import { StatsCard } from "../components/common/StatsCard";
+import { useState, useEffect } from 'react';
+import PageBreadcrumb from '../components/common/PageBreadCrumb';
+import PageMeta from '../components/common/PageMeta';
+import Button from '../components/ui/button/Button';
+import Badge from '../components/ui/badge/Badge';
+import { PlusIcon, AlertIcon } from '../icons';
+import { Modal } from '../components/ui/modal';
+import { useModal } from '../hooks/useModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
+import Input from '../components/form/input/InputField';
+import Label from '../components/form/Label';
+import { DataTable } from '../components/common/DataTable';
+import { useToast } from '../hooks/useToast';
+import { ActionButtons } from '../components/common/ActionButtons';
+import { DetailsModal } from '../components/common/DetailsModal';
+import { ColumnDef } from '@tanstack/react-table';
+import { StatsCard } from '../components/common/StatsCard';
 import {
   DocumentChartBarIcon as DocumentIcon,
   UserGroupIcon,
   ChartBarIcon,
   BuildingStorefrontIcon,
-} from "@heroicons/react/24/outline";
+} from '@heroicons/react/24/outline';
+import { TemuanResponseModal } from '../components/common/TemuanResponseModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface Konsultan {
   id: string;
   namaVendor: string;
-  jenisVendor: "KONSULTAN_PERENCANAAN";
+  jenisVendor: 'KONSULTAN_PERENCANAAN';
   nomorIzin: string;
   spesialisasi: string | null;
   jumlahProyek: number;
   rating: number | null;
-  status: "AKTIF" | "NON_AKTIF" | "SUSPENDED";
+  status: 'AKTIF' | 'NON_AKTIF' | 'SUSPENDED';
   kontak: string | null;
   alamat: string | null;
   deskripsi?: string;
@@ -55,7 +56,7 @@ interface TemuanVendor {
   judul: string;
   deskripsi: string;
   tingkat: string;
-  status: "BARU" | "DALAM_PERBAIKAN" | "DIPERBAIKI" | "DITOLAK";
+  status: 'BARU' | 'DALAM_PERBAIKAN' | 'DIPERBAIKI' | 'DITOLAK';
   tanggalTemuan: string;
   tanggalDitanggapi?: string;
   tanggalSelesai?: string;
@@ -65,7 +66,7 @@ interface TemuanVendor {
     kodePaket: string;
     namaPaket: string;
   };
-  sourceType: "ITWASDA" | "BPKP" | "PUPR";
+  sourceType: 'ITWASDA' | 'BPKP' | 'PUPR';
 }
 
 interface KonsultanFormData {
@@ -91,26 +92,25 @@ export default function KonsultanPerencanaan() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedData, setSelectedData] = useState<Konsultan | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState('all');
   const [editingKonsultan, setEditingKonsultan] = useState<Konsultan | null>(null);
   const [deletingKonsultan, setDeletingKonsultan] = useState<Konsultan | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // NEW STATE FOR TEMUAN
+  const [searchQuery, setSearchQuery] = useState('');
   const [temuanData, setTemuanData] = useState<TemuanVendor[]>([]);
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanVendor | null>(null);
   const [viewTemuanModalOpen, setViewTemuanModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"data" | "temuan">("data");
+  const [activeTab, setActiveTab] = useState<'data' | 'temuan'>('data');
+  const [isResponseModalOpen, setIsResponseModalOpen] = useState(false);
 
   const [formData, setFormData] = useState<KonsultanFormData>({
-    namaVendor: "",
-    nomorIzin: "",
-    spesialisasi: "",
-    kontak: "",
-    alamat: "",
-    deskripsi: "",
-    lamaKontrak: "",
+    namaVendor: '',
+    nomorIzin: '',
+    spesialisasi: '',
+    kontak: '',
+    alamat: '',
+    deskripsi: '',
+    lamaKontrak: '',
     dokumenDED: null,
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -187,13 +187,11 @@ export default function KonsultanPerencanaan() {
     }
   };
 
-  // NEW: Handle view temuan details
   const handleViewTemuan = (temuan: TemuanVendor) => {
     setSelectedTemuan(temuan);
     setViewTemuanModalOpen(true);
   };
 
-  // NEW: Handle view konsultan details with temuan
   const handleViewDetails = async (data: Konsultan) => {
     setSelectedData(data);
     setActiveTab('data'); // Reset to data tab
@@ -201,55 +199,61 @@ export default function KonsultanPerencanaan() {
     setViewDetailsOpen(true);
   };
 
-  // NEW: Get status color for temuan
-  const getTemuanStatusColor = (status: TemuanVendor["status"]) => {
+  const handleRespond = (temuan: TemuanVendor) => {
+    setSelectedTemuan(temuan);
+    setIsResponseModalOpen(true);
+  };
+
+  const handleResponseSuccess = async () => {
+    if (selectedData) {
+      await fetchTemuan(selectedData.id);
+    }
+    success('Tanggapan berhasil dikirim!');
+  };
+
+  const getTemuanStatusColor = (status: TemuanVendor['status']) => {
     switch (status) {
-      case "BARU":
-        return "error";
-      case "DALAM_PERBAIKAN":
-        return "warning";
-      case "DIPERBAIKI":
-        return "success";
-      case "DITOLAK":
-        return "error";
+      case 'BARU':
+        return 'error';
+      case 'DALAM_PERBAIKAN':
+        return 'warning';
+      case 'DIPERBAIKI':
+        return 'success';
+      case 'DITOLAK':
+        return 'error';
       default:
-        return "light";
+        return 'light';
     }
   };
 
   // NEW: Get tingkat color for temuan
   const getTingkatColor = (tingkat: string) => {
     switch (tingkat) {
-      case "TINGGI":
-        return "error";
-      case "SEDANG":
-        return "warning";
-      case "RENDAH":
-        return "success";
+      case 'TINGGI':
+        return 'error';
+      case 'SEDANG':
+        return 'warning';
+      case 'RENDAH':
+        return 'success';
       default:
-        return "light";
+        return 'light';
     }
   };
 
-  // NEW: Render temuan table columns
   const temuanColumns: ColumnDef<TemuanVendor>[] = [
     {
-      accessorKey: "nomorTemuan",
-      header: "No. Temuan",
-      cell: ({ getValue }) => (
-        <span className="font-medium text-sm">{getValue() as string}</span>
-      ),
+      accessorKey: 'nomorTemuan',
+      header: 'No. Temuan',
+      cell: ({ getValue }) => <span className="font-medium text-sm">{getValue() as string}</span>,
     },
     {
-      accessorKey: "judul",
-      header: "Judul Temuan",
-      cell: ({ getValue }) => (
-        <span className="text-sm">{getValue() as string}</span>
-      ),
+      accessorKey: 'judul',
+      header: 'Judul Temuan',
+      cell: ({ getValue }) => <span className="text-sm">{getValue() as string}</span>,
     },
     {
-      accessorKey: "paket.namaPaket",
-      header: "Paket Terkait",
+      accessorKey: 'paket.namaPaket',
+      header: 'Paket Terkait',
       cell: ({ row }) => (
         <div className="text-xs">
           <div className="font-medium">{row.original.paket?.namaPaket}</div>
@@ -258,8 +262,8 @@ export default function KonsultanPerencanaan() {
       ),
     },
     {
-      accessorKey: "tingkat",
-      header: "Tingkat",
+      accessorKey: 'tingkat',
+      header: 'Tingkat',
       cell: ({ getValue }) => (
         <Badge size="sm" color={getTingkatColor(getValue() as string)}>
           {getValue() as string}
@@ -267,17 +271,17 @@ export default function KonsultanPerencanaan() {
       ),
     },
     {
-      accessorKey: "status",
-      header: "Status",
+      accessorKey: 'status',
+      header: 'Status',
       cell: ({ getValue }) => (
-        <Badge size="sm" color={getTemuanStatusColor(getValue() as TemuanVendor["status"])}>
+        <Badge size="sm" color={getTemuanStatusColor(getValue() as TemuanVendor['status'])}>
           {getValue() as string}
         </Badge>
       ),
     },
     {
-      accessorKey: "tanggalTemuan",
-      header: "Tanggal",
+      accessorKey: 'tanggalTemuan',
+      header: 'Tanggal',
       cell: ({ getValue }) => (
         <span className="text-xs text-gray-600">
           {new Date(getValue() as string).toLocaleDateString('id-ID')}
@@ -285,34 +289,36 @@ export default function KonsultanPerencanaan() {
       ),
     },
     {
-      id: "actions",
-      header: "Aksi",
-      cell: ({ row }) => (
-        <div className="flex gap-1">
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() => handleViewTemuan(row.original)}
-          >
-            Lihat
-          </Button>
-        </div>
-      ),
+      id: 'actions',
+      header: 'Aksi',
+      cell: ({ row }) => {
+        const canRespond = row.original.status === 'BARU' || row.original.status === 'DITOLAK';
+        return (
+          <div className="flex gap-2">
+            <Button
+              size="xs"
+              variant={canRespond ? 'primary' : 'outline'}
+              onClick={() => handleRespond(row.original)}
+            >
+              {canRespond ? '✍️ Tanggapi' : '👁️ Lihat'}
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
-  // Rest of the existing functions remain the same...
   const validateForm = () => {
     const newErrors: FormErrors = {};
 
     if (!formData.namaVendor.trim()) {
-      newErrors.namaVendor = "Nama konsultan wajib diisi";
+      newErrors.namaVendor = 'Nama konsultan wajib diisi';
     }
     if (!formData.nomorIzin.trim()) {
-      newErrors.nomorIzin = "Nomor izin wajib diisi";
+      newErrors.nomorIzin = 'Nomor izin wajib diisi';
     }
     if (!formData.alamat.trim()) {
-      newErrors.alamat = "Alamat wajib diisi";
+      newErrors.alamat = 'Alamat wajib diisi';
     }
 
     setFormErrors(newErrors);
@@ -323,18 +329,18 @@ export default function KonsultanPerencanaan() {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    loading(editingKonsultan ? "Memperbarui konsultan..." : "Menyimpan konsultan...");
+    loading(editingKonsultan ? 'Memperbarui konsultan...' : 'Menyimpan konsultan...');
 
     try {
       const fd = new FormData();
       fd.append('namaVendor', data.namaVendor);
-      fd.append('jenisVendor', "KONSULTAN_PERENCANAAN");
+      fd.append('jenisVendor', 'KONSULTAN_PERENCANAAN');
       fd.append('nomorIzin', data.nomorIzin);
-      fd.append('spesialisasi', data.spesialisasi || "");
-      fd.append('kontak', data.kontak || "");
-      fd.append('alamat', data.alamat || "");
-      fd.append('deskripsi', data.deskripsi || "");
-      fd.append('lamaKontrak', data.lamaKontrak || "0");
+      fd.append('spesialisasi', data.spesialisasi || '');
+      fd.append('kontak', data.kontak || '');
+      fd.append('alamat', data.alamat || '');
+      fd.append('deskripsi', data.deskripsi || '');
+      fd.append('lamaKontrak', data.lamaKontrak || '0');
 
       if (data.dokumenDED) {
         fd.append('dokumenDED', data.dokumenDED);
@@ -360,13 +366,15 @@ export default function KonsultanPerencanaan() {
         closeModal();
         resetForm();
         setEditingKonsultan(null);
-        success(editingKonsultan ? "Konsultan berhasil diperbarui!" : "Konsultan berhasil disimpan!");
+        success(
+          editingKonsultan ? 'Konsultan berhasil diperbarui!' : 'Konsultan berhasil disimpan!'
+        );
       } else {
         const errorText = await response.text();
-        error("Gagal menyimpan konsultan: " + errorText);
+        error('Gagal menyimpan konsultan: ' + errorText);
       }
     } catch (err) {
-      error("Terjadi kesalahan saat menyimpan konsultan");
+      error('Terjadi kesalahan saat menyimpan konsultan');
     } finally {
       setIsLoading(false);
     }
@@ -377,11 +385,11 @@ export default function KonsultanPerencanaan() {
     setFormData({
       namaVendor: konsultan.namaVendor,
       nomorIzin: konsultan.nomorIzin,
-      spesialisasi: konsultan.spesialisasi || "",
-      kontak: konsultan.kontak || "",
-      alamat: konsultan.alamat || "",
-      deskripsi: konsultan.deskripsi || "",
-      lamaKontrak: konsultan.lamaKontrak?.toString() || "",
+      spesialisasi: konsultan.spesialisasi || '',
+      kontak: konsultan.kontak || '',
+      alamat: konsultan.alamat || '',
+      deskripsi: konsultan.deskripsi || '',
+      lamaKontrak: konsultan.lamaKontrak?.toString() || '',
       dokumenDED: null,
     });
     openModal();
@@ -395,7 +403,7 @@ export default function KonsultanPerencanaan() {
   const confirmDelete = async () => {
     if (!deletingKonsultan) return;
     setIsLoading(true);
-    loading("Menghapus konsultan...");
+    loading('Menghapus konsultan...');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/vendor/${deletingKonsultan.id}`, {
@@ -405,13 +413,13 @@ export default function KonsultanPerencanaan() {
 
       if (response.ok) {
         await fetchKonsultan();
-        success("Konsultan berhasil dihapus!");
+        success('Konsultan berhasil dihapus!');
       } else {
         const errorData = await response.json();
-        error("Gagal menghapus: " + (errorData.error || 'Unknown error'));
+        error('Gagal menghapus: ' + (errorData.error || 'Unknown error'));
       }
     } catch (err) {
-      error("Terjadi kesalahan saat menghapus konsultan");
+      error('Terjadi kesalahan saat menghapus konsultan');
     } finally {
       setIsLoading(false);
       setIsConfirmModalOpen(false);
@@ -425,20 +433,20 @@ export default function KonsultanPerencanaan() {
     const file = e.target.files?.[0] || null;
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        setFormErrors({ ...formErrors, dokumenDED: "Ukuran file maksimal 10MB" });
+        setFormErrors({ ...formErrors, dokumenDED: 'Ukuran file maksimal 10MB' });
         return;
       }
 
       const allowedTypes = [
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "image/jpeg",
-        "image/png",
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
       ];
 
       if (!allowedTypes.includes(file.type)) {
-        setFormErrors({ ...formErrors, dokumenDED: "Format file tidak didukung" });
+        setFormErrors({ ...formErrors, dokumenDED: 'Format file tidak didukung' });
         return;
       }
 
@@ -449,29 +457,29 @@ export default function KonsultanPerencanaan() {
 
   const resetForm = () => {
     setFormData({
-      namaVendor: "",
-      nomorIzin: "",
-      spesialisasi: "",
-      kontak: "",
-      alamat: "",
-      deskripsi: "",
-      lamaKontrak: "",
+      namaVendor: '',
+      nomorIzin: '',
+      spesialisasi: '',
+      kontak: '',
+      alamat: '',
+      deskripsi: '',
+      lamaKontrak: '',
       dokumenDED: null,
     });
     setFormErrors({});
     setEditingKonsultan(null);
   };
 
-  const getStatusColor = (status: Konsultan["status"]) => {
+  const getStatusColor = (status: Konsultan['status']) => {
     switch (status) {
-      case "AKTIF":
-        return "success";
-      case "NON_AKTIF":
-        return "warning";
-      case "SUSPENDED":
-        return "error";
+      case 'AKTIF':
+        return 'success';
+      case 'NON_AKTIF':
+        return 'warning';
+      case 'SUSPENDED':
+        return 'error';
       default:
-        return "light";
+        return 'light';
     }
   };
 
@@ -485,8 +493,8 @@ export default function KonsultanPerencanaan() {
             key={index}
             className={`size-4 ${
               index < Math.floor(rating)
-                ? "fill-warning-500 text-warning-500"
-                : "fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600"
+                ? 'fill-warning-500 text-warning-500'
+                : 'fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600'
             }`}
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -494,9 +502,7 @@ export default function KonsultanPerencanaan() {
             <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
           </svg>
         ))}
-        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-          {rating.toFixed(1)}
-        </span>
+        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">{rating.toFixed(1)}</span>
       </div>
     );
   };
@@ -513,44 +519,42 @@ export default function KonsultanPerencanaan() {
 
   const columns: ColumnDef<Konsultan>[] = [
     {
-      accessorKey: "namaVendor",
-      header: "Nama Konsultan",
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue() as string}</span>
-      ),
+      accessorKey: 'namaVendor',
+      header: 'Nama Konsultan',
+      cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
     },
     {
-      accessorKey: "nomorIzin",
-      header: "No. Kontrak",
+      accessorKey: 'nomorIzin',
+      header: 'No. Kontrak',
     },
     {
-      accessorKey: "spesialisasi",
-      header: "Spesialisasi",
-      cell: ({ getValue }) => getValue() as string || "-",
+      accessorKey: 'spesialisasi',
+      header: 'Spesialisasi',
+      cell: ({ getValue }) => (getValue() as string) || '-',
     },
     {
-      accessorKey: "jumlahProyek",
-      header: "Jumlah Proyek",
+      accessorKey: 'jumlahProyek',
+      header: 'Jumlah Proyek',
       cell: ({ getValue }) => `${getValue() as number} proyek`,
     },
     {
-      accessorKey: "rating",
-      header: "Rating",
+      accessorKey: 'rating',
+      header: 'Rating',
       cell: ({ row }) => renderStars(row.original.rating),
     },
     {
-      accessorKey: "status",
-      header: "Status",
+      accessorKey: 'status',
+      header: 'Status',
       cell: ({ getValue }) => (
-        <Badge size="sm" color={getStatusColor(getValue() as Konsultan["status"])}>
+        <Badge size="sm" color={getStatusColor(getValue() as Konsultan['status'])}>
           {getValue() as string}
         </Badge>
       ),
     },
     {
-      accessorKey: "warningTemuan",
-      header: "Warning",
-      cell: ({ row }) => (
+      accessorKey: 'warningTemuan',
+      header: 'Warning',
+      cell: ({ row }) =>
         row.original.warningTemuan ? (
           <Badge size="sm" color="error">
             ⚠️ {row.original.jumlahTemuan || 0} Temuan
@@ -559,12 +563,11 @@ export default function KonsultanPerencanaan() {
           <Badge size="sm" color="success">
             ✓ Aman
           </Badge>
-        )
-      ),
+        ),
     },
     {
-      id: "actions",
-      header: "Aksi",
+      id: 'actions',
+      header: 'Aksi',
       cell: ({ row }) => (
         <ActionButtons
           onView={() => handleViewDetails(row.original)}
@@ -600,52 +603,59 @@ export default function KonsultanPerencanaan() {
   ];
 
   // UPDATED: Details sections with temuan info
-  const detailsSections = selectedData ? [
-    {
-      title: "Informasi Dasar",
-      fields: [
-        { label: "Nama Vendor", value: selectedData.namaVendor },
-        { label: "No. Kontrak", value: selectedData.nomorIzin },
-        { label: "Spesialisasi", value: selectedData.spesialisasi || "-" },
-        { label: "Jumlah Proyek", value: selectedData.jumlahProyek },
-        { 
-          label: "Rating", 
-          value: renderStars(selectedData.rating)
+  const detailsSections = selectedData
+    ? [
+        {
+          title: 'Informasi Dasar',
+          fields: [
+            { label: 'Nama Vendor', value: selectedData.namaVendor },
+            { label: 'No. Kontrak', value: selectedData.nomorIzin },
+            { label: 'Spesialisasi', value: selectedData.spesialisasi || '-' },
+            { label: 'Jumlah Proyek', value: selectedData.jumlahProyek },
+            {
+              label: 'Rating',
+              value: renderStars(selectedData.rating),
+            },
+            {
+              label: 'Status',
+              value: (
+                <Badge color={getStatusColor(selectedData.status)}>{selectedData.status}</Badge>
+              ),
+            },
+            {
+              label: 'Temuan Aktif',
+              value: (
+                <div className="flex items-center gap-2">
+                  <Badge color={selectedData.warningTemuan ? 'error' : 'success'}>
+                    {selectedData.warningTemuan
+                      ? `⚠️ ${selectedData.jumlahTemuan || 0} Temuan`
+                      : '✓ Tidak Ada Temuan'}
+                  </Badge>
+                </div>
+              ),
+            },
+            { label: 'Kontak', value: selectedData.kontak || '-' },
+            { label: 'Alamat', value: selectedData.alamat || '-', fullWidth: true },
+            { label: 'Deskripsi', value: selectedData.deskripsi || '-', fullWidth: true },
+            {
+              label: 'Lama Kontrak',
+              value: selectedData.lamaKontrak ? `${selectedData.lamaKontrak} hari` : '-',
+            },
+          ],
         },
-        { 
-          label: "Status", 
-          value: (
-            <Badge color={getStatusColor(selectedData.status)}>
-              {selectedData.status}
-            </Badge>
-          ),
-        },
-        { 
-          label: "Temuan Aktif", 
-          value: (
-            <div className="flex items-center gap-2">
-              <Badge color={selectedData.warningTemuan ? "error" : "success"}>
-                {selectedData.warningTemuan ? `⚠️ ${selectedData.jumlahTemuan || 0} Temuan` : "✓ Tidak Ada Temuan"}
-              </Badge>
-            </div>
-          ),
-        },
-        { label: "Kontak", value: selectedData.kontak || "-" },
-        { label: "Alamat", value: selectedData.alamat || "-", fullWidth: true },
-        { label: "Deskripsi", value: selectedData.deskripsi || "-", fullWidth: true },
-        { label: "Lama Kontrak", value: selectedData.lamaKontrak ? `${selectedData.lamaKontrak} hari` : "-" },
       ]
-    }
-  ] : [];
+    : [];
 
-  const detailsDocuments = selectedData?.dokumenDED ? [
-    { 
-      id: selectedData.id + '-ded', 
-      namaDokumen: 'Dokumen DED', 
-      filePath: selectedData.dokumenDED, 
-      uploadedAt: selectedData.createdAt 
-    }
-  ] : [];
+  const detailsDocuments = selectedData?.dokumenDED
+    ? [
+        {
+          id: selectedData.id + '-ded',
+          namaDokumen: 'Dokumen DED',
+          filePath: selectedData.dokumenDED,
+          uploadedAt: selectedData.createdAt,
+        },
+      ]
+    : [];
 
   return (
     <>
@@ -889,13 +899,7 @@ export default function KonsultanPerencanaan() {
           title="Detail Konsultan Perencanaan"
           sections={detailsSections}
           documents={detailsDocuments}
-          // NEW: Add tabs for data and temuan
           customTabs={[
-            {
-              id: 'data',
-              label: 'Data Konsultan',
-              content: null, // Default content from sections
-            },
             {
               id: 'temuan',
               label: (
@@ -913,7 +917,19 @@ export default function KonsultanPerencanaan() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h4 className="text-lg font-semibold">Daftar Temuan Audit</h4>
-                    <div className="text-sm text-gray-500">Total: {temuanData.length} temuan</div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-gray-500">Total: {temuanData.length} temuan</div>
+                      {temuanData.filter((t) => t.status === 'BARU' || t.status === 'DITOLAK')
+                        .length > 0 && (
+                        <Badge size="sm" color="error">
+                          {
+                            temuanData.filter((t) => t.status === 'BARU' || t.status === 'DITOLAK')
+                              .length
+                          }{' '}
+                          Perlu Tanggapan
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   {temuanData.length > 0 ? (
@@ -921,16 +937,13 @@ export default function KonsultanPerencanaan() {
                       columns={temuanColumns}
                       data={temuanData}
                       loading={false}
-                      enableExport={false}
-                      enableColumnVisibility={false}
                       pageSize={5}
-                      searchPlaceholder="Cari nomor temuan atau judul..."
-                      fixedHeight="400px"
+                      searchPlaceholder="Cari temuan..."
                     />
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <AlertIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                      <p>Tidak ada temuan audit untuk konsultan ini</p>
+                      <p>Tidak ada temuan audit</p>
                     </div>
                   )}
                 </div>
@@ -1017,6 +1030,16 @@ export default function KonsultanPerencanaan() {
               </Button>
             </div>
           </div>
+          <TemuanResponseModal
+            isOpen={isResponseModalOpen}
+            onClose={() => {
+              setIsResponseModalOpen(false);
+              setSelectedTemuan(null);
+            }}
+            temuan={selectedTemuan}
+            vendorId={selectedData?.id || ''}
+            onSuccess={handleResponseSuccess}
+          />
         </Modal>
       )}
     </>
