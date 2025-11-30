@@ -2314,6 +2314,165 @@ app.post('/api/vendors/:vendorId/temuan/:temuanId/response',
     }
 });
 
+// GET SINGLE TEMUAN DETAIL
+// ============================================
+
+app.get('/api/vendors/:vendorId/temuan/:temuanId', authenticateToken, async (req, res) => {
+  try {
+    const { vendorId, temuanId } = req.params;
+    
+    const temuan = await prisma.temuanVendor.findFirst({
+      where: { 
+        id: temuanId,
+        vendorId 
+      },
+      include: {
+        paket: {
+          select: {
+            id: true,
+            kodePaket: true,
+            namaPaket: true,
+            status: true
+          }
+        },
+        vendor: {
+          select: {
+            id: true,
+            namaVendor: true,
+            jenisVendor: true
+          }
+        }
+      }
+    });
+
+    if (!temuan) {
+      return res.status(404).json({
+        success: false,
+        error: 'Temuan tidak ditemukan atau tidak terkait dengan vendor ini'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: temuan
+    });
+  } catch (error) {
+    console.error('Fetch temuan detail error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Gagal mengambil detail temuan',
+      details: error.message
+    });
+  }
+});
+
+// ============================================
+// UPDATE: Fix file upload array response
+// ============================================
+
+app.post('/api/vendors/:vendorId/temuan/:temuanId/response', 
+  authenticateToken, 
+  upload.array('dokumen', 5),
+  async (req, res) => {
+    try {
+      const { vendorId, temuanId } = req.params;
+      const { tanggapan } = req.body;
+      const files = req.files as Express.Multer.File[];
+      
+      if (!tanggapan || !tanggapan.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Tanggapan wajib diisi'
+        });
+      }
+
+      // Verify temuan belongs to vendor
+      const temuan = await prisma.temuanVendor.findFirst({
+        where: { 
+          id: temuanId,
+          vendorId 
+        }
+      });
+
+      if (!temuan) {
+        return res.status(404).json({
+          success: false,
+          error: 'Temuan tidak ditemukan atau tidak terkait dengan vendor ini'
+        });
+      }
+
+      // Check if already responded (optional - bisa di-allow multiple response)
+      if (temuan.status === 'DIPERBAIKI') {
+        return res.status(400).json({
+          success: false,
+          error: 'Temuan sudah diselesaikan, tidak bisa ditanggapi lagi'
+        });
+      }
+
+      // Build dokumen paths
+      const dokumenPaths = files && files.length > 0 
+        ? files.map(f => `/uploads/${f.filename}`) 
+        : [];
+      
+      // Merge with existing dokumen if any (allow multiple responses)
+      const existingDokumen = Array.isArray(temuan.dokumenPerbaikan) 
+        ? temuan.dokumenPerbaikan 
+        : [];
+      const allDokumen = [...existingDokumen, ...dokumenPaths];
+
+      // Update temuan
+      const updatedTemuan = await prisma.temuanVendor.update({
+        where: { id: temuanId },
+        data: {
+          tanggapanVendor: tanggapan,
+          dokumenPerbaikan: allDokumen,
+          status: 'DALAM_PERBAIKAN',
+          tanggalDitanggapi: new Date(),
+        },
+        include: {
+          paket: {
+            select: {
+              kodePaket: true,
+              namaPaket: true
+            }
+          }
+        }
+      });
+      
+      // Create notification for auditor (get original auditor from source)
+      try {
+        let auditorNotification = null;
+        
+        if (temuan.sourceType === 'ITWASDA') {
+          const laporan = await prisma.laporanItwasda.findUnique({
+            where: { id: temuan.sourceId },
+            select: { auditor: true, nomorLaporan: true }
+          });
+          
+          // TODO: Map auditor name to userId if needed
+          // For now, just log it
+          console.log(`📧 Notify auditor: ${laporan?.auditor} for temuan ${temuan.nomorTemuan}`);
+        }
+      } catch (notifError) {
+        console.error('Failed to create auditor notification:', notifError);
+        // Don't fail the main operation
+      }
+      
+      res.json({
+        success: true,
+        message: 'Tanggapan berhasil disimpan',
+        data: updatedTemuan
+      });
+    } catch (error) {
+      console.error('Submit response error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Gagal menyimpan tanggapan',
+        details: error.message
+      });
+    }
+});
+
 // Auditor verify vendor response
 app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, res) => {
   try {
