@@ -1,3 +1,4 @@
+// src/utils/temuanHelper.ts
 import { prisma } from '../lib/prisma.js';
 
 interface CreateTemuanVendorParams {
@@ -12,25 +13,38 @@ interface CreateTemuanVendorParams {
 }
 
 export async function createTemuanForVendors(params: CreateTemuanVendorParams) {
-  const { paketId, sourceType, sourceId, nomorTemuan, judul, deskripsi, tingkat, createdByUserId } = params;
+  const { paketId, sourceType, sourceId, nomorTemuan, judul, deskripsi, tingkat } = params;
 
   try {
-    // 1. Get all vendors related to this paket
-    const vendors = await prisma.vendor.findMany({
-      where: { paketId },
-      include: { paket: { select: { namaPaket: true, kodePaket: true } } }
+    console.log(`🔄 Creating temuan for vendors in paket: ${paketId}`);
+
+    const vendorPakets = await prisma.vendorPaket.findMany({
+      where: {
+        paketId,
+        vendor: { status: 'AKTIF' }, // Only active vendors
+      },
+      include: {
+        vendor: true,
+        paket: {
+          select: {
+            namaPaket: true,
+            kodePaket: true,
+          },
+        },
+      },
     });
 
-    if (vendors.length === 0) {
-      console.log(`⚠️ No vendors found for paket ${paketId}`);
+    if (vendorPakets.length === 0) {
+      console.warn(`⚠️ No active vendors found for paket: ${paketId}`);
       return { success: true, vendorCount: 0 };
     }
 
-    // 2. Create TemuanVendor for each vendor
-    const temuanVendorPromises = vendors.map(vendor =>
+    console.log(`📦 Found ${vendorPakets.length} vendors for this paket`);
+
+    const temuanPromises = vendorPakets.map((vp) =>
       prisma.temuanVendor.create({
         data: {
-          vendorId: vendor.id,
+          vendorId: vp.vendorId,
           paketId,
           sourceType,
           sourceId,
@@ -40,45 +54,49 @@ export async function createTemuanForVendors(params: CreateTemuanVendorParams) {
           tingkat,
           status: 'BARU',
           tanggalTemuan: new Date(),
-        }
+        },
       })
     );
 
-    // 3. Update vendor warning & count
-    const vendorUpdatePromises = vendors.map(vendor =>
+    const vendorUpdatePromises = vendorPakets.map((vp) =>
       prisma.vendor.update({
-        where: { id: vendor.id },
+        where: { id: vp.vendorId },
         data: {
           warningTemuan: true,
-          jumlahTemuan: { increment: 1 }
-        }
+          jumlahTemuan: { increment: 1 },
+        },
       })
     );
 
     // 4. Create notifications for vendors
-    const notificationPromises = vendors.map(vendor =>
+    const notificationPromises = vendorPakets.map((vp) =>
       prisma.notification.create({
         data: {
-          vendorId: vendor.id,
+          vendorId: vp.vendorId,
           type: 'TEMUAN_BARU',
           title: `Temuan Audit Baru: ${nomorTemuan}`,
-          message: `Anda memiliki temuan audit ${tingkat} pada paket ${vendor.paket?.namaPaket}. Silakan segera ditindaklanjuti.`,
+          message: `Anda memiliki temuan audit ${tingkat} pada paket ${vp.paket.namaPaket}. Silakan segera ditindaklanjuti.`,
           entityType: 'TEMUAN',
           entityId: sourceId,
-        }
+        },
       })
     );
 
     // Execute all in parallel
-    await Promise.all([
-      ...temuanVendorPromises,
+    const results = await Promise.all([
+      ...temuanPromises,
       ...vendorUpdatePromises,
-      ...notificationPromises
+      ...notificationPromises,
     ]);
 
-    console.log(`✅ Created temuan for ${vendors.length} vendors`);
-    return { success: true, vendorCount: vendors.length };
+    const createdTemuan = results.slice(0, vendorPakets.length);
 
+    console.log(`✅ Created ${createdTemuan.length} temuan for vendors`);
+    return {
+      success: true,
+      vendorCount: createdTemuan.length,
+      data: createdTemuan,
+    };
   } catch (error) {
     console.error('❌ Error creating temuan for vendors:', error);
     throw error;

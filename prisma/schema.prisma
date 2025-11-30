@@ -74,13 +74,14 @@ model Paket {
   lamaProyek      Int?
   dokumenKontrak  String?
 
-  // Relations
-  dokumen    Dokumen[]
-  laporan    LaporanItwasda[]
-  temuanBPKP TemuanBPKP[]
-  ppkData    PPKData[]
-  vendorPakets VendorPaket[]
-  temuanVendor  TemuanVendor[]
+  
+  dokumen         Dokumen[]
+  laporan         LaporanItwasda[]
+  temuanBPKP      TemuanBPKP[]
+  ppkData         PPKData[]
+  vendorPakets    VendorPaket[]    
+  temuanVendor    TemuanVendor[]
+  
 
   @@map("paket")
 }
@@ -205,11 +206,11 @@ enum LaporanStatus {
 }
 
 model VendorPaket {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   vendorId  String
   paketId   String
-  role      VendorType  // KONSULTAN_PERENCANAAN, KONSULTAN_PENGAWAS, KONSTRUKSI
-  startDate DateTime @default(now())
+  role      VendorType // KONSULTAN_PERENCANAAN | KONSULTAN_PENGAWAS | KONSTRUKSI
+  startDate DateTime   @default(now())
   endDate   DateTime?
   
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
@@ -231,6 +232,7 @@ model Vendor {
   status          VendorStatus @default(AKTIF)
   kontak          String?
   alamat          String?
+  
   noKontrak       String?
   deskripsi       String?
   dokumenDED      String?
@@ -242,15 +244,16 @@ model Vendor {
   deskripsiProgress String?
   uploadDokumen   String?
   uploadFoto      String?
-  jumlahTemuan    Int          @default(0) 
+  jumlahTemuan    Int          @default(0)
+  
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  // Relations
-  vendorPakets VendorPaket[]    
-  dokumen Dokumen[]
-  temuanVendor  TemuanVendor[]   
-  notifications Notification[]    
+  
+  vendorPakets    VendorPaket[]    
+  dokumen         Dokumen[]
+  temuanVendor    TemuanVendor[]
+  notifications   Notification[]
 
   @@map("vendor")
 }

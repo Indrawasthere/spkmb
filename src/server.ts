@@ -2461,7 +2461,7 @@ app.get('/api/vendor', authenticateToken, async (req, res) => {
       include: {
         vendorPakets: {
           include: {
-            paket: {     
+            paket: {
               select: {
                 kodePaket: true,
                 namaPaket: true
@@ -2470,17 +2470,99 @@ app.get('/api/vendor', authenticateToken, async (req, res) => {
           }
         },
         dokumen: true,
-        temuanVendor: true,
-        notifications: true
+        temuanVendor: {
+          where: { status: { in: ['BARU', 'DALAM_PERBAIKAN'] } },
+          orderBy: { tanggalTemuan: 'desc' }
+        },
+        notifications: {
+          where: { isRead: false },
+          orderBy: { createdAt: 'desc' }
+        },
+        _count: {
+          select: {
+            temuanVendor: true,
+            notifications: true
+          }
+        }
       },
-      orderBy: {
-        createdAt: "desc"
-      }
-    })
-    res.json(vendor);
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json({
+      success: true,
+      data: vendor
+    });
   } catch (error) {
     console.error('Fetch vendor error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch vendor' 
+    });
+  }
+});
+
+app.get('/api/vendor/:id/detail', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const vendor = await prisma.vendor.findUnique({
+      where: { id },
+      include: {
+        vendorPakets: {
+          include: {
+            paket: {
+              select: {
+                id: true,
+                kodePaket: true,
+                namaPaket: true,
+                jenisPaket: true,
+                status: true
+              }
+            }
+          }
+        },
+        dokumen: true,
+        temuanVendor: {
+          include: {
+            paket: {
+              select: {
+                kodePaket: true,
+                namaPaket: true
+              }
+            }
+          },
+          orderBy: { tanggalTemuan: 'desc' }
+        },
+        notifications: {
+          orderBy: { createdAt: 'desc' },
+          take: 20
+        },
+        _count: {
+          select: {
+            temuanVendor: true,
+            vendorPakets: true
+          }
+        }
+      }
+    });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: vendor
+    });
+  } catch (error) {
+    console.error('Fetch vendor detail error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vendor detail'
+    });
   }
 });
 

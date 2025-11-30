@@ -3,7 +3,7 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import Badge from "../components/ui/badge/Badge";
-import { PlusIcon } from "../icons";
+import { PlusIcon, AlertIcon } from "../icons";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import { ConfirmModal } from "../components/ui/ConfirmModal";
@@ -45,7 +45,27 @@ interface Konsultan {
   uploadDokumen?: string;
   uploadFoto?: string;
   warningTemuan?: boolean;
+  jumlahTemuan?: number;
   createdAt: string;
+}
+
+interface TemuanVendor {
+  id: string;
+  nomorTemuan: string;
+  judul: string;
+  deskripsi: string;
+  tingkat: string;
+  status: "BARU" | "DALAM_PERBAIKAN" | "DIPERBAIKI" | "DITOLAK";
+  tanggalTemuan: string;
+  tanggalDitanggapi?: string;
+  tanggalSelesai?: string;
+  tanggapanVendor?: string;
+  dokumenPerbaikan?: string[];
+  paket: {
+    kodePaket: string;
+    namaPaket: string;
+  };
+  sourceType: "ITWASDA" | "BPKP" | "PUPR";
 }
 
 interface KonsultanFormData {
@@ -76,6 +96,12 @@ export default function KonsultanPerencanaan() {
   const [deletingKonsultan, setDeletingKonsultan] = useState<Konsultan | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // NEW STATE FOR TEMUAN
+  const [temuanData, setTemuanData] = useState<TemuanVendor[]>([]);
+  const [selectedTemuan, setSelectedTemuan] = useState<TemuanVendor | null>(null);
+  const [viewTemuanModalOpen, setViewTemuanModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"data" | "temuan">("data");
 
   const [formData, setFormData] = useState<KonsultanFormData>({
     namaVendor: "",
@@ -105,7 +131,7 @@ export default function KonsultanPerencanaan() {
       });
       if (response.ok) {
         const data = await response.json();
-        setKonsultan(data);
+        setKonsultan(data.data || data);
       }
     } catch (err) {
       error("Gagal memuat data konsultan");
@@ -114,6 +140,135 @@ export default function KonsultanPerencanaan() {
     }
   };
 
+  // NEW: Fetch temuan data for selected konsultan
+  const fetchTemuan = async (vendorId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/vendors/${vendorId}/temuan`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTemuanData(data.data || []);
+      }
+    } catch (err) {
+      console.error("Gagal memuat data temuan:", err);
+    }
+  };
+
+  // NEW: Handle view temuan details
+  const handleViewTemuan = (temuan: TemuanVendor) => {
+    setSelectedTemuan(temuan);
+    setViewTemuanModalOpen(true);
+  };
+
+  // NEW: Handle view konsultan details with temuan
+  const handleViewDetails = async (data: Konsultan) => {
+    setSelectedData(data);
+    await fetchTemuan(data.id);
+    setViewDetailsOpen(true);
+  };
+
+  // NEW: Get status color for temuan
+  const getTemuanStatusColor = (status: TemuanVendor["status"]) => {
+    switch (status) {
+      case "BARU":
+        return "error";
+      case "DALAM_PERBAIKAN":
+        return "warning";
+      case "DIPERBAIKI":
+        return "success";
+      case "DITOLAK":
+        return "error";
+      default:
+        return "light";
+    }
+  };
+
+  // NEW: Get tingkat color for temuan
+  const getTingkatColor = (tingkat: string) => {
+    switch (tingkat) {
+      case "TINGGI":
+        return "error";
+      case "SEDANG":
+        return "warning";
+      case "RENDAH":
+        return "success";
+      default:
+        return "light";
+    }
+  };
+
+  // NEW: Render temuan table columns
+  const temuanColumns: ColumnDef<TemuanVendor>[] = [
+    {
+      accessorKey: "nomorTemuan",
+      header: "No. Temuan",
+      cell: ({ getValue }) => (
+        <span className="font-medium text-sm">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "judul",
+      header: "Judul Temuan",
+      cell: ({ getValue }) => (
+        <span className="text-sm">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "paket.namaPaket",
+      header: "Paket Terkait",
+      cell: ({ row }) => (
+        <div className="text-xs">
+          <div className="font-medium">{row.original.paket?.namaPaket}</div>
+          <div className="text-gray-500">{row.original.paket?.kodePaket}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "tingkat",
+      header: "Tingkat",
+      cell: ({ getValue }) => (
+        <Badge size="sm" color={getTingkatColor(getValue() as string)}>
+          {getValue() as string}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => (
+        <Badge size="sm" color={getTemuanStatusColor(getValue() as TemuanVendor["status"])}>
+          {getValue() as string}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "tanggalTemuan",
+      header: "Tanggal",
+      cell: ({ getValue }) => (
+        <span className="text-xs text-gray-600">
+          {new Date(getValue() as string).toLocaleDateString('id-ID')}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Aksi",
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => handleViewTemuan(row.original)}
+          >
+            Lihat
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // Rest of the existing functions remain the same...
   const validateForm = () => {
     const newErrors: FormErrors = {};
 
@@ -197,11 +352,6 @@ export default function KonsultanPerencanaan() {
       dokumenDED: null,
     });
     openModal();
-  };
-
-  const handleViewDetails = (data: Konsultan) => {
-    setSelectedData(data);
-    setViewDetailsOpen(true);
   };
 
   const handleDelete = (konsultan: Konsultan) => {
@@ -371,7 +521,7 @@ export default function KonsultanPerencanaan() {
       cell: ({ row }) => (
         row.original.warningTemuan ? (
           <Badge size="sm" color="error">
-            ⚠️ Ada Temuan
+            ⚠️ {row.original.jumlahTemuan || 0} Temuan
           </Badge>
         ) : (
           <Badge size="sm" color="success">
@@ -393,7 +543,7 @@ export default function KonsultanPerencanaan() {
     },
   ];
 
-  // Stats Cards
+  // Stats Cards - UPDATED with temuan stats
   const stats = [
     {
       label: "Total Konsultan",
@@ -411,12 +561,13 @@ export default function KonsultanPerencanaan() {
       color: "text-blue-light-500",
     },
     {
-      label: "Rating Rata-rata",
-      value: konsultan.length > 0 ? (konsultan.reduce((sum, k) => sum + (k.rating || 0), 0) / konsultan.length).toFixed(1) : "0.0",
-      color: "text-warning-500",
+      label: "Temuan Aktif",
+      value: konsultan.reduce((acc, k) => acc + (k.jumlahTemuan || 0), 0),
+      color: "text-error-500",
     },
   ];
 
+  // UPDATED: Details sections with temuan info
   const detailsSections = selectedData ? [
     {
       title: "Informasi Dasar",
@@ -438,11 +589,13 @@ export default function KonsultanPerencanaan() {
           ),
         },
         { 
-          label: "Warning Temuan", 
-          value: selectedData.warningTemuan ? (
-            <Badge color="error">⚠️ Ada Temuan Audit</Badge>
-          ) : (
-            <Badge color="success">✓ Tidak Ada Temuan</Badge>
+          label: "Temuan Aktif", 
+          value: (
+            <div className="flex items-center gap-2">
+              <Badge color={selectedData.warningTemuan ? "error" : "success"}>
+                {selectedData.warningTemuan ? `⚠️ ${selectedData.jumlahTemuan || 0} Temuan` : "✓ Tidak Ada Temuan"}
+              </Badge>
+            </div>
           ),
         },
         { label: "Kontak", value: selectedData.kontak || "-" },
@@ -498,12 +651,12 @@ export default function KonsultanPerencanaan() {
             toColor="to-purple-600"
           />
           <StatsCard
-            title="Rating Rata-rata"
-            value={konsultan.length > 0 ? (konsultan.reduce((sum, k) => sum + (k.rating || 0), 0) / konsultan.length).toFixed(1) : "0.0"}
-            subtitle="Rata-rata rating konsultan"
-            icon={ChartBarIcon}
-            fromColor="from-warning-500"
-            toColor="to-warning-600"
+            title="Temuan Aktif"
+            value={konsultan.reduce((acc, k) => acc + (k.jumlahTemuan || 0), 0)}
+            subtitle="Temuan yang perlu ditindak"
+            icon={AlertIcon}
+            fromColor="from-red-500"
+            toColor="to-red-600"
           />
         </div>
 
@@ -722,14 +875,153 @@ export default function KonsultanPerencanaan() {
         loading={isLoading}
       />
 
+      {/* UPDATED: Details Modal with Temuan Tab */}
       {selectedData && (
         <DetailsModal
           isOpen={viewDetailsOpen}
-          onClose={() => setViewDetailsOpen(false)}
+          onClose={() => {
+            setViewDetailsOpen(false);
+            setActiveTab("data");
+            setTemuanData([]);
+          }}
           title="Detail Konsultan Perencanaan"
           sections={detailsSections}
           documents={detailsDocuments}
+          // NEW: Add tabs for data and temuan
+          customTabs={[
+            {
+              id: "data",
+              label: "Data Konsultan",
+              content: null, // Default content from sections
+            },
+            {
+              id: "temuan",
+              label: (
+                <div className="flex items-center gap-2">
+                  <AlertIcon className="w-4 h-4" />
+                  Temuan Audit
+                  {temuanData.length > 0 && (
+                    <Badge size="sm" color="error">
+                      {temuanData.length}
+                    </Badge>
+                  )}
+                </div>
+              ),
+              content: (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-lg font-semibold">Daftar Temuan Audit</h4>
+                    <div className="text-sm text-gray-500">
+                      Total: {temuanData.length} temuan
+                    </div>
+                  </div>
+                  
+                  {temuanData.length > 0 ? (
+                    <DataTable
+                      columns={temuanColumns}
+                      data={temuanData}
+                      loading={false}
+                      enableExport={false}
+                      enableColumnVisibility={false}
+                      pageSize={5}
+                      searchPlaceholder="Cari nomor temuan atau judul..."
+                      fixedHeight="400px"
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <AlertIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>Tidak ada temuan audit untuk konsultan ini</p>
+                    </div>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
         />
+      )}
+
+      {/* NEW: Temuan Detail Modal */}
+      {selectedTemuan && (
+        <Modal
+          isOpen={viewTemuanModalOpen}
+          onClose={() => setViewTemuanModalOpen(false)}
+          size="lg"
+          title="Detail Temuan Audit"
+          showHeader={true}
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Nomor Temuan</Label>
+                <div className="font-medium">{selectedTemuan.nomorTemuan}</div>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <div>
+                  <Badge color={getTemuanStatusColor(selectedTemuan.status)}>
+                    {selectedTemuan.status}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <Label>Tingkat</Label>
+                <div>
+                  <Badge color={getTingkatColor(selectedTemuan.tingkat)}>
+                    {selectedTemuan.tingkat}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <Label>Tanggal Temuan</Label>
+                <div>{new Date(selectedTemuan.tanggalTemuan).toLocaleDateString('id-ID')}</div>
+              </div>
+            </div>
+
+            <div>
+              <Label>Judul Temuan</Label>
+              <div className="font-medium">{selectedTemuan.judul}</div>
+            </div>
+
+            <div>
+              <Label>Deskripsi</Label>
+              <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                {selectedTemuan.deskripsi}
+              </div>
+            </div>
+
+            <div>
+              <Label>Paket Terkait</Label>
+              <div className="font-medium">{selectedTemuan.paket?.namaPaket}</div>
+              <div className="text-sm text-gray-500">{selectedTemuan.paket?.kodePaket}</div>
+            </div>
+
+            <div>
+              <Label>Sumber Temuan</Label>
+              <div className="font-medium">{selectedTemuan.sourceType}</div>
+            </div>
+
+            {selectedTemuan.tanggapanVendor && (
+              <div>
+                <Label>Tanggapan Vendor</Label>
+                <div className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">
+                  {selectedTemuan.tanggapanVendor}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setViewTemuanModalOpen(false)}
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   );
