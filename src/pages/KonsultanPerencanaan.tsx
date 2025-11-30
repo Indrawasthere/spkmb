@@ -129,12 +129,30 @@ export default function KonsultanPerencanaan() {
       const response = await fetch(`${API_BASE_URL}/api/vendor?jenis=KONSULTAN_PERENCANAAN`, {
         credentials: 'include',
       });
+
       if (response.ok) {
         const data = await response.json();
-        setKonsultan(data.data || data);
+
+        // CRITICAL FIX: Check if data is array or wrapped object
+        if (Array.isArray(data)) {
+          setKonsultan(data);
+        } else if (data.data && Array.isArray(data.data)) {
+          setKonsultan(data.data);
+        } else if (data.vendors && Array.isArray(data.vendors)) {
+          setKonsultan(data.vendors);
+        } else {
+          console.error('Unexpected API response format:', data);
+          error('Format data tidak sesuai');
+          setKonsultan([]);
+        }
+      } else {
+        error('Gagal memuat data konsultan');
+        setKonsultan([]);
       }
     } catch (err) {
-      error("Gagal memuat data konsultan");
+      console.error('Fetch error:', err);
+      error('Gagal memuat data konsultan');
+      setKonsultan([]);
     } finally {
       setIsLoading(false);
     }
@@ -146,12 +164,26 @@ export default function KonsultanPerencanaan() {
       const response = await fetch(`${API_BASE_URL}/api/vendors/${vendorId}/temuan`, {
         credentials: 'include',
       });
+
       if (response.ok) {
-        const data = await response.json();
-        setTemuanData(data.data || []);
+        const result = await response.json();
+
+        // Handle both wrapped and unwrapped responses
+        if (result.success && result.data) {
+          setTemuanData(result.data);
+        } else if (Array.isArray(result)) {
+          setTemuanData(result);
+        } else {
+          console.warn('No temuan data found');
+          setTemuanData([]);
+        }
+      } else {
+        console.error('Failed to fetch temuan');
+        setTemuanData([]);
       }
     } catch (err) {
-      console.error("Gagal memuat data temuan:", err);
+      console.error('Gagal memuat data temuan:', err);
+      setTemuanData([]);
     }
   };
 
@@ -164,6 +196,7 @@ export default function KonsultanPerencanaan() {
   // NEW: Handle view konsultan details with temuan
   const handleViewDetails = async (data: Konsultan) => {
     setSelectedData(data);
+    setActiveTab('data'); // Reset to data tab
     await fetchTemuan(data.id);
     setViewDetailsOpen(true);
   };
@@ -468,14 +501,13 @@ export default function KonsultanPerencanaan() {
     );
   };
 
-  const filteredKonsultan = konsultan.filter((kons) => {
+  const filteredKonsultan = (konsultan || []).filter((kons) => {
     const matchSearch =
-      searchQuery === "" ||
-      kons.namaVendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      kons.nomorIzin.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      searchQuery === '' ||
+      kons.namaVendor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kons.nomorIzin?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       kons.spesialisasi?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchFilter =
-      filterStatus === "all" || kons.status === filterStatus;
+    const matchFilter = filterStatus === 'all' || kons.status === filterStatus;
     return matchSearch && matchFilter;
   });
 
@@ -546,24 +578,24 @@ export default function KonsultanPerencanaan() {
   // Stats Cards - UPDATED with temuan stats
   const stats = [
     {
-      label: "Total Konsultan",
-      value: konsultan.length,
-      color: "text-brand-500",
+      label: 'Total Konsultan',
+      value: konsultan?.length || 0,
+      color: 'text-brand-500',
     },
     {
-      label: "Konsultan Aktif",
-      value: konsultan.filter((k) => k.status === "AKTIF").length,
-      color: "text-success-500",
+      label: 'Konsultan Aktif',
+      value: konsultan?.filter((k) => k.status === 'AKTIF').length || 0,
+      color: 'text-success-500',
     },
     {
-      label: "Total Proyek",
-      value: konsultan.reduce((acc, k) => acc + k.jumlahProyek, 0),
-      color: "text-blue-light-500",
+      label: 'Total Proyek',
+      value: konsultan?.reduce((acc, k) => acc + (k.jumlahProyek || 0), 0) || 0,
+      color: 'text-blue-light-500',
     },
     {
-      label: "Temuan Aktif",
-      value: konsultan.reduce((acc, k) => acc + (k.jumlahTemuan || 0), 0),
-      color: "text-error-500",
+      label: 'Temuan Aktif',
+      value: konsultan?.reduce((acc, k) => acc + (k.jumlahTemuan || 0), 0) || 0,
+      color: 'text-error-500',
     },
   ];
 
@@ -636,7 +668,7 @@ export default function KonsultanPerencanaan() {
           />
           <StatsCard
             title="Konsultan Aktif"
-            value={konsultan.filter((k) => k.status === "AKTIF").length}
+            value={konsultan.filter((k) => k.status === 'AKTIF').length}
             subtitle="Sedang aktif bekerja"
             icon={BuildingStorefrontIcon}
             fromColor="from-green-500"
@@ -718,12 +750,12 @@ export default function KonsultanPerencanaan() {
         isOpen={isOpen}
         onClose={closeModal}
         size="2xl"
-        title={editingKonsultan ? "Edit Konsultan" : "Tambah Konsultan Baru"}
+        title={editingKonsultan ? 'Edit Konsultan' : 'Tambah Konsultan Baru'}
         showHeader={true}
       >
         <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingKonsultan ? "Edit Konsultan" : "Tambah Konsultan Baru"}
+            {editingKonsultan ? 'Edit Konsultan' : 'Tambah Konsultan Baru'}
           </h3>
 
           <div className="space-y-4">
@@ -732,9 +764,7 @@ export default function KonsultanPerencanaan() {
               <Input
                 type="text"
                 value={formData.namaVendor}
-                onChange={(e) =>
-                  setFormData({ ...formData, namaVendor: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, namaVendor: e.target.value })}
                 placeholder="PT/CV Nama Konsultan"
                 error={!!formErrors.namaVendor}
                 hint={formErrors.namaVendor}
@@ -747,9 +777,7 @@ export default function KonsultanPerencanaan() {
                 <Input
                   type="text"
                   value={formData.nomorIzin}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nomorIzin: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, nomorIzin: e.target.value })}
                   placeholder="IUJK-XXX/2024"
                   error={!!formErrors.nomorIzin}
                   hint={formErrors.nomorIzin}
@@ -760,9 +788,7 @@ export default function KonsultanPerencanaan() {
                 <Input
                   type="text"
                   value={formData.spesialisasi}
-                  onChange={(e) =>
-                    setFormData({ ...formData, spesialisasi: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, spesialisasi: e.target.value })}
                   placeholder="Jalan, Bangunan, dll"
                 />
               </div>
@@ -773,9 +799,7 @@ export default function KonsultanPerencanaan() {
               <Input
                 type="text"
                 value={formData.alamat}
-                onChange={(e) =>
-                  setFormData({ ...formData, alamat: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
                 placeholder="Kota/Kabupaten"
                 error={!!formErrors.alamat}
                 hint={formErrors.alamat}
@@ -787,9 +811,7 @@ export default function KonsultanPerencanaan() {
               <Input
                 type="email"
                 value={formData.kontak}
-                onChange={(e) =>
-                  setFormData({ ...formData, kontak: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, kontak: e.target.value })}
                 placeholder="email@konsultan.com"
               />
             </div>
@@ -799,9 +821,7 @@ export default function KonsultanPerencanaan() {
               <textarea
                 className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
                 value={formData.deskripsi}
-                onChange={(e) =>
-                  setFormData({ ...formData, deskripsi: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
                 placeholder="Deskripsi pekerjaan konsultan..."
               />
             </div>
@@ -811,15 +831,13 @@ export default function KonsultanPerencanaan() {
               <Input
                 type="number"
                 value={formData.lamaKontrak}
-                onChange={(e) =>
-                  setFormData({ ...formData, lamaKontrak: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, lamaKontrak: e.target.value })}
                 placeholder="90"
               />
             </div>
-            
+
             <div>
-              <Label>Upload DED / Gambar {!editingKonsultan && "*"}</Label>
+              <Label>Upload DED / Gambar {!editingKonsultan && '*'}</Label>
               <input
                 type="file"
                 onChange={handleFileChange}
@@ -827,9 +845,7 @@ export default function KonsultanPerencanaan() {
                 className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
               />
               {formErrors.dokumenDED && (
-                <p className="mt-1 text-xs text-error-500">
-                  {formErrors.dokumenDED}
-                </p>
+                <p className="mt-1 text-xs text-error-500">{formErrors.dokumenDED}</p>
               )}
               {editingKonsultan && (
                 <p className="mt-1 text-xs text-warning-600">
@@ -840,25 +856,11 @@ export default function KonsultanPerencanaan() {
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={closeModal}
-              disabled={isLoading}
-            >
+            <Button size="sm" variant="outline" onClick={closeModal} disabled={isLoading}>
               Batal
             </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading
-                ? "Menyimpan..."
-                : editingKonsultan
-                ? "Update"
-                : "Simpan"}
+            <Button size="sm" variant="primary" onClick={handleSubmit} disabled={isLoading}>
+              {isLoading ? 'Menyimpan...' : editingKonsultan ? 'Update' : 'Simpan'}
             </Button>
           </div>
         </div>
@@ -881,7 +883,7 @@ export default function KonsultanPerencanaan() {
           isOpen={viewDetailsOpen}
           onClose={() => {
             setViewDetailsOpen(false);
-            setActiveTab("data");
+            setActiveTab('data');
             setTemuanData([]);
           }}
           title="Detail Konsultan Perencanaan"
@@ -890,12 +892,12 @@ export default function KonsultanPerencanaan() {
           // NEW: Add tabs for data and temuan
           customTabs={[
             {
-              id: "data",
-              label: "Data Konsultan",
+              id: 'data',
+              label: 'Data Konsultan',
               content: null, // Default content from sections
             },
             {
-              id: "temuan",
+              id: 'temuan',
               label: (
                 <div className="flex items-center gap-2">
                   <AlertIcon className="w-4 h-4" />
@@ -911,11 +913,9 @@ export default function KonsultanPerencanaan() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h4 className="text-lg font-semibold">Daftar Temuan Audit</h4>
-                    <div className="text-sm text-gray-500">
-                      Total: {temuanData.length} temuan
-                    </div>
+                    <div className="text-sm text-gray-500">Total: {temuanData.length} temuan</div>
                   </div>
-                  
+
                   {temuanData.length > 0 ? (
                     <DataTable
                       columns={temuanColumns}
@@ -1012,11 +1012,7 @@ export default function KonsultanPerencanaan() {
             )}
 
             <div className="flex justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setViewTemuanModalOpen(false)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setViewTemuanModalOpen(false)}>
                 Tutup
               </Button>
             </div>

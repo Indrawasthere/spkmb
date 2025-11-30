@@ -2240,7 +2240,8 @@ app.get('/api/vendors/:vendorId/temuan', authenticateToken, async (req, res) => 
     console.error('Fetch vendor temuan error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch temuan'
+      error: 'Failed to fetch temuan',
+      details: error.message
     });
   }
 });
@@ -2457,7 +2458,16 @@ app.post('/api/notifications/:id/read', authenticateToken, async (req, res) => {
 
 app.get('/api/vendor', authenticateToken, async (req, res) => {
   try {
-    const vendor = await prisma.vendor.findMany({
+    const { jenis } = req.query;
+    
+    // Build where clause
+    const whereClause: any = {};
+    if (jenis) {
+      whereClause.jenisVendor = jenis as string;
+    }
+    
+    const vendors = await prisma.vendor.findMany({
+      where: whereClause,
       include: {
         vendorPakets: {
           include: {
@@ -2471,7 +2481,9 @@ app.get('/api/vendor', authenticateToken, async (req, res) => {
         },
         dokumen: true,
         temuanVendor: {
-          where: { status: { in: ['BARU', 'DALAM_PERBAIKAN'] } },
+          where: { 
+            status: { in: ['BARU', 'DALAM_PERBAIKAN'] } 
+          },
           orderBy: { tanggalTemuan: 'desc' }
         },
         notifications: {
@@ -2488,15 +2500,13 @@ app.get('/api/vendor', authenticateToken, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
     
-    res.json({
-      success: true,
-      data: vendor
-    });
+    // CRITICAL FIX: Return array directly, not wrapped in object
+    res.json(vendors);
   } catch (error) {
     console.error('Fetch vendor error:', error);
     res.status(500).json({ 
-      success: false,
-      error: 'Failed to fetch vendor' 
+      error: 'Failed to fetch vendor',
+      details: error.message 
     });
   }
 });
@@ -2548,20 +2558,16 @@ app.get('/api/vendor/:id/detail', authenticateToken, async (req, res) => {
 
     if (!vendor) {
       return res.status(404).json({
-        success: false,
         error: 'Vendor not found'
       });
     }
 
-    res.json({
-      success: true,
-      data: vendor
-    });
+    res.json(vendor);
   } catch (error) {
     console.error('Fetch vendor detail error:', error);
     res.status(500).json({
-      success: false,
-      error: 'Failed to fetch vendor detail'
+      error: 'Failed to fetch vendor detail',
+      details: error.message
     });
   }
 });
@@ -2587,12 +2593,31 @@ app.get('/api/vendor/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/vendor', authenticateToken, async (req, res) => {
+app.post('/api/vendor', authenticateToken, upload.fields([
+  { name: 'dokumenDED', maxCount: 1 },
+  { name: 'dokumenLaporan', maxCount: 1 },
+  { name: 'uploadDokumen', maxCount: 1 },
+  { name: 'uploadFoto', maxCount: 1 }
+]), async (req, res) => {
   try {
-    const { namaVendor, jenisVendor, nomorIzin, spesialisasi, kontak, alamat, paketId, status } = req.body;
+    const {
+      namaVendor,
+      jenisVendor,
+      nomorIzin,
+      spesialisasi,
+      kontak,
+      alamat,
+      status,
+      noKontrak,
+      deskripsi,
+      lamaKontrak,
+      namaProyek,
+      deskripsiLaporan,
+      deskripsiProgress,
+    } = req.body;
     
     if (!namaVendor || !jenisVendor || !nomorIzin) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: namaVendor, jenisVendor, nomorIzin' });
     }
 
     // Check for duplicate nomorIzin
@@ -2601,17 +2626,43 @@ app.post('/api/vendor', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Nomor izin already exists' });
     }
 
+    // Handle file uploads
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    
+    const vendorData: any = {
+      namaVendor,
+      jenisVendor,
+      nomorIzin,
+      spesialisasi: spesialisasi || null,
+      kontak: kontak || null,
+      alamat: alamat || null,
+      status: status || 'AKTIF',
+      noKontrak: noKontrak || null,
+      deskripsi: deskripsi || null,
+      lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : null,
+      namaProyek: namaProyek || null,
+      deskripsiLaporan: deskripsiLaporan || null,
+      deskripsiProgress: deskripsiProgress || null,
+      warningTemuan: false,
+      jumlahTemuan: 0,
+    };
+
+    // Add file paths if uploaded
+    if (files?.dokumenDED?.[0]) {
+      vendorData.dokumenDED = `/uploads/${files.dokumenDED[0].filename}`;
+    }
+    if (files?.dokumenLaporan?.[0]) {
+      vendorData.dokumenLaporan = `/uploads/${files.dokumenLaporan[0].filename}`;
+    }
+    if (files?.uploadDokumen?.[0]) {
+      vendorData.uploadDokumen = `/uploads/${files.uploadDokumen[0].filename}`;
+    }
+    if (files?.uploadFoto?.[0]) {
+      vendorData.uploadFoto = `/uploads/${files.uploadFoto[0].filename}`;
+    }
+
     const vendor = await prisma.vendor.create({
-      data: {
-        namaVendor,
-        jenisVendor,
-        nomorIzin,
-        spesialisasi: spesialisasi || null,
-        kontak: kontak || null,
-        alamat: alamat || null,
-        paketId: paketId || null,
-        status: status || 'AKTIF',
-      },
+      data: vendorData,
     });
 
     // Log audit
@@ -2630,7 +2681,10 @@ app.post('/api/vendor', authenticateToken, async (req, res) => {
     res.json(vendor);
   } catch (error) {
     console.error('Create vendor error:', error);
-    res.status(500).json({ error: 'Failed to create vendor' });
+    res.status(500).json({ 
+      error: 'Failed to create vendor',
+      details: error.message 
+    });
   }
 });
 
@@ -2650,7 +2704,6 @@ app.put('/api/vendor/:id', authenticateToken, upload.fields([
       kontak,
       alamat,
       status,
-      paketId,
       noKontrak,
       deskripsi,
       lamaKontrak,
@@ -2672,15 +2725,6 @@ app.put('/api/vendor/:id', authenticateToken, upload.fields([
       }
     }
 
-    // Auto-set warningTemuan based on related temuan
-    let warningTemuan = existingVendor.warningTemuan;
-    if (paketId) {
-      const relatedTemuan = await prisma.temuanBPKP.findMany({ 
-        where: { paketId } 
-      });
-      warningTemuan = relatedTemuan.length > 0;
-    }
-
     // Handle file uploads
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const updateData: any = {
@@ -2691,14 +2735,12 @@ app.put('/api/vendor/:id', authenticateToken, upload.fields([
       kontak: kontak !== undefined ? (kontak || null) : undefined,
       alamat: alamat !== undefined ? (alamat || null) : undefined,
       status: status || undefined,
-      paketId: paketId !== undefined ? (paketId || null) : undefined,
       noKontrak: noKontrak !== undefined ? (noKontrak || null) : undefined,
       deskripsi: deskripsi !== undefined ? (deskripsi || null) : undefined,
       lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : undefined,
       namaProyek: namaProyek !== undefined ? (namaProyek || null) : undefined,
       deskripsiLaporan: deskripsiLaporan !== undefined ? (deskripsiLaporan || null) : undefined,
       deskripsiProgress: deskripsiProgress !== undefined ? (deskripsiProgress || null) : undefined,
-      warningTemuan,
       updatedAt: new Date(),
     };
 
@@ -2741,7 +2783,10 @@ app.put('/api/vendor/:id', authenticateToken, upload.fields([
     res.json(vendor);
   } catch (error) {
     console.error('Update vendor error:', error);
-    res.status(500).json({ error: 'Failed to update vendor' });
+    res.status(500).json({ 
+      error: 'Failed to update vendor',
+      details: error.message 
+    });
   }
 });
 
@@ -2826,13 +2871,15 @@ app.get('/api/vendors/:vendorId/temuan', authenticateToken, async (req, res) => 
         total: temuan.length,
         baru: temuan.filter(t => t.status === 'BARU').length,
         dalamPerbaikan: temuan.filter(t => t.status === 'DALAM_PERBAIKAN').length,
+        diperbaiki: temuan.filter(t => t.status === 'DIPERBAIKI').length,
       }
     });
   } catch (error) {
     console.error('Fetch vendor temuan error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch temuan'
+      error: 'Failed to fetch temuan',
+      details: error.message
     });
   }
 });

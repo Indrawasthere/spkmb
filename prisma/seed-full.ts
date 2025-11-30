@@ -405,39 +405,48 @@ async function main() {
   // ===== VENDOR PAKET (Relasi Many-to-Many) =====
   const vendorPaketData = [
     {
-      vendorId: createdVendor[0].id,
-      paketId: createdPaket[0].id,
-      role: 'KONSTRUKSI',
+      vendorId: createdVendor[3].id, // CV Intan Konsultan
+      paketId: createdPaket[6].id, // PKG-PUPR-2024-005 (DED Jalan Tol)
+      role: 'KONSULTAN_PERENCANAAN' as const,
     },
     {
-      vendorId: createdVendor[1].id,
-      paketId: createdPaket[1].id,
-      role: 'KONSTRUKSI',
+      vendorId: createdVendor[5].id, // CV Wahana Teknik
+      paketId: createdPaket[8].id, // PKG-BAPPEDA-2024-001 (RTRW)
+      role: 'KONSULTAN_PERENCANAAN' as const,
+    },
+
+    // Konsultan Pengawas
+    {
+      vendorId: createdVendor[4].id, // PT Mitra Karya Consultant
+      paketId: createdPaket[0].id, // PKG-PUPR-2024-001 (Jalan Lingkar)
+      role: 'KONSULTAN_PENGAWAS' as const,
     },
     {
-      vendorId: createdVendor[2].id,
-      paketId: createdPaket[2].id,
-      role: 'KONSTRUKSI',
+      vendorId: createdVendor[4].id, // PT Mitra Karya Consultant
+      paketId: createdPaket[5].id, // PKG-PUPR-2024-004 (Konsultan Pengawas)
+      role: 'KONSULTAN_PENGAWAS' as const,
+    },
+
+    // Konstruksi
+    {
+      vendorId: createdVendor[0].id, // PT Wijaya Karya
+      paketId: createdPaket[0].id, // PKG-PUPR-2024-001 (Jalan Lingkar)
+      role: 'KONSTRUKSI' as const,
     },
     {
-      vendorId: createdVendor[3].id,
-      paketId: createdPaket[6].id,
-      role: 'KONSULTAN_PERENCANAAN',
+      vendorId: createdVendor[1].id, // PT Adhi Karya
+      paketId: createdPaket[1].id, // PKG-PUPR-2024-002 (Jembatan)
+      role: 'KONSTRUKSI' as const,
     },
     {
-      vendorId: createdVendor[4].id,
-      paketId: createdPaket[5].id,
-      role: 'KONSULTAN_PENGAWAS',
+      vendorId: createdVendor[2].id, // PT Nindya Karya
+      paketId: createdPaket[2].id, // PKG-PUPR-2024-003 (Gedung)
+      role: 'KONSTRUKSI' as const,
     },
     {
-      vendorId: createdVendor[5].id,
-      paketId: createdPaket[8].id,
-      role: 'KONSULTAN_PERENCANAAN',
-    },
-    {
-      vendorId: createdVendor[6].id,
-      paketId: createdPaket[7].id,
-      role: 'KONSTRUKSI',
+      vendorId: createdVendor[6].id, // PT Cahaya Bintang
+      paketId: createdPaket[7].id, // PKG-PUPR-2024-006 (Pemeliharaan)
+      role: 'KONSTRUKSI' as const,
     },
   ];
 
@@ -445,13 +454,16 @@ async function main() {
     const existing = await prisma.vendorPaket.findFirst({
       where: {
         vendorId: vp.vendorId,
-        paketId: vp.paketId
-      }
+        paketId: vp.paketId,
+        role: vp.role,
+      },
     });
     if (!existing) {
       await prisma.vendorPaket.create({ data: vp });
     }
   }
+
+  console.log(`✅ Created ${vendorPaketData.length} vendor-paket assignments`);
 
   // ===== LAPORAN ITWASDA =====
   const laporanItwasdaData = [

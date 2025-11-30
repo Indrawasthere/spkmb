@@ -1,6 +1,8 @@
 import { Modal } from '../ui/modal';
 import { Download, FileText, ExternalLink } from 'lucide-react';
 import Badge from '../ui/badge/Badge';
+import React from 'react';
+import Button from '../ui/button/Button';
 
 interface DetailField {
   label: string;
@@ -23,12 +25,21 @@ interface Document {
   jenisDokumen?: string;
 }
 
+interface CustomTab {
+  id: string;
+  label: React.ReactNode;
+  content: React.ReactNode;
+}
+
 interface DetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   sections: DetailSection[];
   documents?: Document[];
+  customTabs?: CustomTab[];
+  activeTab?: string;
+  onTabChange?: (tabId: string) => void;
 }
 
 // Helper function to get the correct base URL
@@ -42,17 +53,17 @@ const getBaseUrl = () => {
 // Helper function to get full file URL
 const getFileUrl = (filePath: string) => {
   if (!filePath) return '';
-  
+
   // If filePath already contains full URL, return as is
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
     return filePath;
   }
-  
+
   // If filePath starts with /uploads, construct full URL
   if (filePath.startsWith('/uploads')) {
     return `${getBaseUrl()}${filePath}`;
   }
-  
+
   // If filePath doesn't start with /, add it
   return `${getBaseUrl()}/uploads/${filePath}`;
 };
@@ -71,15 +82,24 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('id-ID', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   });
 };
 
-export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] }: DetailsModalProps) => {
+export const DetailsModal = ({
+  isOpen,
+  onClose,
+  title,
+  sections,
+  documents = [],
+  customTabs = [],
+  activeTab = 'data',
+  onTabChange,
+}: DetailsModalProps) => {
   const handleDownload = async (filePath: string, fileName: string) => {
     try {
       const fullUrl = getFileUrl(filePath);
-      
+
       // Cek jika file bisa diakses
       const response = await fetch(fullUrl, { method: 'HEAD' });
       if (!response.ok) {
@@ -91,7 +111,7 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] 
       link.download = fileName || 'document';
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -118,7 +138,7 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] 
       if (mimeType.includes('word') || mimeType.includes('document')) return 'document';
       if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'spreadsheet';
     }
-    
+
     const extension = filePath.split('.').pop()?.toLowerCase();
     return extension || 'file';
   };
@@ -130,7 +150,7 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] 
 
   const getFileIcon = (filePath: string, mimeType?: string) => {
     const fileType = getFileType(filePath, mimeType);
-    
+
     switch (fileType) {
       case 'pdf':
         return <FileText className="w-5 h-5 text-red-500 flex-shrink-0" />;
@@ -148,6 +168,66 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="2xl" title={title} showHeader={true}>
       <div className="max-h-[80vh] overflow-y-auto">
+        {customTabs.length > 0 && (
+          <div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
+            {/* Default Data Tab */}
+            <button
+              onClick={() => onTabChange?.('data')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'data'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              Data Vendor
+            </button>
+
+            {/* Custom Tabs */}
+            {customTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange?.(tab.id)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ✅ TAB CONTENT */}
+        <div className="overflow-y-auto px-6 py-4">
+          {activeTab === 'data' ? (
+            <>
+              {/* Render sections as default tab content */}
+              {sections.map((section, idx) => (
+                <div key={idx} className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white border-b pb-2">
+                    {section.title}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {section.fields.map((field, fieldIdx) => (
+                      <div key={fieldIdx} className={field.fullWidth ? 'md:col-span-2' : ''}>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                          {field.label}
+                        </p>
+                        <div className="text-base text-gray-900 dark:text-white break-words">
+                          {field.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : (
+            customTabs.find((tab) => tab.id === activeTab)?.content
+          )}
+        </div>
         <div className="p-6 space-y-6">
           {/* Sections */}
           {sections.map((section, idx) => (
@@ -157,10 +237,7 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] 
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {section.fields.map((field, fieldIdx) => (
-                  <div 
-                    key={fieldIdx} 
-                    className={field.fullWidth ? 'md:col-span-2' : ''}
-                  >
+                  <div key={fieldIdx} className={field.fullWidth ? 'md:col-span-2' : ''}>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       {field.label}
                     </p>
@@ -182,7 +259,7 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] 
               <div className="space-y-3">
                 {documents.map((doc) => {
                   const canPreviewFile = canPreview(doc.filePath, doc.mimeType);
-                  
+
                   return (
                     <div
                       key={doc.id}
@@ -196,12 +273,8 @@ export const DetailsModal = ({ isOpen, onClose, title, sections, documents = [] 
                           </p>
                           <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
                             <span>{formatDate(doc.uploadedAt)}</span>
-                            {doc.fileSize && (
-                              <span>• {formatFileSize(doc.fileSize)}</span>
-                            )}
-                            {doc.jenisDokumen && (
-                              <span>• {doc.jenisDokumen}</span>
-                            )}
+                            {doc.fileSize && <span>• {formatFileSize(doc.fileSize)}</span>}
+                            {doc.jenisDokumen && <span>• {doc.jenisDokumen}</span>}
                           </div>
                         </div>
                       </div>
