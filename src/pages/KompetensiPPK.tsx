@@ -52,8 +52,14 @@ interface PPKFormData {
   nip: string;
   jabatan: string;
   unitKerja: string;
-  kompetensi: string;
-  sertifikasi: string;
+  // Field individual untuk kompetensi
+  bidangKompetensi: string;
+  tingkatKompetensi: string;
+  pengalamanKompetensi: string;
+  // Field individual untuk sertifikasi
+  nomorSertifikat: string;
+  jenisSertifikat: string;
+  masaBerlakuSertifikat: string;
   pengalaman: string;
   kakRab: File | null;
   spesifikasiTeknis: File | null;
@@ -92,8 +98,12 @@ const KompetensiPPK: React.FC = () => {
     nip: "",
     jabatan: "",
     unitKerja: "",
-    kompetensi: "",
-    sertifikasi: "",
+    bidangKompetensi: "",
+    tingkatKompetensi: "",
+    pengalamanKompetensi: "",
+    nomorSertifikat: "",
+    jenisSertifikat: "",
+    masaBerlakuSertifikat: "",
     pengalaman: "",
     kakRab: null,
     spesifikasiTeknis: null,
@@ -178,9 +188,17 @@ const KompetensiPPK: React.FC = () => {
       fd.append('nip', data.nip);
       fd.append('jabatan', data.jabatan);
       fd.append('unitKerja', data.unitKerja);
-      fd.append('kompetensi', data.kompetensi || '{}');
-      fd.append('sertifikasi', data.sertifikasi || '{}');
       fd.append('pengalaman', data.pengalaman);
+      
+      // Append kompetensi fields
+      if (data.bidangKompetensi) fd.append('bidangKompetensi', data.bidangKompetensi);
+      if (data.tingkatKompetensi) fd.append('tingkatKompetensi', data.tingkatKompetensi);
+      if (data.pengalamanKompetensi) fd.append('pengalamanKompetensi', data.pengalamanKompetensi);
+      
+      // Append sertifikasi fields
+      if (data.nomorSertifikat) fd.append('nomorSertifikat', data.nomorSertifikat);
+      if (data.jenisSertifikat) fd.append('jenisSertifikat', data.jenisSertifikat);
+      if (data.masaBerlakuSertifikat) fd.append('masaBerlakuSertifikat', data.masaBerlakuSertifikat);
 
       // Append files if they exist
       if (data.kakRab) fd.append('kakRab', data.kakRab);
@@ -228,8 +246,12 @@ const KompetensiPPK: React.FC = () => {
       nip: ppk.nip,
       jabatan: ppk.jabatan,
       unitKerja: ppk.unitKerja,
-      kompetensi: JSON.stringify(ppk.kompetensi, null, 2),
-      sertifikasi: JSON.stringify(ppk.sertifikasi, null, 2),
+      bidangKompetensi: ppk.kompetensi?.bidang || "",
+      tingkatKompetensi: ppk.kompetensi?.tingkat || "",
+      pengalamanKompetensi: ppk.kompetensi?.pengalaman || "",
+      nomorSertifikat: ppk.sertifikasi?.nomor || "",
+      jenisSertifikat: ppk.sertifikasi?.jenis || "",
+      masaBerlakuSertifikat: ppk.sertifikasi?.masaBerlaku || "",
       pengalaman: ppk.pengalaman.toString(),
       kakRab: null,
       spesifikasiTeknis: null,
@@ -325,8 +347,12 @@ const KompetensiPPK: React.FC = () => {
       nip: "",
       jabatan: "",
       unitKerja: "",
-      kompetensi: "",
-      sertifikasi: "",
+      bidangKompetensi: "",
+      tingkatKompetensi: "",
+      pengalamanKompetensi: "",
+      nomorSertifikat: "",
+      jenisSertifikat: "",
+      masaBerlakuSertifikat: "",
       pengalaman: "",
       kakRab: null,
       spesifikasiTeknis: null,
@@ -662,119 +688,178 @@ const KompetensiPPK: React.FC = () => {
               </div>
             </div>
 
+            {/* Kompetensi Section */}
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-800 dark:text-white/90 mb-4">Kompetensi</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Bidang Kompetensi</Label>
+                  <Input
+                    type="text"
+                    value={formData.bidangKompetensi}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bidangKompetensi: e.target.value })
+                    }
+                    placeholder="Pengadaan Barang/Jasa"
+                  />
+                </div>
+                <div>
+                  <Label>Tingkat Kompetensi</Label>
+                  <Input
+                    type="text"
+                    value={formData.tingkatKompetensi}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tingkatKompetensi: e.target.value })
+                    }
+                    placeholder="Tingkat III"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Label>Pengalaman Kompetensi</Label>
+                <Input
+                  type="text"
+                  value={formData.pengalamanKompetensi}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pengalamanKompetensi: e.target.value })
+                  }
+                  placeholder="5 tahun dalam pengadaan"
+                />
+              </div>
+            </div>
+
+            {/* Sertifikasi Section */}
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-800 dark:text-white/90 mb-4">Sertifikasi</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Nomor Sertifikat</Label>
+                  <Input
+                    type="text"
+                    value={formData.nomorSertifikat}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nomorSertifikat: e.target.value })
+                    }
+                    placeholder="SERT/2024/001"
+                  />
+                </div>
+                <div>
+                  <Label>Jenis Sertifikat</Label>
+                  <Input
+                    type="text"
+                    value={formData.jenisSertifikat}
+                    onChange={(e) =>
+                      setFormData({ ...formData, jenisSertifikat: e.target.value })
+                    }
+                    placeholder="Sertifikat Kompetensi Pengadaan"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Label>Masa Berlaku Sertifikat</Label>
+                <Input
+                  type="date"
+                  value={formData.masaBerlakuSertifikat}
+                  onChange={(e) =>
+                    setFormData({ ...formData, masaBerlakuSertifikat: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
             {/* File Upload Sections */}
-            <div>
-              <Label>KAK atau RAB</Label>
-              <input
-                type="file"
-                onChange={(e) => handleFileChange('kakRab', e)}
-                accept=".pdf,.doc,.docx,.xlsx,.xls"
-                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              />
-              {formErrors.kakRab && (
-                <p className="mt-1 text-xs text-error-500">{formErrors.kakRab}</p>
-              )}
-              {editingPPK && (
-                <p className="mt-1 text-xs text-warning-600">
-                  Kosongkan jika tidak ingin mengubah file
-                </p>
-              )}
-            </div>
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-800 dark:text-white/90 mb-4">Dokumen Pendukung</h4>
+              
+              <div>
+                <Label>KAK atau RAB</Label>
+                <input
+                  type="file"
+                  onChange={(e) => handleFileChange('kakRab', e)}
+                  accept=".pdf,.doc,.docx,.xlsx,.xls"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                />
+                {formErrors.kakRab && (
+                  <p className="mt-1 text-xs text-error-500">{formErrors.kakRab}</p>
+                )}
+                {editingPPK && (
+                  <p className="mt-1 text-xs text-warning-600">
+                    Kosongkan jika tidak ingin mengubah file
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <Label>Spesifikasi Teknis</Label>
-              <input
-                type="file"
-                onChange={(e) => handleFileChange('spesifikasiTeknis', e)}
-                accept=".pdf,.doc,.docx"
-                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              />
-              {formErrors.spesifikasiTeknis && (
-                <p className="mt-1 text-xs text-error-500">{formErrors.spesifikasiTeknis}</p>
-              )}
-              {editingPPK && (
-                <p className="mt-1 text-xs text-warning-600">
-                  Kosongkan jika tidak ingin mengubah file
-                </p>
-              )}
-            </div>
+              <div>
+                <Label>Spesifikasi Teknis</Label>
+                <input
+                  type="file"
+                  onChange={(e) => handleFileChange('spesifikasiTeknis', e)}
+                  accept=".pdf,.doc,.docx"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                />
+                {formErrors.spesifikasiTeknis && (
+                  <p className="mt-1 text-xs text-error-500">{formErrors.spesifikasiTeknis}</p>
+                )}
+                {editingPPK && (
+                  <p className="mt-1 text-xs text-warning-600">
+                    Kosongkan jika tidak ingin mengubah file
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <Label>Kontrak atau Perjanjian Kontrak</Label>
-              <input
-                type="file"
-                onChange={(e) => handleFileChange('kontrak', e)}
-                accept=".pdf,.doc,.docx"
-                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              />
-              {formErrors.kontrak && (
-                <p className="mt-1 text-xs text-error-500">{formErrors.kontrak}</p>
-              )}
-              {editingPPK && (
-                <p className="mt-1 text-xs text-warning-600">
-                  Kosongkan jika tidak ingin mengubah file
-                </p>
-              )}
-            </div>
+              <div>
+                <Label>Kontrak atau Perjanjian Kontrak</Label>
+                <input
+                  type="file"
+                  onChange={(e) => handleFileChange('kontrak', e)}
+                  accept=".pdf,.doc,.docx"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                />
+                {formErrors.kontrak && (
+                  <p className="mt-1 text-xs text-error-500">{formErrors.kontrak}</p>
+                )}
+                {editingPPK && (
+                  <p className="mt-1 text-xs text-warning-600">
+                    Kosongkan jika tidak ingin mengubah file
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <Label>Timeline Pekerjaan</Label>
-              <input
-                type="file"
-                onChange={(e) => handleFileChange('timeline', e)}
-                accept=".pdf,.xlsx,.xls"
-                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              />
-              {formErrors.timeline && (
-                <p className="mt-1 text-xs text-error-500">{formErrors.timeline}</p>
-              )}
-              {editingPPK && (
-                <p className="mt-1 text-xs text-warning-600">
-                  Kosongkan jika tidak ingin mengubah file
-                </p>
-              )}
-            </div>
+              <div>
+                <Label>Timeline Pekerjaan</Label>
+                <input
+                  type="file"
+                  onChange={(e) => handleFileChange('timeline', e)}
+                  accept=".pdf,.xlsx,.xls"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                />
+                {formErrors.timeline && (
+                  <p className="mt-1 text-xs text-error-500">{formErrors.timeline}</p>
+                )}
+                {editingPPK && (
+                  <p className="mt-1 text-xs text-warning-600">
+                    Kosongkan jika tidak ingin mengubah file
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <Label>Syarat-syarat Khusus dalam Kontrak</Label>
-              <input
-                type="file"
-                onChange={(e) => handleFileChange('syaratKhusus', e)}
-                accept=".pdf,.doc,.docx"
-                className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-              />
-              {formErrors.syaratKhusus && (
-                <p className="mt-1 text-xs text-error-500">{formErrors.syaratKhusus}</p>
-              )}
-              {editingPPK && (
-                <p className="mt-1 text-xs text-warning-600">
-                  Kosongkan jika tidak ingin mengubah file
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label>Kompetensi (JSON)</Label>
-              <textarea
-                className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={formData.kompetensi}
-                onChange={(e) =>
-                  setFormData({ ...formData, kompetensi: e.target.value })
-                }
-                placeholder='{"pengadaan": "tingkat III", "manajemen": "tingkat II"}'
-              />
-            </div>
-
-            <div>
-              <Label>Sertifikasi (JSON)</Label>
-              <textarea
-                className="w-full h-24 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                value={formData.sertifikasi}
-                onChange={(e) =>
-                  setFormData({ ...formData, sertifikasi: e.target.value })
-                }
-                placeholder='{"sertifikat_pengadaan": "2025-12-15", "sertifikat_manajemen": "2024-08-20"}'
-              />
+              <div>
+                <Label>Syarat-syarat Khusus dalam Kontrak</Label>
+                <input
+                  type="file"
+                  onChange={(e) => handleFileChange('syaratKhusus', e)}
+                  accept=".pdf,.doc,.docx"
+                  className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                />
+                {formErrors.syaratKhusus && (
+                  <p className="mt-1 text-xs text-error-500">{formErrors.syaratKhusus}</p>
+                )}
+                {editingPPK && (
+                  <p className="mt-1 text-xs text-warning-600">
+                    Kosongkan jika tidak ingin mengubah file
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

@@ -3285,7 +3285,20 @@ app.post('/api/ppk', authenticateToken, upload.fields([
   { name: 'syaratKhusus', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { namaLengkap, nip, jabatan, unitKerja, kompetensi, sertifikasi, pengalaman, status } = req.body;
+    const { 
+      namaLengkap, 
+      nip, 
+      jabatan, 
+      unitKerja, 
+      bidangKompetensi,
+      tingkatKompetensi,
+      pengalamanKompetensi,
+      nomorSertifikat,
+      jenisSertifikat,
+      masaBerlakuSertifikat,
+      pengalaman, 
+      status 
+    } = req.body;
     
     if (!namaLengkap || !nip || !jabatan) {
       return res.status(400).json({ error: 'Missing required fields: namaLengkap, nip, jabatan' });
@@ -3297,61 +3310,105 @@ app.post('/api/ppk', authenticateToken, upload.fields([
       return res.status(400).json({ error: 'NIP already exists' });
     }
 
-    // Handle file uploads
+    // Build kompetensi object dari field individual
+    const kompetensiObj: any = {};
+    if (bidangKompetensi) kompetensiObj.bidang = bidangKompetensi;
+    if (tingkatKompetensi) kompetensiObj.tingkat = tingkatKompetensi;
+    if (pengalamanKompetensi) kompetensiObj.pengalaman = pengalamanKompetensi;
+
+    // Build sertifikasi object dari field individual
+    const sertifikasiObj: any = {};
+    if (nomorSertifikat) sertifikasiObj.nomor = nomorSertifikat;
+    if (jenisSertifikat) sertifikasiObj.jenis = jenisSertifikat;
+    if (masaBerlakuSertifikat) sertifikasiObj.masaBerlaku = masaBerlakuSertifikat;
+
+    // Create PPK
+    const ppk = await prisma.pPK.create({
+      data: {
+        namaLengkap,
+        nip,
+        jabatan,
+        unitKerja: unitKerja || '',
+        kompetensi: kompetensiObj,
+        sertifikasi: sertifikasiObj,
+        pengalaman: pengalaman ? parseInt(pengalaman) : 0,
+        status: status || 'AKTIF',
+      },
+    });
+
+    // Handle dokumen uploads
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     
-    // Parse JSON fields (kompetensi & sertifikasi)
-    let parsedKompetensi = {};
-    let parsedSertifikasi = {};
-    
-    try {
-      if (kompetensi && kompetensi.trim()) {
-        parsedKompetensi = JSON.parse(kompetensi);
+    if (files) {
+      const dokumenData = [];
+
+      if (files?.kakRab?.[0]) {
+        dokumenData.push({
+          namaDokumen: 'KAK RAB',
+          jenisDokumen: 'KAK_RAB',
+          filePath: `/uploads/${files.kakRab[0].filename}`,
+          fileSize: files.kakRab[0].size,
+          mimeType: files.kakRab[0].mimetype,
+          uploadedBy: req.user!.id,
+          ppkId: ppk.id,
+        });
       }
-    } catch (e) {
-      return res.status(400).json({ error: 'Invalid JSON format for kompetensi' });
-    }
-    
-    try {
-      if (sertifikasi && sertifikasi.trim()) {
-        parsedSertifikasi = JSON.parse(sertifikasi);
+
+      if (files?.spesifikasiTeknis?.[0]) {
+        dokumenData.push({
+          namaDokumen: 'Spesifikasi Teknis',
+          jenisDokumen: 'SPESIFIKASI_TEKNIS',
+          filePath: `/uploads/${files.spesifikasiTeknis[0].filename}`,
+          fileSize: files.spesifikasiTeknis[0].size,
+          mimeType: files.spesifikasiTeknis[0].mimetype,
+          uploadedBy: req.user!.id,
+          ppkId: ppk.id,
+        });
       }
-    } catch (e) {
-      return res.status(400).json({ error: 'Invalid JSON format for sertifikasi' });
-    }
 
-    // Create PPK data
-    const ppkData: any = {
-      namaLengkap,
-      nip,
-      jabatan,
-      unitKerja: unitKerja || '',
-      kompetensi: parsedKompetensi,
-      sertifikasi: parsedSertifikasi,
-      pengalaman: pengalaman ? parseInt(pengalaman) : 0,
-      status: status || 'AKTIF',
-    };
+      if (files?.kontrak?.[0]) {
+        dokumenData.push({
+          namaDokumen: 'Kontrak',
+          jenisDokumen: 'KONTRAK',
+          filePath: `/uploads/${files.kontrak[0].filename}`,
+          fileSize: files.kontrak[0].size,
+          mimeType: files.kontrak[0].mimetype,
+          uploadedBy: req.user!.id,
+          ppkId: ppk.id,
+        });
+      }
 
-    // Add file paths if uploaded
-    if (files?.kakRab?.[0]) {
-      ppkData.kakRab = `/uploads/${files.kakRab[0].filename}`;
-    }
-    if (files?.spesifikasiTeknis?.[0]) {
-      ppkData.spesifikasiTeknis = `/uploads/${files.spesifikasiTeknis[0].filename}`;
-    }
-    if (files?.kontrak?.[0]) {
-      ppkData.kontrak = `/uploads/${files.kontrak[0].filename}`;
-    }
-    if (files?.timeline?.[0]) {
-      ppkData.timeline = `/uploads/${files.timeline[0].filename}`;
-    }
-    if (files?.syaratKhusus?.[0]) {
-      ppkData.syaratKhusus = `/uploads/${files.syaratKhusus[0].filename}`;
-    }
+      if (files?.timeline?.[0]) {
+        dokumenData.push({
+          namaDokumen: 'Timeline',
+          jenisDokumen: 'TIMELINE',
+          filePath: `/uploads/${files.timeline[0].filename}`,
+          fileSize: files.timeline[0].size,
+          mimeType: files.timeline[0].mimetype,
+          uploadedBy: req.user!.id,
+          ppkId: ppk.id,
+        });
+      }
 
-    const ppk = await prisma.pPK.create({
-      data: ppkData,
-    });
+      if (files?.syaratKhusus?.[0]) {
+        dokumenData.push({
+          namaDokumen: 'Syarat Khusus',
+          jenisDokumen: 'SYARAT_KHUSUS',
+          filePath: `/uploads/${files.syaratKhusus[0].filename}`,
+          fileSize: files.syaratKhusus[0].size,
+          mimeType: files.syaratKhusus[0].mimetype,
+          uploadedBy: req.user!.id,
+          ppkId: ppk.id,
+        });
+      }
+
+      // Bulk create dokumen
+      if (dokumenData.length > 0) {
+        await prisma.dokumen.createMany({
+          data: dokumenData,
+        });
+      }
+    }
 
     // Log audit
     await prisma.auditLog.create({
@@ -3385,7 +3442,20 @@ app.put('/api/ppk/:id', authenticateToken, upload.fields([
 ]), async (req, res) => {
   try {
     const { id } = req.params;
-    const { namaLengkap, nip, jabatan, unitKerja, kompetensi, sertifikasi, pengalaman, status } = req.body;
+    const { 
+      namaLengkap, 
+      nip, 
+      jabatan, 
+      unitKerja, 
+      bidangKompetensi,
+      tingkatKompetensi,
+      pengalamanKompetensi,
+      nomorSertifikat,
+      jenisSertifikat,
+      masaBerlakuSertifikat,
+      pengalaman, 
+      status 
+    } = req.body;
 
     const existingPPK = await prisma.pPK.findUnique({ where: { id } });
     if (!existingPPK) {
@@ -3400,27 +3470,22 @@ app.put('/api/ppk/:id', authenticateToken, upload.fields([
       }
     }
 
-    // Handle file uploads
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    
-    // Parse JSON fields
-    let parsedKompetensi = undefined;
-    let parsedSertifikasi = undefined;
-    
-    if (kompetensi !== undefined) {
-      try {
-        parsedKompetensi = kompetensi.trim() ? JSON.parse(kompetensi) : {};
-      } catch (e) {
-        return res.status(400).json({ error: 'Invalid JSON format for kompetensi' });
-      }
+    // Build kompetensi object dari field individual
+    let kompetensiObj: any = undefined;
+    if (bidangKompetensi !== undefined || tingkatKompetensi !== undefined || pengalamanKompetensi !== undefined) {
+      kompetensiObj = {};
+      if (bidangKompetensi) kompetensiObj.bidang = bidangKompetensi;
+      if (tingkatKompetensi) kompetensiObj.tingkat = tingkatKompetensi;
+      if (pengalamanKompetensi) kompetensiObj.pengalaman = pengalamanKompetensi;
     }
-    
-    if (sertifikasi !== undefined) {
-      try {
-        parsedSertifikasi = sertifikasi.trim() ? JSON.parse(sertifikasi) : {};
-      } catch (e) {
-        return res.status(400).json({ error: 'Invalid JSON format for sertifikasi' });
-      }
+
+    // Build sertifikasi object dari field individual
+    let sertifikasiObj: any = undefined;
+    if (nomorSertifikat !== undefined || jenisSertifikat !== undefined || masaBerlakuSertifikat !== undefined) {
+      sertifikasiObj = {};
+      if (nomorSertifikat) sertifikasiObj.nomor = nomorSertifikat;
+      if (jenisSertifikat) sertifikasiObj.jenis = jenisSertifikat;
+      if (masaBerlakuSertifikat) sertifikasiObj.masaBerlaku = masaBerlakuSertifikat;
     }
 
     const updateData: any = {
@@ -3428,8 +3493,8 @@ app.put('/api/ppk/:id', authenticateToken, upload.fields([
       nip: nip || undefined,
       jabatan: jabatan || undefined,
       unitKerja: unitKerja || undefined,
-      kompetensi: parsedKompetensi,
-      sertifikasi: parsedSertifikasi,
+      kompetensi: kompetensiObj,
+      sertifikasi: sertifikasiObj,
       pengalaman: pengalaman ? parseInt(pengalaman) : undefined,
       status: status || undefined,
       updatedAt: new Date(),
@@ -3441,6 +3506,9 @@ app.put('/api/ppk/:id', authenticateToken, upload.fields([
       data: updateData,
     });
 
+    // Handle dokumen uploads
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    
     if (files) {
       const dokumenData = [];
 
