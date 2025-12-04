@@ -205,7 +205,7 @@ export const DetailsModal = ({
             <>
               {/* Render sections as default tab content */}
               {sections.map((section, idx) => (
-                <div key={idx} className="space-y-4">
+                <div key={idx} className="space-y-6 mb-8">
                   <h3 className="text-lg font-semibold text-gray-800 dark:text-white border-b pb-2">
                     {section.title}
                   </h3>

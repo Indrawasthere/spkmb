@@ -68,47 +68,7 @@ export default function BantuanPanduan() {
           </div>
         </div>
 
-        {/* Contact Section */}
-        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="p-6">
-            <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
-              Hubungi Admin
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                  <MailIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-white/90">
-                    Email Support
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    support@sistem.go.id
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                  <ChatIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-white/90">
-                    Telepon
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    (021) 123-4567
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6">
-              <Button size="md" variant="primary">
-                Kirim Pesan
-              </Button>
-            </div>
-          </div>
-        </div>
+
 
         {/* User Guide */}
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
@@ -126,9 +86,15 @@ export default function BantuanPanduan() {
                     Dokumentasi lengkap cara menggunakan sistem
                   </p>
                 </div>
-                <Button size="sm" variant="outline">
-                  Unduh PDF
-                </Button>
+                <a
+                  href="https://example.com/panduan.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button size="sm" variant="outline">
+                    Unduh PDF
+                  </Button>
+                </a>
               </div>
               <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                 <div>
@@ -139,9 +105,15 @@ export default function BantuanPanduan() {
                     Tutorial video untuk setiap modul
                   </p>
                 </div>
-                <Button size="sm" variant="outline">
-                  Tonton
-                </Button>
+                <a
+                  href="https://youtube.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button size="sm" variant="outline">
+                    Tonton
+                  </Button>
+                </a>
               </div>
             </div>
           </div>
