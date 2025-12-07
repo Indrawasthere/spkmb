@@ -78,6 +78,7 @@ interface KonsultanFormData {
   deskripsi: string;
   lamaKontrak: string;
   dokumenDED: File | null;
+  rating: string;
 }
 
 interface FormErrors {
@@ -342,6 +343,10 @@ export default function KonsultanPerencanaan() {
       fd.append('deskripsi', data.deskripsi || '');
       fd.append('lamaKontrak', data.lamaKontrak || '0');
 
+      if (data.rating) {
+        fd.append('rating', data.rating);
+      }
+
       if (data.dokumenDED) {
         fd.append('dokumenDED', data.dokumenDED);
       }
@@ -391,6 +396,7 @@ export default function KonsultanPerencanaan() {
       deskripsi: konsultan.deskripsi || '',
       lamaKontrak: konsultan.lamaKontrak?.toString() || '',
       dokumenDED: null,
+      rating: konsultan.rating ? konsultan.rating.toString() : '',
     });
     openModal();
   };
@@ -465,6 +471,7 @@ export default function KonsultanPerencanaan() {
       deskripsi: '',
       lamaKontrak: '',
       dokumenDED: null,
+      rating: '',
     });
     setFormErrors({});
     setEditingKonsultan(null);
@@ -814,6 +821,25 @@ export default function KonsultanPerencanaan() {
                 error={!!formErrors.alamat}
                 hint={formErrors.alamat}
               />
+            </div>
+
+            <div>
+              <Label>Rating (0-5)</Label>
+              <Input
+                type="number"
+                min="0"
+                max="5"
+                step="0.1"
+                value={formData.rating}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (value >= 0 && value <= 5) {
+                    setFormData({ ...formData, rating: e.target.value });
+                  }
+                }}
+                placeholder="4.5"
+              />
+              <p className="text-xs text-gray-500 mt-1">Rating vendor dari 0 hingga 5</p>
             </div>
 
             <div>

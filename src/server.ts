@@ -2965,6 +2965,7 @@ app.post(
         noKontrak: noKontrak || null,
         deskripsi: deskripsi || null,
         lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : null,
+        rating: rating ? parseFloat(rating) : null,
         namaProyek: namaProyek || null,
         deskripsiLaporan: deskripsiLaporan || null,
         deskripsiProgress: deskripsiProgress || null,
@@ -3040,7 +3041,10 @@ app.put(
         namaProyek,
         deskripsiLaporan,
         deskripsiProgress,
+        rating,
       } = req.body;
+
+      const parsedRating = rating ? parseFloat(rating) : undefined;
 
       const existingVendor = await prisma.vendor.findUnique({ where: { id } });
       if (!existingVendor) {
@@ -3072,6 +3076,7 @@ app.put(
         deskripsiLaporan: deskripsiLaporan !== undefined ? deskripsiLaporan || null : undefined,
         deskripsiProgress: deskripsiProgress !== undefined ? deskripsiProgress || null : undefined,
         updatedAt: new Date(),
+        rating: rating ? parseFloat(rating) : undefined,
       };
 
       // Add file paths if uploaded
@@ -3691,6 +3696,7 @@ app.put(
         pengalaman: pengalaman ? parseInt(pengalaman) : undefined,
         status: status || undefined,
         updatedAt: new Date(),
+        rating: rating ? parseFloat(rating) : undefined,
       };
 
       // Update PPK data

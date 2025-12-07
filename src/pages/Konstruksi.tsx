@@ -61,6 +61,7 @@ interface KontraktorFormData {
   deskripsiProgress: string;
   uploadDokumen: File | null;
   uploadFoto: File | null;
+  rating: string;
 }
 
 interface FormErrors {
@@ -216,6 +217,10 @@ export default function Konstruksi() {
       fd.append('namaProyek', data.namaProyek || '');
       fd.append('deskripsiProgress', data.deskripsiProgress || '');
 
+      if (data.rating) {
+        fd.append('rating', data.rating);
+      }
+
       if (data.uploadDokumen) {
         fd.append('uploadDokumen', data.uploadDokumen);
       }
@@ -269,6 +274,7 @@ export default function Konstruksi() {
       deskripsiProgress: kontraktor.deskripsiProgress || '',
       uploadDokumen: null,
       uploadFoto: null,
+      rating: kontraktor.rating ? kontraktor.rating.toString() : '',
     });
     openModal();
   };
@@ -375,6 +381,7 @@ export default function Konstruksi() {
       deskripsiProgress: '',
       uploadDokumen: null,
       uploadFoto: null,
+      rating: '',
     });
     setFormErrors({});
     setEditingKontraktor(null);
@@ -846,6 +853,25 @@ export default function Konstruksi() {
             </div>
 
             <div>
+              <Label>Rating (0-5)</Label>
+              <Input
+                type="number"
+                min="0"
+                max="5"
+                step="0.1"
+                value={formData.rating}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (value >= 0 && value <= 5) {
+                    setFormData({ ...formData, rating: e.target.value });
+                  }
+                }}
+                placeholder="4.5"
+              />
+              <p className="text-xs text-gray-500 mt-1">Rating vendor dari 0 hingga 5</p>
+            </div>
+
+            <div>
               <Label>Nama Proyek</Label>
               <Input
                 type="text"
@@ -945,80 +971,83 @@ export default function Konstruksi() {
       />
 
       {selectedData && (
-          <DetailsModal
-            isOpen={viewDetailsOpen}
-            onClose={() => {
-              setViewDetailsOpen(false);
-              setActiveTab('data');
-              setTemuanData([]);
-            }}
-            title="Detail Kontraktor Konstruksi"
-            sections={detailsSections}
-            documents={detailsDocuments}
-            customTabs={[
-              {
-                id: 'temuan',
-                label: (
-                  <div className="flex items-center gap-2">
-                    <AlertIcon className="w-4 h-4" />
-                    Temuan Audit
-                    {temuanData.length > 0 && (
-                      <Badge size="sm" color="error">
-                        {temuanData.length}
-                      </Badge>
-                    )}
-                  </div>
-                ),
-                content: (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-lg font-semibold">Daftar Temuan Audit</h4>
-                      <div className="flex items-center gap-4">
-                        <div className="text-sm text-gray-500">
-                          Total: {temuanData.length} temuan
-                        </div>
-                        {temuanData.filter(t => t.status === 'BARU' || t.status === 'DITOLAK').length > 0 && (
-                          <Badge size="sm" color="error">
-                            {temuanData.filter(t => t.status === 'BARU' || t.status === 'DITOLAK').length} Perlu Tanggapan
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    {temuanData.length > 0 ? (
-                      <DataTable
-                        columns={temuanColumns}
-                        data={temuanData}
-                        loading={false}
-                        pageSize={5}
-                        searchPlaceholder="Cari temuan..."
-                      />
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <AlertIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                        <p>Tidak ada temuan audit</p>
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-            ]}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-        )}
-
-        {/* NEW: Temuan Response Modal */}
-        <TemuanResponseModal
-          isOpen={isResponseModalOpen}
+        <DetailsModal
+          isOpen={viewDetailsOpen}
           onClose={() => {
-            setIsResponseModalOpen(false);
-            setSelectedTemuan(null);
+            setViewDetailsOpen(false);
+            setActiveTab('data');
+            setTemuanData([]);
           }}
-          temuan={selectedTemuan}
-          vendorId={selectedData?.id || ''}
-          onSuccess={handleResponseSuccess}
+          title="Detail Kontraktor Konstruksi"
+          sections={detailsSections}
+          documents={detailsDocuments}
+          customTabs={[
+            {
+              id: 'temuan',
+              label: (
+                <div className="flex items-center gap-2">
+                  <AlertIcon className="w-4 h-4" />
+                  Temuan Audit
+                  {temuanData.length > 0 && (
+                    <Badge size="sm" color="error">
+                      {temuanData.length}
+                    </Badge>
+                  )}
+                </div>
+              ),
+              content: (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-lg font-semibold">Daftar Temuan Audit</h4>
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-gray-500">Total: {temuanData.length} temuan</div>
+                      {temuanData.filter((t) => t.status === 'BARU' || t.status === 'DITOLAK')
+                        .length > 0 && (
+                        <Badge size="sm" color="error">
+                          {
+                            temuanData.filter((t) => t.status === 'BARU' || t.status === 'DITOLAK')
+                              .length
+                          }{' '}
+                          Perlu Tanggapan
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {temuanData.length > 0 ? (
+                    <DataTable
+                      columns={temuanColumns}
+                      data={temuanData}
+                      loading={false}
+                      pageSize={5}
+                      searchPlaceholder="Cari temuan..."
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <AlertIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>Tidak ada temuan audit</p>
+                    </div>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
         />
+      )}
+
+      {/* NEW: Temuan Response Modal */}
+      <TemuanResponseModal
+        isOpen={isResponseModalOpen}
+        onClose={() => {
+          setIsResponseModalOpen(false);
+          setSelectedTemuan(null);
+        }}
+        temuan={selectedTemuan}
+        vendorId={selectedData?.id || ''}
+        onSuccess={handleResponseSuccess}
+      />
     </>
   );
 }
