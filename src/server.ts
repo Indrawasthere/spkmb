@@ -24,8 +24,8 @@ declare global {
         lastName: string;
         role: string;
       };
-      isPortalSubdomain?: boolean;  
-      isDevelopment?: boolean;      
+      isPortalSubdomain?: boolean;
+      isDevelopment?: boolean;
     }
   }
 }
@@ -35,14 +35,14 @@ dotenv.config();
 
 const validateEnvironment = () => {
   const required = ['JWT_SECRET', 'DATABASE_URL'];
-  const missing = required.filter(key => !process.env[key]);
-  
+  const missing = required.filter((key) => !process.env[key]);
+
   if (missing.length > 0) {
     console.error('❌ Missing required environment variables:', missing);
-    
+
     if (IS_PRODUCTION) {
       console.error('🚨 CRITICAL: Cannot start in production without env vars');
-      process.exit(1); 
+      process.exit(1);
     } else {
       console.log('⚠️  Development mode: Using default values');
     }
@@ -56,89 +56,92 @@ const PORT = process.env.PORT || 3001;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // Enhanced Helmet configuration
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", 
-        "https://sipakat-bpj.com",
-        "https://portal.sipakat-bpj.com",  
-        "https://www.sipakat-bpj.com"
-      ],
-      fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"], 
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+        connectSrc: [
+          "'self'",
+          'https://sipakat-bpj.com',
+          'https://portal.sipakat-bpj.com',
+          'https://www.sipakat-bpj.com',
+        ],
+        fontSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false, // ✅ TAMBAH untuk file serving
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // ✅ TAMBAH
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true,
-  },
-}));
+    crossOriginEmbedderPolicy: false, // ✅ TAMBAH untuk file serving
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // ✅ TAMBAH
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+  })
+);
 
 // CORS Configuration
-app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'https://localhost:5173', 
-      'http://localhost:3000',
-      'https://localhost:3000',
-      'http://localhost:3001',
-      'https://localhost:3001',
-      // PRODUCTION DOMAINS
-      'https://sipakat-bpj.com',
-      'https://www.sipakat-bpj.com',
-      'https://portal.sipakat-bpj.com', 
-      // Development subdomains
-      'http://portal.localhost:3001',
-      'https://portal.localhost:3001',
-      'http://sipakat.localhost:3001',
-      'https://sipakat.localhost:3001',
-      /\.sipakat-bpj\.com$/,
-      /\.devtunnels\.ms$/,
-      /\.ngrok-free\.app$/,
-    ];
-    
-    if (!origin) return callback(null, true);
-    
-    const isAllowed = allowedOrigins.some(pattern =>
-      pattern instanceof RegExp ? pattern.test(origin) : origin === pattern
-    );
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.warn(`❌ Blocked by CORS: ${origin}`);
-      callback(null, false);
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['set-cookie'],
-  maxAge: 86400, // 24 hours
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'https://localhost:5173',
+        'http://localhost:3000',
+        'https://localhost:3000',
+        'http://localhost:3001',
+        'https://localhost:3001',
+        // PRODUCTION DOMAINS
+        'https://sipakat-bpj.com',
+        'https://www.sipakat-bpj.com',
+        'https://portal.sipakat-bpj.com',
+        // Development subdomains
+        'http://portal.localhost:3001',
+        'https://portal.localhost:3001',
+        'http://sipakat.localhost:3001',
+        'https://sipakat.localhost:3001',
+        /\.sipakat-bpj\.com$/,
+        /\.devtunnels\.ms$/,
+        /\.ngrok-free\.app$/,
+      ];
+
+      if (!origin) return callback(null, true);
+
+      const isAllowed = allowedOrigins.some((pattern) =>
+        pattern instanceof RegExp ? pattern.test(origin) : origin === pattern
+      );
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.warn(`❌ Blocked by CORS: ${origin}`);
+        callback(null, false);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['set-cookie'],
+    maxAge: 86400, // 24 hours
+  })
+);
 
 // ============================================
 // MIDDLEWARE: Domain & Environment Detection
 // ============================================
 app.use((req, res, next) => {
   const host = req.get('host') || '';
-  
-  
+
   req.isPortalSubdomain = host.includes('portal.');
-  
-  
+
   req.isDevelopment = !IS_PRODUCTION;
-  
+
   next();
 });
 
@@ -147,17 +150,13 @@ app.use((req, res, next) => {
 // ============================================
 app.get('/', (req, res) => {
   if (req.isPortalSubdomain) {
-    return res.sendFile(
-      path.join(process.cwd(), 'public', 'portal-pengaduan.html')
-    );
+    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan.html'));
   }
-  
+
   if (IS_PRODUCTION) {
-    return res.sendFile(
-      path.join(process.cwd(), 'dist', 'index.html')
-    );
+    return res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
   }
-  
+
   return res.json({
     message: 'SIPAKAT BPJ API - Development Mode',
     version: '2.0.1',
@@ -167,10 +166,10 @@ app.get('/', (req, res) => {
       portal: 'http://portal.localhost:3001',
       api: 'http://localhost:3001/api',
       health: 'http://localhost:3001/api/health',
-      docs: 'http://localhost:3001/api/endpoints'
+      docs: 'http://localhost:3001/api/endpoints',
     },
     status: 'running',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
@@ -180,11 +179,9 @@ app.get('/', (req, res) => {
 app.get('/tracking', (req, res) => {
   // Only serve tracking page on portal subdomain
   if (req.isPortalSubdomain) {
-    return res.sendFile(
-      path.join(process.cwd(), 'public', 'portal-pengaduan-tracking.html')
-    );
+    return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan-tracking.html'));
   }
-  
+
   // Redirect to main domain if accessed from wrong domain
   res.redirect('https://portal.sipakat-bpj.com/tracking');
 });
@@ -205,25 +202,28 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Serve static files with proper headers
-app.use('/uploads', express.static(uploadsDir, {
-  setHeaders: (res, filePath) => {
-    // Set proper content types
-    if (filePath.endsWith('.pdf')) {
-      res.setHeader('Content-Type', 'application/pdf');
-    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
-      res.setHeader('Content-Type', 'image/jpeg');
-    } else if (filePath.endsWith('.png')) {
-      res.setHeader('Content-Type', 'image/png');
-    }
-    
-    // Security headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); 
-  },
-  maxAge: '1y', 
-  immutable: true, 
-}));
+app.use(
+  '/uploads',
+  express.static(uploadsDir, {
+    setHeaders: (res, filePath) => {
+      // Set proper content types
+      if (filePath.endsWith('.pdf')) {
+        res.setHeader('Content-Type', 'application/pdf');
+      } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+        res.setHeader('Content-Type', 'image/jpeg');
+      } else if (filePath.endsWith('.png')) {
+        res.setHeader('Content-Type', 'image/png');
+      }
+
+      // Security headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    },
+    maxAge: '1y',
+    immutable: true,
+  })
+);
 
 // Multer configuration with security enhancements
 const storage = multer.diskStorage({
@@ -241,7 +241,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { 
+  limits: {
     fileSize: 10 * 1024 * 1024, // 10MB
     files: 5, // Max 5 files per request (temporary)
   },
@@ -257,11 +257,15 @@ const upload = multer({
       'image/png',
       'image/jpg',
     ];
-    
+
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`Invalid file type: ${file.mimetype}. Only PDF, DOC, DOCX, XLSX, CSV, JPG, PNG allowed.`));
+      cb(
+        new Error(
+          `Invalid file type: ${file.mimetype}. Only PDF, DOC, DOCX, XLSX, CSV, JPG, PNG allowed.`
+        )
+      );
     }
   },
 });
@@ -270,18 +274,18 @@ const upload = multer({
 const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.cookies?.token;
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret') as JwtPayload;
-    
+
     if (!decoded.userId) {
       return res.status(403).json({ error: 'Invalid token format.' });
     }
 
-    const user = await prisma.user.findUnique({ 
+    const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,
@@ -290,7 +294,7 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
         lastName: true,
         role: true,
         isActive: true,
-      }
+      },
     });
 
     if (!user || !user.isActive) {
@@ -313,15 +317,15 @@ const authorizeRoles = (...roles: string[]) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required.' });
     }
-    
+
     if (!roles.includes(req.user.role.toLowerCase())) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Access denied. Insufficient permissions.',
         requiredRoles: roles,
-        userRole: req.user.role 
+        userRole: req.user.role,
       });
     }
-    
+
     next();
   };
 };
@@ -359,7 +363,7 @@ app.get('/portal/tracking', (req, res) => {
 app.get('/api/pengaduan/history/:email', async (req, res) => {
   try {
     const { email } = req.params;
-    
+
     const pengaduan = await prisma.pengaduan.findMany({
       where: { email },
       select: {
@@ -369,21 +373,21 @@ app.get('/api/pengaduan/history/:email', async (req, res) => {
         status: true,
         tanggal: true,
         createdAt: true,
-        kategori: true
+        kategori: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 10
+      take: 10,
     });
-    
+
     res.json({
       success: true,
-      data: pengaduan
+      data: pengaduan,
     });
   } catch (error) {
     console.error('Fetch history error:', error);
     res.status(500).json({
       success: false,
-      message: 'Gagal mengambil history pengaduan'
+      message: 'Gagal mengambil history pengaduan',
     });
   }
 });
@@ -403,7 +407,7 @@ app.get('/', (req, res) => {
   if (req.isPortalSubdomain) {
     return res.sendFile(path.join(process.cwd(), 'public', 'portal-pengaduan.html'));
   }
-  
+
   // Default behavior untuk domain utama
   if (IS_PRODUCTION) {
     res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
@@ -451,11 +455,9 @@ app.post('/api/auth/login', async (req, res) => {
     const tokenExpiry = rememberMe ? '7d' : '6h';
     const cookieMaxAge = rememberMe ? 7 * 24 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
 
-    const token = jwt.sign(
-      { userId: user.id }, 
-      process.env.JWT_SECRET || 'dev_jwt_secret', 
-      { expiresIn: tokenExpiry }
-    );
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', {
+      expiresIn: tokenExpiry,
+    });
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -528,11 +530,9 @@ app.post('/api/auth/register', async (req, res) => {
       },
     });
 
-    const token = jwt.sign(
-      { userId: user.id }, 
-      process.env.JWT_SECRET || 'dev_jwt_secret', 
-      { expiresIn: '7d' }
-    );
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_jwt_secret', {
+      expiresIn: '7d',
+    });
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -569,7 +569,7 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret') as JwtPayload;
-    const user = await prisma.user.findUnique({ 
+    const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,
@@ -578,7 +578,7 @@ app.get('/api/auth/me', async (req, res) => {
         lastName: true,
         role: true,
         isActive: true,
-      }
+      },
     });
 
     if (!user || !user.isActive) {
@@ -587,18 +587,18 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     // Refresh token
-  //  const newToken = jwt.sign(
-  //    { userId: user.id }, 
-  //    process.env.JWT_SECRET || 'dev_jwt_secret', 
-  //    { expiresIn: '7d' }
-  //  );
-//
-  //  res.cookie('token', newToken, {
-  //    httpOnly: true,
-  //    secure: IS_PRODUCTION,
-  //    sameSite: IS_PRODUCTION ? 'strict' : 'lax',
-  //    maxAge: 7 * 24 * 60 * 60 * 1000,
-  //  });
+    //  const newToken = jwt.sign(
+    //    { userId: user.id },
+    //    process.env.JWT_SECRET || 'dev_jwt_secret',
+    //    { expiresIn: '7d' }
+    //  );
+    //
+    //  res.cookie('token', newToken, {
+    //    httpOnly: true,
+    //    secure: IS_PRODUCTION,
+    //    sameSite: IS_PRODUCTION ? 'strict' : 'lax',
+    //    maxAge: 7 * 24 * 60 * 60 * 1000,
+    //  });
 
     res.json({
       user: {
@@ -635,7 +635,7 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
       secure: IS_PRODUCTION,
       sameSite: IS_PRODUCTION ? 'strict' : 'lax',
     });
-    
+
     res.json({ ok: true, message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
@@ -644,10 +644,11 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// USER MANAGEMENT ROUTES
+// USER MANAGEMENT ROUTES (FIXED!)
 // ============================================
 
-app.get('/api/users', authenticateToken, authorizeRoles('admin', 'user'), async (req, res) => {
+// GET all users - Admin only
+app.get('/api/users', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -658,6 +659,7 @@ app.get('/api/users', authenticateToken, authorizeRoles('admin', 'user'), async 
         role: true,
         isActive: true,
         createdAt: true,
+        updatedAt: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -668,12 +670,52 @@ app.get('/api/users', authenticateToken, authorizeRoles('admin', 'user'), async 
   }
 });
 
+// GET single user - Admin only
+app.get('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Fetch user error:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// POST create user - Admin only
 app.post('/api/users', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { email, password, firstName, lastName, role, isActive } = req.body;
 
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format.' });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -715,6 +757,8 @@ app.post('/api/users', authenticateToken, authorizeRoles('admin'), async (req, r
       lastName: user.lastName,
       role: user.role,
       isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     });
   } catch (error) {
     console.error('Create user error:', error);
@@ -722,6 +766,7 @@ app.post('/api/users', authenticateToken, authorizeRoles('admin'), async (req, r
   }
 });
 
+// PUT update user - Admin only (can update anyone) or Self (can only update own profile)
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -731,7 +776,9 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     const isAdmin = req.user!.role.toLowerCase() === 'admin';
 
     if (!isSelfUpdate && !isAdmin) {
-      return res.status(403).json({ error: 'Access denied. You can only update your own account.' });
+      return res
+        .status(403)
+        .json({ error: 'Access denied. You can only update your own account.' });
     }
 
     const updateData: any = {};
@@ -742,7 +789,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     if (email !== undefined) updateData.email = email;
 
     // Password update (self only)
-    if (password && isSelfUpdate) {
+    if (password && password.trim()) {
       if (password.length < 8) {
         return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
       }
@@ -775,6 +822,8 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
         lastName: true,
         role: true,
         isActive: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -798,6 +847,57 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// PATCH toggle user status - Admin only (NEW!)
+app.patch('/api/users/:id/status', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ error: 'isActive must be a boolean' });
+    }
+
+    // Prevent admin from deactivating themselves
+    if (req.user!.id === id && !isActive) {
+      return res.status(400).json({ error: 'Cannot deactivate your own account' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isActive },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'UPDATE_STATUS',
+        entity: 'USER',
+        entityId: user.id,
+        details: { isActive, previousStatus: !isActive },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    });
+
+    res.json(user);
+  } catch (error) {
+    console.error('Toggle user status error:', error);
+    res.status(500).json({ error: 'Failed to toggle user status' });
+  }
+});
+
+// DELETE user - Admin only
 app.delete('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -805,6 +905,12 @@ app.delete('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (
     // Prevent self-deletion
     if (req.user!.id === id) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    // Check if user exists
+    const userToDelete = await prisma.user.findUnique({ where: { id } });
+    if (!userToDelete) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     await prisma.user.delete({ where: { id } });
@@ -816,6 +922,7 @@ app.delete('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (
         action: 'DELETE',
         entity: 'USER',
         entityId: id,
+        details: { email: userToDelete.email, role: userToDelete.role },
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
       },
@@ -835,8 +942,8 @@ app.delete('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (
 app.get('/api/paket', authenticateToken, async (req, res) => {
   try {
     const paket = await prisma.paket.findMany({
-      include: { 
-        dokumen: true, 
+      include: {
+        dokumen: true,
         laporan: true,
         temuanBPKP: true,
         ppkData: true,
@@ -854,8 +961,8 @@ app.get('/api/paket/:id', authenticateToken, async (req, res) => {
   try {
     const paket = await prisma.paket.findUnique({
       where: { id: req.params.id },
-      include: { 
-        dokumen: true, 
+      include: {
+        dokumen: true,
         laporan: true,
         temuanBPKP: true,
         ppkData: true,
@@ -875,7 +982,17 @@ app.get('/api/paket/:id', authenticateToken, async (req, res) => {
 
 app.post('/api/paket', authenticateToken, upload.single('dokumenKontrak'), async (req, res) => {
   try {
-    const { kodePaket, kodeRUP, namaPaket, jenisPaket, nilaiPaket, metodePengadaan, tanggalMulai, tanggalSelesai, status } = req.body;
+    const {
+      kodePaket,
+      kodeRUP,
+      namaPaket,
+      jenisPaket,
+      nilaiPaket,
+      metodePengadaan,
+      tanggalMulai,
+      tanggalSelesai,
+      status,
+    } = req.body;
 
     if (!kodePaket || !namaPaket || !jenisPaket || !nilaiPaket || !metodePengadaan) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -895,7 +1012,7 @@ app.post('/api/paket', authenticateToken, upload.single('dokumenKontrak'), async
 
     const tanggalMulaiDate = tanggalMulai ? new Date(tanggalMulai) : null;
     const tanggalSelesaiDate = tanggalSelesai ? new Date(tanggalSelesai) : null;
-    
+
     let lamaProyek = null;
     if (tanggalMulaiDate && tanggalSelesaiDate) {
       const diffTime = Math.abs(tanggalSelesaiDate.getTime() - tanggalMulaiDate.getTime());
@@ -974,7 +1091,7 @@ app.put('/api/paket/:id', authenticateToken, upload.single('dokumenKontrak'), as
 
     const tanggalMulaiDate = tanggalMulai ? new Date(tanggalMulai) : undefined;
     const tanggalSelesaiDate = tanggalSelesai ? new Date(tanggalSelesai) : undefined;
-    
+
     let lamaProyek = undefined;
     if (tanggalMulaiDate && tanggalSelesaiDate) {
       const diffTime = Math.abs(tanggalSelesaiDate.getTime() - tanggalMulaiDate.getTime());
@@ -1034,9 +1151,9 @@ app.delete('/api/paket/:id', authenticateToken, authorizeRoles('admin'), async (
   try {
     const { id } = req.params;
 
-    const paket = await prisma.paket.findUnique({ 
+    const paket = await prisma.paket.findUnique({
       where: { id },
-      include: { dokumen: true }
+      include: { dokumen: true },
     });
 
     if (!paket) {
@@ -1085,7 +1202,7 @@ app.delete('/api/paket/:id', authenticateToken, authorizeRoles('admin'), async (
 app.get('/api/laporan-itwasda', authenticateToken, async (req, res) => {
   try {
     const laporan = await prisma.laporanItwasda.findMany({
-      include: { 
+      include: {
         paket: { select: { kodePaket: true, namaPaket: true } },
         dokumen: true,
       },
@@ -1102,16 +1219,16 @@ app.get('/api/laporan-itwasda/:id', authenticateToken, async (req, res) => {
   try {
     const laporan = await prisma.laporanItwasda.findUnique({
       where: { id: req.params.id },
-      include: { 
+      include: {
         paket: { select: { kodePaket: true, namaPaket: true } },
         dokumen: true,
       },
     });
-    
+
     if (!laporan) {
       return res.status(404).json({ error: 'Laporan not found' });
     }
-    
+
     res.json(laporan);
   } catch (error) {
     console.error('Fetch laporan error:', error);
@@ -1121,8 +1238,9 @@ app.get('/api/laporan-itwasda/:id', authenticateToken, async (req, res) => {
 
 app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), async (req, res) => {
   try {
-    const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKualitasTemuan, auditor, pic } = req.body;
-    
+    const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKualitasTemuan, auditor, pic } =
+      req.body;
+
     if (!nomorLaporan || !jenisLaporan) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -1154,7 +1272,6 @@ app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), a
       },
     });
 
-    
     if (paketId) {
       try {
         await createTemuanForVendors({
@@ -1173,7 +1290,6 @@ app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), a
       }
     }
 
-    
     await prisma.auditLog.create({
       data: {
         userId: req.user!.id,
@@ -1189,7 +1305,7 @@ app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), a
     res.json({
       success: true,
       message: 'Laporan berhasil dibuat dan vendor telah diberitahu',
-      data: laporan
+      data: laporan,
     });
   } catch (error) {
     console.error('Create laporan itwasda error:', error);
@@ -1197,115 +1313,136 @@ app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), a
   }
 });
 
-app.put('/api/laporan-itwasda/:id', authenticateToken, upload.single('filePath'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKualitasTemuan, status, auditor, pic } = req.body;
+app.put(
+  '/api/laporan-itwasda/:id',
+  authenticateToken,
+  upload.single('filePath'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        nomorLaporan,
+        paketId,
+        jenisLaporan,
+        deskripsi,
+        tingkatKualitasTemuan,
+        status,
+        auditor,
+        pic,
+      } = req.body;
 
-    const existingLaporan = await prisma.laporanItwasda.findUnique({ where: { id } });
-    if (!existingLaporan) {
-      return res.status(404).json({ error: 'Laporan not found' });
-    }
-
-    // Check for duplicate nomorLaporan (excluding current)
-    if (nomorLaporan && nomorLaporan !== existingLaporan.nomorLaporan) {
-      const duplicateLaporan = await prisma.laporanItwasda.findUnique({ where: { nomorLaporan } });
-      if (duplicateLaporan) {
-        return res.status(400).json({ error: 'Nomor laporan already exists' });
+      const existingLaporan = await prisma.laporanItwasda.findUnique({ where: { id } });
+      if (!existingLaporan) {
+        return res.status(404).json({ error: 'Laporan not found' });
       }
-    }
 
-    const file = req.file;
-    let filePath = undefined;
-    if (file) {
-      // Delete old file if exists
-      if (existingLaporan.filePath) {
-        deleteFile(existingLaporan.filePath);
+      // Check for duplicate nomorLaporan (excluding current)
+      if (nomorLaporan && nomorLaporan !== existingLaporan.nomorLaporan) {
+        const duplicateLaporan = await prisma.laporanItwasda.findUnique({
+          where: { nomorLaporan },
+        });
+        if (duplicateLaporan) {
+          return res.status(400).json({ error: 'Nomor laporan already exists' });
+        }
       }
-      filePath = `/uploads/${file.filename}`;
+
+      const file = req.file;
+      let filePath = undefined;
+      if (file) {
+        // Delete old file if exists
+        if (existingLaporan.filePath) {
+          deleteFile(existingLaporan.filePath);
+        }
+        filePath = `/uploads/${file.filename}`;
+      }
+
+      const laporan = await prisma.laporanItwasda.update({
+        where: { id },
+        data: {
+          nomorLaporan: nomorLaporan || undefined,
+          paketId: paketId || undefined,
+          jenisLaporan: jenisLaporan || undefined,
+          deskripsi: deskripsi || undefined,
+          tingkatKualitasTemuan: tingkatKualitasTemuan || undefined,
+          status: status || undefined,
+          auditor: auditor || undefined,
+          pic: pic || undefined,
+          filePath,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPDATE',
+          entity: 'LAPORAN_ITWASDA',
+          entityId: laporan.id,
+          details: { nomorLaporan, jenisLaporan },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json(laporan);
+    } catch (error) {
+      console.error('Update laporan itwasda error:', error);
+      res.status(500).json({ error: 'Failed to update laporan itwasda' });
     }
-
-    const laporan = await prisma.laporanItwasda.update({
-      where: { id },
-      data: {
-        nomorLaporan: nomorLaporan || undefined,
-        paketId: paketId || undefined,
-        jenisLaporan: jenisLaporan || undefined,
-        deskripsi: deskripsi || undefined,
-        tingkatKualitasTemuan: tingkatKualitasTemuan || undefined,
-        status: status || undefined,
-        auditor: auditor || undefined,
-        pic: pic || undefined,
-        filePath,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'UPDATE',
-        entity: 'LAPORAN_ITWASDA',
-        entityId: laporan.id,
-        details: { nomorLaporan, jenisLaporan },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.json(laporan);
-  } catch (error) {
-    console.error('Update laporan itwasda error:', error);
-    res.status(500).json({ error: 'Failed to update laporan itwasda' });
   }
-});
+);
 
-app.delete('/api/laporan-itwasda/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
-  try {
-    const { id } = req.params;
+app.delete(
+  '/api/laporan-itwasda/:id',
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const laporan = await prisma.laporanItwasda.findUnique({ 
-      where: { id },
-      include: { dokumen: true }
-    });
+      const laporan = await prisma.laporanItwasda.findUnique({
+        where: { id },
+        include: { dokumen: true },
+      });
 
-    if (!laporan) {
-      return res.status(404).json({ error: 'Laporan not found' });
-    }
-
-    // Delete associated files
-    if (laporan.filePath) {
-      deleteFile(laporan.filePath);
-    }
-
-    for (const doc of laporan.dokumen) {
-      if (doc.filePath) {
-        deleteFile(doc.filePath);
+      if (!laporan) {
+        return res.status(404).json({ error: 'Laporan not found' });
       }
+
+      // Delete associated files
+      if (laporan.filePath) {
+        deleteFile(laporan.filePath);
+      }
+
+      for (const doc of laporan.dokumen) {
+        if (doc.filePath) {
+          deleteFile(doc.filePath);
+        }
+      }
+
+      await prisma.laporanItwasda.delete({ where: { id } });
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'DELETE',
+          entity: 'LAPORAN_ITWASDA',
+          entityId: id,
+          details: { nomorLaporan: laporan.nomorLaporan },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json({ message: 'Laporan Itwasda and associated files deleted successfully' });
+    } catch (error) {
+      console.error('Delete laporan itwasda error:', error);
+      res.status(500).json({ error: 'Failed to delete laporan itwasda' });
     }
-
-    await prisma.laporanItwasda.delete({ where: { id } });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'DELETE',
-        entity: 'LAPORAN_ITWASDA',
-        entityId: id,
-        details: { nomorLaporan: laporan.nomorLaporan },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.json({ message: 'Laporan Itwasda and associated files deleted successfully' });
-  } catch (error) {
-    console.error('Delete laporan itwasda error:', error);
-    res.status(500).json({ error: 'Failed to delete laporan itwasda' });
   }
-});
+);
 
 // ============================================
 // TEMUAN BPKP ROUTES
@@ -1314,7 +1451,7 @@ app.delete('/api/laporan-itwasda/:id', authenticateToken, authorizeRoles('admin'
 app.get('/api/temuan-bpkp', authenticateToken, async (req, res) => {
   try {
     const temuan = await prisma.temuanBPKP.findMany({
-      include: { 
+      include: {
         paket: { select: { kodePaket: true, namaPaket: true, status: true } },
         dokumen: true,
       },
@@ -1331,16 +1468,16 @@ app.get('/api/temuan-bpkp/:id', authenticateToken, async (req, res) => {
   try {
     const temuan = await prisma.temuanBPKP.findUnique({
       where: { id: req.params.id },
-      include: { 
+      include: {
         paket: { select: { kodePaket: true, namaPaket: true, status: true } },
         dokumen: true,
       },
     });
-    
+
     if (!temuan) {
       return res.status(404).json({ error: 'Temuan not found' });
     }
-    
+
     res.json(temuan);
   } catch (error) {
     console.error('Fetch temuan error:', error);
@@ -1350,8 +1487,9 @@ app.get('/api/temuan-bpkp/:id', authenticateToken, async (req, res) => {
 
 app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async (req, res) => {
   try {
-    const { nomorTemuan, paketId, jenisTemuan, deskripsi, tingkatKualitasTemuan, auditor, pic } = req.body;
-    
+    const { nomorTemuan, paketId, jenisTemuan, deskripsi, tingkatKualitasTemuan, auditor, pic } =
+      req.body;
+
     if (!nomorTemuan || !jenisTemuan) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -1383,7 +1521,6 @@ app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async
       },
     });
 
-    
     if (paketId) {
       try {
         await createTemuanForVendors({
@@ -1401,7 +1538,6 @@ app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async
       }
     }
 
-    
     await prisma.auditLog.create({
       data: {
         userId: req.user!.id,
@@ -1417,7 +1553,7 @@ app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async
     res.json({
       success: true,
       message: 'Temuan berhasil dibuat dan vendor telah diberitahu',
-      data: temuan
+      data: temuan,
     });
   } catch (error) {
     console.error('Create temuan bpkp error:', error);
@@ -1428,7 +1564,16 @@ app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async
 app.put('/api/temuan-bpkp/:id', authenticateToken, upload.single('filePath'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { nomorTemuan, paketId, jenisTemuan, deskripsi, tingkatKualitasTemuan, status, auditor, pic } = req.body;
+    const {
+      nomorTemuan,
+      paketId,
+      jenisTemuan,
+      deskripsi,
+      tingkatKualitasTemuan,
+      status,
+      auditor,
+      pic,
+    } = req.body;
 
     const existingTemuan = await prisma.temuanBPKP.findUnique({ where: { id } });
     if (!existingTemuan) {
@@ -1457,7 +1602,7 @@ app.put('/api/temuan-bpkp/:id', authenticateToken, upload.single('filePath'), as
       where: { id },
       data: {
         nomorTemuan: nomorTemuan || undefined,
-        paketId: paketId !== undefined ? (paketId || null) : undefined,
+        paketId: paketId !== undefined ? paketId || null : undefined,
         jenisTemuan: jenisTemuan || undefined,
         deskripsi: deskripsi || undefined,
         tingkatKualitasTemuan: tingkatKualitasTemuan || undefined,
@@ -1493,9 +1638,9 @@ app.delete('/api/temuan-bpkp/:id', authenticateToken, authorizeRoles('admin'), a
   try {
     const { id } = req.params;
 
-    const temuan = await prisma.temuanBPKP.findUnique({ 
+    const temuan = await prisma.temuanBPKP.findUnique({
       where: { id },
-      include: { dokumen: true }
+      include: { dokumen: true },
     });
 
     if (!temuan) {
@@ -1595,152 +1740,163 @@ app.get('/api/proyek-pupr/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/proyek-pupr', authenticateToken, upload.single('dokumenCatatan'), async (req, res) => {
-  try {
-    const {
-      namaProyek,
-      lokasi,
-      anggaran,
-      kontraktor,
-      tanggalMulai,
-      tanggalSelesai,
-      status,
-      progress,
-      deskripsiCatatan,
-      tingkatKualitasTemuan,
-    } = req.body;
-
-    if (!namaProyek || !lokasi || !anggaran || !tanggalMulai || !tanggalSelesai) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const file = req.file;
-    let dokumenCatatan = null;
-    if (file) {
-      dokumenCatatan = `/uploads/${file.filename}`;
-    }
-
-    const proyek = await prisma.proyekPUPR.create({
-      data: {
+app.post(
+  '/api/proyek-pupr',
+  authenticateToken,
+  upload.single('dokumenCatatan'),
+  async (req, res) => {
+    try {
+      const {
         namaProyek,
         lokasi,
-        anggaran: parseFloat(anggaran),
-        kontraktor: kontraktor || null,
-        tanggalMulai: new Date(tanggalMulai),
-        tanggalSelesai: new Date(tanggalSelesai),
-        status: status || 'PERENCANAAN',
-        progress: progress ? parseInt(progress) : 0,
-        deskripsiCatatan: deskripsiCatatan || null,
-        dokumenCatatan,
-        tingkatKualitasTemuan: tingkatKualitasTemuan || null,
-        createdBy: req.user!.id,
-      },
-    });
+        anggaran,
+        kontraktor,
+        tanggalMulai,
+        tanggalSelesai,
+        status,
+        progress,
+        deskripsiCatatan,
+        tingkatKualitasTemuan,
+      } = req.body;
 
-    if (tingkatKualitasTemuan && tingkatKualitasTemuan !== 'null') {
-      // Get paketId from namaProyek or lokasi matching (adjust sesuai logic lu)
-      // ATAU tambah field paketId di ProyekPUPR (recommended)
-      
-      // For now, skip PUPR temuan creation until paketId added
-      console.log('⚠️ PUPR temuan creation skipped (paketId not linked yet)');
-    }
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'CREATE',
-        entity: 'PROYEK_PUPR',
-        entityId: proyek.id,
-        details: { namaProyek, lokasi },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.status(201).json(proyek);
-  } catch (error) {
-    console.error('Create proyek error:', error);
-    res.status(500).json({ error: 'Failed to create proyek PUPR' });
-  }
-});
-
-app.put('/api/proyek-pupr/:id', authenticateToken, upload.single('dokumenCatatan'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      namaProyek,
-      lokasi,
-      anggaran,
-      kontraktor,
-      tanggalMulai,
-      tanggalSelesai,
-      status,
-      progress,
-      deskripsiCatatan,
-      tingkatKualitasTemuan,
-    } = req.body;
-
-    const existingProyek = await prisma.proyekPUPR.findUnique({ where: { id } });
-    if (!existingProyek) {
-      return res.status(404).json({ error: 'Proyek not found' });
-    }
-
-    const file = req.file;
-    let dokumenCatatan = undefined;
-    if (file) {
-      // Delete old file if exists
-      if (existingProyek.dokumenCatatan) {
-        deleteFile(existingProyek.dokumenCatatan);
+      if (!namaProyek || !lokasi || !anggaran || !tanggalMulai || !tanggalSelesai) {
+        return res.status(400).json({ error: 'Missing required fields' });
       }
-      dokumenCatatan = `/uploads/${file.filename}`;
+
+      const file = req.file;
+      let dokumenCatatan = null;
+      if (file) {
+        dokumenCatatan = `/uploads/${file.filename}`;
+      }
+
+      const proyek = await prisma.proyekPUPR.create({
+        data: {
+          namaProyek,
+          lokasi,
+          anggaran: parseFloat(anggaran),
+          kontraktor: kontraktor || null,
+          tanggalMulai: new Date(tanggalMulai),
+          tanggalSelesai: new Date(tanggalSelesai),
+          status: status || 'PERENCANAAN',
+          progress: progress ? parseInt(progress) : 0,
+          deskripsiCatatan: deskripsiCatatan || null,
+          dokumenCatatan,
+          tingkatKualitasTemuan: tingkatKualitasTemuan || null,
+          createdBy: req.user!.id,
+        },
+      });
+
+      if (tingkatKualitasTemuan && tingkatKualitasTemuan !== 'null') {
+        // Get paketId from namaProyek or lokasi matching (adjust sesuai logic lu)
+        // ATAU tambah field paketId di ProyekPUPR (recommended)
+
+        // For now, skip PUPR temuan creation until paketId added
+        console.log('⚠️ PUPR temuan creation skipped (paketId not linked yet)');
+      }
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'CREATE',
+          entity: 'PROYEK_PUPR',
+          entityId: proyek.id,
+          details: { namaProyek, lokasi },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.status(201).json(proyek);
+    } catch (error) {
+      console.error('Create proyek error:', error);
+      res.status(500).json({ error: 'Failed to create proyek PUPR' });
     }
-
-    const proyek = await prisma.proyekPUPR.update({
-      where: { id },
-      data: {
-        namaProyek: namaProyek || undefined,
-        lokasi: lokasi || undefined,
-        anggaran: anggaran ? parseFloat(anggaran) : undefined,
-        kontraktor: kontraktor !== undefined ? (kontraktor || null) : undefined,
-        tanggalMulai: tanggalMulai ? new Date(tanggalMulai) : undefined,
-        tanggalSelesai: tanggalSelesai ? new Date(tanggalSelesai) : undefined,
-        status: status ? String(status).toUpperCase() as any : undefined,
-        progress: progress !== undefined ? parseInt(progress) : undefined,
-        deskripsiCatatan: deskripsiCatatan !== undefined ? (deskripsiCatatan || null) : undefined,
-        dokumenCatatan,
-        tingkatKualitasTemuan: tingkatKualitasTemuan !== undefined ? (tingkatKualitasTemuan || null) : undefined,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'UPDATE',
-        entity: 'PROYEK_PUPR',
-        entityId: proyek.id,
-        details: { namaProyek, lokasi },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.json(proyek);
-  } catch (error) {
-    console.error('Update proyek error:', error);
-    res.status(500).json({ error: 'Failed to update proyek PUPR' });
   }
-});
+);
+
+app.put(
+  '/api/proyek-pupr/:id',
+  authenticateToken,
+  upload.single('dokumenCatatan'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        namaProyek,
+        lokasi,
+        anggaran,
+        kontraktor,
+        tanggalMulai,
+        tanggalSelesai,
+        status,
+        progress,
+        deskripsiCatatan,
+        tingkatKualitasTemuan,
+      } = req.body;
+
+      const existingProyek = await prisma.proyekPUPR.findUnique({ where: { id } });
+      if (!existingProyek) {
+        return res.status(404).json({ error: 'Proyek not found' });
+      }
+
+      const file = req.file;
+      let dokumenCatatan = undefined;
+      if (file) {
+        // Delete old file if exists
+        if (existingProyek.dokumenCatatan) {
+          deleteFile(existingProyek.dokumenCatatan);
+        }
+        dokumenCatatan = `/uploads/${file.filename}`;
+      }
+
+      const proyek = await prisma.proyekPUPR.update({
+        where: { id },
+        data: {
+          namaProyek: namaProyek || undefined,
+          lokasi: lokasi || undefined,
+          anggaran: anggaran ? parseFloat(anggaran) : undefined,
+          kontraktor: kontraktor !== undefined ? kontraktor || null : undefined,
+          tanggalMulai: tanggalMulai ? new Date(tanggalMulai) : undefined,
+          tanggalSelesai: tanggalSelesai ? new Date(tanggalSelesai) : undefined,
+          status: status ? (String(status).toUpperCase() as any) : undefined,
+          progress: progress !== undefined ? parseInt(progress) : undefined,
+          deskripsiCatatan: deskripsiCatatan !== undefined ? deskripsiCatatan || null : undefined,
+          dokumenCatatan,
+          tingkatKualitasTemuan:
+            tingkatKualitasTemuan !== undefined ? tingkatKualitasTemuan || null : undefined,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPDATE',
+          entity: 'PROYEK_PUPR',
+          entityId: proyek.id,
+          details: { namaProyek, lokasi },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json(proyek);
+    } catch (error) {
+      console.error('Update proyek error:', error);
+      res.status(500).json({ error: 'Failed to update proyek PUPR' });
+    }
+  }
+);
 
 app.delete('/api/proyek-pupr/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    const proyek = await prisma.proyekPUPR.findUnique({ 
+    const proyek = await prisma.proyekPUPR.findUnique({
       where: { id },
-      include: { dokumen: true }
+      include: { dokumen: true },
     });
 
     if (!proyek) {
@@ -1788,7 +1944,7 @@ app.delete('/api/proyek-pupr/:id', authenticateToken, authorizeRoles('admin'), a
 app.post('/api/vendor-paket', authenticateToken, async (req, res) => {
   try {
     const { vendorId, paketId, role } = req.body;
-    
+
     if (!vendorId || !paketId || !role) {
       return res.status(400).json({ error: 'vendorId, paketId, dan role wajib diisi' });
     }
@@ -1801,14 +1957,14 @@ app.post('/api/vendor-paket', authenticateToken, async (req, res) => {
       },
       include: {
         vendor: { select: { namaVendor: true, jenisVendor: true } },
-        paket: { select: { kodePaket: true, namaPaket: true } }
-      }
+        paket: { select: { kodePaket: true, namaPaket: true } },
+      },
     });
 
     res.json({
       success: true,
       message: 'Vendor berhasil ditambahkan ke paket',
-      data: vendorPaket
+      data: vendorPaket,
     });
   } catch (error) {
     console.error('Assign vendor to paket error:', error);
@@ -1822,8 +1978,8 @@ app.get('/api/paket/with-vendors', authenticateToken, async (req, res) => {
     const pakets = await prisma.paket.findMany({
       where: {
         vendorPakets: {
-          some: {} // Hanya paket yang punya minimal 1 vendor
-        }
+          some: {}, // Hanya paket yang punya minimal 1 vendor
+        },
       },
       include: {
         vendorPakets: {
@@ -1832,23 +1988,23 @@ app.get('/api/paket/with-vendors', authenticateToken, async (req, res) => {
               select: {
                 id: true,
                 namaVendor: true,
-                jenisVendor: true
-              }
-            }
-          }
+                jenisVendor: true,
+              },
+            },
+          },
         },
         _count: {
           select: {
-            vendorPakets: true
-          }
-        }
+            vendorPakets: true,
+          },
+        },
       },
-      orderBy: { namaPaket: 'asc' }
+      orderBy: { namaPaket: 'asc' },
     });
 
     res.json({
       success: true,
-      data: pakets
+      data: pakets,
     });
   } catch (error) {
     console.error('Fetch pakets with vendors error:', error);
@@ -1860,7 +2016,7 @@ app.get('/api/paket/with-vendors', authenticateToken, async (req, res) => {
 app.get('/api/paket/:paketId/vendors', authenticateToken, async (req, res) => {
   try {
     const { paketId } = req.params;
-    
+
     const vendors = await prisma.vendorPaket.findMany({
       where: { paketId },
       include: {
@@ -1870,15 +2026,15 @@ app.get('/api/paket/:paketId/vendors', authenticateToken, async (req, res) => {
             namaVendor: true,
             jenisVendor: true,
             kontak: true,
-            status: true
-          }
-        }
-      }
+            status: true,
+          },
+        },
+      },
     });
 
     res.json({
       success: true,
-      data: vendors
+      data: vendors,
     });
   } catch (error) {
     console.error('Fetch vendors by paket error:', error);
@@ -1903,16 +2059,16 @@ async function createTemuanForVendors(params: {
 }) {
   try {
     console.log(`🔄 Creating temuan for vendors in paket: ${params.paketId}`);
-    
+
     // 1. Get semua vendor yang terkait paket ini
     const vendorPakets = await prisma.vendorPaket.findMany({
-      where: { 
+      where: {
         paketId: params.paketId,
-        vendor: { status: 'AKTIF' } // Hanya vendor aktif
+        vendor: { status: 'AKTIF' }, // Hanya vendor aktif
       },
-      include: { 
-        vendor: true 
-      }
+      include: {
+        vendor: true,
+      },
     });
 
     if (vendorPakets.length === 0) {
@@ -1923,7 +2079,7 @@ async function createTemuanForVendors(params: {
     console.log(`📦 Found ${vendorPakets.length} vendors for this paket`);
 
     // 2. Create temuan untuk setiap vendor
-    const temuanPromises = vendorPakets.map(vp =>
+    const temuanPromises = vendorPakets.map((vp) =>
       prisma.temuanVendor.create({
         data: {
           vendorId: vp.vendorId,
@@ -1941,30 +2097,30 @@ async function createTemuanForVendors(params: {
           vendor: {
             select: {
               namaVendor: true,
-              jenisVendor: true
-            }
-          }
-        }
+              jenisVendor: true,
+            },
+          },
+        },
       })
     );
 
     const temuanList = await Promise.all(temuanPromises);
 
     // 3. Update vendor's temuan count
-    const updateVendorPromises = vendorPakets.map(vp =>
+    const updateVendorPromises = vendorPakets.map((vp) =>
       prisma.vendor.update({
         where: { id: vp.vendorId },
         data: {
           jumlahTemuan: { increment: 1 },
-          warningTemuan: true // Set warning jika ada temuan baru
-        }
+          warningTemuan: true, // Set warning jika ada temuan baru
+        },
       })
     );
 
     await Promise.all(updateVendorPromises);
 
     // 4. Create notifications untuk vendor
-    const notificationPromises = temuanList.map(temuan =>
+    const notificationPromises = temuanList.map((temuan) =>
       prisma.notification.create({
         data: {
           vendorId: temuan.vendorId,
@@ -1973,7 +2129,7 @@ async function createTemuanForVendors(params: {
           message: `Terdapat temuan audit baru: ${params.judul}. Status: ${params.tingkat}. Silakan ditanggapi.`,
           entityType: 'TEMUAN',
           entityId: temuan.id,
-        }
+        },
       })
     );
 
@@ -1994,12 +2150,13 @@ async function createTemuanForVendors(params: {
 // UPDATE: Laporan Itwasda - Wajib paketId dan auto-create temuan
 app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), async (req, res) => {
   try {
-    const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKualitasTemuan, auditor, pic } = req.body;
-    
+    const { nomorLaporan, paketId, jenisLaporan, deskripsi, tingkatKualitasTemuan, auditor, pic } =
+      req.body;
+
     if (!nomorLaporan || !jenisLaporan || !paketId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'nomorLaporan, jenisLaporan, dan paketId wajib diisi' 
+        error: 'nomorLaporan, jenisLaporan, dan paketId wajib diisi',
       });
     }
 
@@ -2011,23 +2168,23 @@ app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), a
 
     // Verify paket exists and has vendors
     const paketWithVendors = await prisma.paket.findFirst({
-      where: { 
+      where: {
         id: paketId,
         vendorPakets: {
-          some: {}
-        }
+          some: {},
+        },
       },
       include: {
         _count: {
-          select: { vendorPakets: true }
-        }
-      }
+          select: { vendorPakets: true },
+        },
+      },
     });
 
     if (!paketWithVendors) {
       return res.status(400).json({
         success: false,
-        error: 'Paket tidak ditemukan atau tidak memiliki vendor'
+        error: 'Paket tidak ditemukan atau tidak memiliki vendor',
       });
     }
 
@@ -2087,13 +2244,13 @@ app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), a
     res.json({
       success: true,
       message: 'Laporan berhasil dibuat dan vendor telah diberitahu',
-      data: laporan
+      data: laporan,
     });
   } catch (error) {
     console.error('Create laporan itwasda error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Failed to create laporan itwasda' 
+      error: 'Failed to create laporan itwasda',
     });
   }
 });
@@ -2101,12 +2258,13 @@ app.post('/api/laporan-itwasda', authenticateToken, upload.single('filePath'), a
 // UPDATE: Temuan BPKP - Wajib paketId dan auto-create temuan
 app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async (req, res) => {
   try {
-    const { nomorTemuan, paketId, jenisTemuan, deskripsi, tingkatKualitasTemuan, auditor, pic } = req.body;
-    
+    const { nomorTemuan, paketId, jenisTemuan, deskripsi, tingkatKualitasTemuan, auditor, pic } =
+      req.body;
+
     if (!nomorTemuan || !jenisTemuan || !paketId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'nomorTemuan, jenisTemuan, dan paketId wajib diisi' 
+        error: 'nomorTemuan, jenisTemuan, dan paketId wajib diisi',
       });
     }
 
@@ -2118,18 +2276,18 @@ app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async
 
     // Verify paket exists and has vendors
     const paketWithVendors = await prisma.paket.findFirst({
-      where: { 
+      where: {
         id: paketId,
         vendorPakets: {
-          some: {}
-        }
-      }
+          some: {},
+        },
+      },
     });
 
     if (!paketWithVendors) {
       return res.status(400).json({
         success: false,
-        error: 'Paket tidak ditemukan atau tidak memiliki vendor'
+        error: 'Paket tidak ditemukan atau tidak memiliki vendor',
       });
     }
 
@@ -2188,13 +2346,13 @@ app.post('/api/temuan-bpkp', authenticateToken, upload.single('filePath'), async
     res.json({
       success: true,
       message: 'Temuan berhasil dibuat dan vendor telah diberitahu',
-      data: temuan
+      data: temuan,
     });
   } catch (error) {
     console.error('Create temuan bpkp error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Failed to create temuan bpkp' 
+      error: 'Failed to create temuan bpkp',
     });
   }
 });
@@ -2208,7 +2366,7 @@ app.get('/api/vendors/:vendorId/temuan', authenticateToken, async (req, res) => 
   try {
     const { vendorId } = req.params;
     const { status, tingkat } = req.query;
-    
+
     const temuan = await prisma.temuanVendor.findMany({
       where: {
         vendorId,
@@ -2220,66 +2378,67 @@ app.get('/api/vendors/:vendorId/temuan', authenticateToken, async (req, res) => 
           select: {
             kodePaket: true,
             namaPaket: true,
-          }
-        }
+          },
+        },
       },
-      orderBy: { tanggalTemuan: 'desc' }
+      orderBy: { tanggalTemuan: 'desc' },
     });
-    
+
     res.json({
       success: true,
       data: temuan,
       meta: {
         total: temuan.length,
-        baru: temuan.filter(t => t.status === 'BARU').length,
-        dalamPerbaikan: temuan.filter(t => t.status === 'DALAM_PERBAIKAN').length,
-        diperbaiki: temuan.filter(t => t.status === 'DIPERBAIKI').length,
-      }
+        baru: temuan.filter((t) => t.status === 'BARU').length,
+        dalamPerbaikan: temuan.filter((t) => t.status === 'DALAM_PERBAIKAN').length,
+        diperbaiki: temuan.filter((t) => t.status === 'DIPERBAIKI').length,
+      },
     });
   } catch (error) {
     console.error('Fetch vendor temuan error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch temuan',
-      details: error.message
+      details: error.message,
     });
   }
 });
 
 // Vendor respond to temuan
-app.post('/api/vendors/:vendorId/temuan/:temuanId/response', 
-  authenticateToken, 
-  upload.array('dokumen', 5), 
+app.post(
+  '/api/vendors/:vendorId/temuan/:temuanId/response',
+  authenticateToken,
+  upload.array('dokumen', 5),
   async (req, res) => {
     try {
       const { vendorId, temuanId } = req.params;
       const { tanggapan } = req.body;
       const files = req.files as Express.Multer.File[];
-      
+
       if (!tanggapan) {
         return res.status(400).json({
           success: false,
-          error: 'Tanggapan wajib diisi'
+          error: 'Tanggapan wajib diisi',
         });
       }
 
       // Verify temuan belongs to vendor
       const temuan = await prisma.temuanVendor.findFirst({
-        where: { 
+        where: {
           id: temuanId,
-          vendorId 
-        }
+          vendorId,
+        },
       });
 
       if (!temuan) {
         return res.status(404).json({
           success: false,
-          error: 'Temuan tidak ditemukan'
+          error: 'Temuan tidak ditemukan',
         });
       }
 
-      const dokumenPaths = files ? files.map(f => `/uploads/${f.filename}`) : [];
-      
+      const dokumenPaths = files ? files.map((f) => `/uploads/${f.filename}`) : [];
+
       const updatedTemuan = await prisma.temuanVendor.update({
         where: { id: temuanId },
         data: {
@@ -2287,32 +2446,33 @@ app.post('/api/vendors/:vendorId/temuan/:temuanId/response',
           dokumenPerbaikan: dokumenPaths,
           status: 'DALAM_PERBAIKAN',
           tanggalDitanggapi: new Date(),
-        }
+        },
       });
-      
+
       // Notify auditor (get from source)
       let auditorUserId = null;
       if (temuan.sourceType === 'ITWASDA') {
         const laporan = await prisma.laporanItwasda.findUnique({
           where: { id: temuan.sourceId },
-          select: { auditor: true }
+          select: { auditor: true },
         });
         // TODO: Map auditor name to user ID if needed
       }
-      
+
       res.json({
         success: true,
         message: 'Tanggapan berhasil disimpan',
-        data: updatedTemuan
+        data: updatedTemuan,
       });
     } catch (error) {
       console.error('Respond temuan error:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to submit response'
+        error: 'Failed to submit response',
       });
     }
-});
+  }
+);
 
 // GET SINGLE TEMUAN DETAIL
 // ============================================
@@ -2320,11 +2480,11 @@ app.post('/api/vendors/:vendorId/temuan/:temuanId/response',
 app.get('/api/vendors/:vendorId/temuan/:temuanId', authenticateToken, async (req, res) => {
   try {
     const { vendorId, temuanId } = req.params;
-    
+
     const temuan = await prisma.temuanVendor.findFirst({
-      where: { 
+      where: {
         id: temuanId,
-        vendorId 
+        vendorId,
       },
       include: {
         paket: {
@@ -2332,36 +2492,36 @@ app.get('/api/vendors/:vendorId/temuan/:temuanId', authenticateToken, async (req
             id: true,
             kodePaket: true,
             namaPaket: true,
-            status: true
-          }
+            status: true,
+          },
         },
         vendor: {
           select: {
             id: true,
             namaVendor: true,
-            jenisVendor: true
-          }
-        }
-      }
+            jenisVendor: true,
+          },
+        },
+      },
     });
 
     if (!temuan) {
       return res.status(404).json({
         success: false,
-        error: 'Temuan tidak ditemukan atau tidak terkait dengan vendor ini'
+        error: 'Temuan tidak ditemukan atau tidak terkait dengan vendor ini',
       });
     }
 
     res.json({
       success: true,
-      data: temuan
+      data: temuan,
     });
   } catch (error) {
     console.error('Fetch temuan detail error:', error);
     res.status(500).json({
       success: false,
       error: 'Gagal mengambil detail temuan',
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -2370,34 +2530,35 @@ app.get('/api/vendors/:vendorId/temuan/:temuanId', authenticateToken, async (req
 // UPDATE: Fix file upload array response
 // ============================================
 
-app.post('/api/vendors/:vendorId/temuan/:temuanId/response', 
-  authenticateToken, 
+app.post(
+  '/api/vendors/:vendorId/temuan/:temuanId/response',
+  authenticateToken,
   upload.array('dokumen', 5),
   async (req, res) => {
     try {
       const { vendorId, temuanId } = req.params;
       const { tanggapan } = req.body;
       const files = req.files as Express.Multer.File[];
-      
+
       if (!tanggapan || !tanggapan.trim()) {
         return res.status(400).json({
           success: false,
-          error: 'Tanggapan wajib diisi'
+          error: 'Tanggapan wajib diisi',
         });
       }
 
       // Verify temuan belongs to vendor
       const temuan = await prisma.temuanVendor.findFirst({
-        where: { 
+        where: {
           id: temuanId,
-          vendorId 
-        }
+          vendorId,
+        },
       });
 
       if (!temuan) {
         return res.status(404).json({
           success: false,
-          error: 'Temuan tidak ditemukan atau tidak terkait dengan vendor ini'
+          error: 'Temuan tidak ditemukan atau tidak terkait dengan vendor ini',
         });
       }
 
@@ -2405,19 +2566,16 @@ app.post('/api/vendors/:vendorId/temuan/:temuanId/response',
       if (temuan.status === 'DIPERBAIKI') {
         return res.status(400).json({
           success: false,
-          error: 'Temuan sudah diselesaikan, tidak bisa ditanggapi lagi'
+          error: 'Temuan sudah diselesaikan, tidak bisa ditanggapi lagi',
         });
       }
 
       // Build dokumen paths
-      const dokumenPaths = files && files.length > 0 
-        ? files.map(f => `/uploads/${f.filename}`) 
-        : [];
-      
+      const dokumenPaths =
+        files && files.length > 0 ? files.map((f) => `/uploads/${f.filename}`) : [];
+
       // Merge with existing dokumen if any (allow multiple responses)
-      const existingDokumen = Array.isArray(temuan.dokumenPerbaikan) 
-        ? temuan.dokumenPerbaikan 
-        : [];
+      const existingDokumen = Array.isArray(temuan.dokumenPerbaikan) ? temuan.dokumenPerbaikan : [];
       const allDokumen = [...existingDokumen, ...dokumenPaths];
 
       // Update temuan
@@ -2433,22 +2591,22 @@ app.post('/api/vendors/:vendorId/temuan/:temuanId/response',
           paket: {
             select: {
               kodePaket: true,
-              namaPaket: true
-            }
-          }
-        }
+              namaPaket: true,
+            },
+          },
+        },
       });
-      
+
       // Create notification for auditor (get original auditor from source)
       try {
         let auditorNotification = null;
-        
+
         if (temuan.sourceType === 'ITWASDA') {
           const laporan = await prisma.laporanItwasda.findUnique({
             where: { id: temuan.sourceId },
-            select: { auditor: true, nomorLaporan: true }
+            select: { auditor: true, nomorLaporan: true },
           });
-          
+
           // TODO: Map auditor name to userId if needed
           // For now, just log it
           console.log(`📧 Notify auditor: ${laporan?.auditor} for temuan ${temuan.nomorTemuan}`);
@@ -2457,32 +2615,33 @@ app.post('/api/vendors/:vendorId/temuan/:temuanId/response',
         console.error('Failed to create auditor notification:', notifError);
         // Don't fail the main operation
       }
-      
+
       res.json({
         success: true,
         message: 'Tanggapan berhasil disimpan',
-        data: updatedTemuan
+        data: updatedTemuan,
       });
     } catch (error) {
       console.error('Submit response error:', error);
       res.status(500).json({
         success: false,
         error: 'Gagal menyimpan tanggapan',
-        details: error.message
+        details: error.message,
       });
     }
-});
+  }
+);
 
 // Auditor verify vendor response
 app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, res) => {
   try {
     const { temuanId } = req.params;
     const { status, catatan } = req.body; // status: 'DIPERBAIKI' | 'DITOLAK'
-    
+
     if (!status || !['DIPERBAIKI', 'DITOLAK'].includes(status)) {
       return res.status(400).json({
         success: false,
-        error: 'Status harus DIPERBAIKI atau DITOLAK'
+        error: 'Status harus DIPERBAIKI atau DITOLAK',
       });
     }
 
@@ -2491,9 +2650,9 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
       data: {
         status,
         tanggalSelesai: status === 'DIPERBAIKI' ? new Date() : null,
-      }
+      },
     });
-    
+
     // Update vendor warning if approved
     if (status === 'DIPERBAIKI') {
       const vendor = await prisma.vendor.findUnique({
@@ -2501,20 +2660,20 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
         include: {
           temuanVendor: {
             where: {
-              status: { in: ['BARU', 'DALAM_PERBAIKAN'] }
-            }
-          }
-        }
+              status: { in: ['BARU', 'DALAM_PERBAIKAN'] },
+            },
+          },
+        },
       });
-      
+
       await prisma.vendor.update({
         where: { id: temuan.vendorId },
         data: {
           warningTemuan: (vendor?.temuanVendor.length || 0) > 0,
-          jumlahTemuan: { decrement: 1 }
-        }
+          jumlahTemuan: { decrement: 1 },
+        },
       });
-      
+
       // Notify vendor
       await prisma.notification.create({
         data: {
@@ -2524,7 +2683,7 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
           message: catatan || `Temuan ${temuan.nomorTemuan} telah diselesaikan`,
           entityType: 'TEMUAN',
           entityId: temuanId,
-        }
+        },
       });
     } else {
       // Notify vendor (rejected)
@@ -2533,23 +2692,24 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
           vendorId: temuan.vendorId,
           type: 'TEMUAN_REJECTED',
           title: 'Perbaikan Ditolak',
-          message: catatan || `Perbaikan temuan ${temuan.nomorTemuan} ditolak. Silakan perbaiki kembali.`,
+          message:
+            catatan || `Perbaikan temuan ${temuan.nomorTemuan} ditolak. Silakan perbaiki kembali.`,
           entityType: 'TEMUAN',
           entityId: temuanId,
-        }
+        },
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Verifikasi berhasil',
-      data: temuan
+      data: temuan,
     });
   } catch (error) {
     console.error('Verify temuan error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to verify temuan'
+      error: 'Failed to verify temuan',
     });
   }
 });
@@ -2562,7 +2722,7 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
 app.get('/api/notifications', authenticateToken, async (req, res) => {
   try {
     const { userId, vendorId } = req.query;
-    
+
     const notifications = await prisma.notification.findMany({
       where: {
         ...(userId && { userId: userId as string }),
@@ -2571,16 +2731,16 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
-    
+
     res.json({
       success: true,
-      data: notifications
+      data: notifications,
     });
   } catch (error) {
     console.error('Fetch notifications error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch notifications'
+      error: 'Failed to fetch notifications',
     });
   }
 });
@@ -2589,24 +2749,24 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
 app.post('/api/notifications/:id/read', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await prisma.notification.update({
       where: { id },
       data: {
         isRead: true,
         readAt: new Date(),
-      }
+      },
     });
-    
+
     res.json({
       success: true,
-      message: 'Notification marked as read'
+      message: 'Notification marked as read',
     });
   } catch (error) {
     console.error('Mark read error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to mark as read'
+      error: 'Failed to mark as read',
     });
   }
 });
@@ -2618,13 +2778,13 @@ app.post('/api/notifications/:id/read', authenticateToken, async (req, res) => {
 app.get('/api/vendor', authenticateToken, async (req, res) => {
   try {
     const { jenis } = req.query;
-    
+
     // Build where clause
     const whereClause: any = {};
     if (jenis) {
       whereClause.jenisVendor = jenis as string;
     }
-    
+
     const vendors = await prisma.vendor.findMany({
       where: whereClause,
       include: {
@@ -2633,39 +2793,39 @@ app.get('/api/vendor', authenticateToken, async (req, res) => {
             paket: {
               select: {
                 kodePaket: true,
-                namaPaket: true
-              }
-            }
-          }
+                namaPaket: true,
+              },
+            },
+          },
         },
         dokumen: true,
         temuanVendor: {
-          where: { 
-            status: { in: ['BARU', 'DALAM_PERBAIKAN'] } 
+          where: {
+            status: { in: ['BARU', 'DALAM_PERBAIKAN'] },
           },
-          orderBy: { tanggalTemuan: 'desc' }
+          orderBy: { tanggalTemuan: 'desc' },
         },
         notifications: {
           where: { isRead: false },
-          orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' },
         },
         _count: {
           select: {
             temuanVendor: true,
-            notifications: true
-          }
-        }
+            notifications: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
-    
+
     // CRITICAL FIX: Return array directly, not wrapped in object
     res.json(vendors);
   } catch (error) {
     console.error('Fetch vendor error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch vendor',
-      details: error.message 
+      details: error.message,
     });
   }
 });
@@ -2673,7 +2833,7 @@ app.get('/api/vendor', authenticateToken, async (req, res) => {
 app.get('/api/vendor/:id/detail', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const vendor = await prisma.vendor.findUnique({
       where: { id },
       include: {
@@ -2685,10 +2845,10 @@ app.get('/api/vendor/:id/detail', authenticateToken, async (req, res) => {
                 kodePaket: true,
                 namaPaket: true,
                 jenisPaket: true,
-                status: true
-              }
-            }
-          }
+                status: true,
+              },
+            },
+          },
         },
         dokumen: true,
         temuanVendor: {
@@ -2696,28 +2856,28 @@ app.get('/api/vendor/:id/detail', authenticateToken, async (req, res) => {
             paket: {
               select: {
                 kodePaket: true,
-                namaPaket: true
-              }
-            }
+                namaPaket: true,
+              },
+            },
           },
-          orderBy: { tanggalTemuan: 'desc' }
+          orderBy: { tanggalTemuan: 'desc' },
         },
         notifications: {
           orderBy: { createdAt: 'desc' },
-          take: 20
+          take: 20,
         },
         _count: {
           select: {
             temuanVendor: true,
-            vendorPakets: true
-          }
-        }
-      }
+            vendorPakets: true,
+          },
+        },
+      },
     });
 
     if (!vendor) {
       return res.status(404).json({
-        error: 'Vendor not found'
+        error: 'Vendor not found',
       });
     }
 
@@ -2726,25 +2886,25 @@ app.get('/api/vendor/:id/detail', authenticateToken, async (req, res) => {
     console.error('Fetch vendor detail error:', error);
     res.status(500).json({
       error: 'Failed to fetch vendor detail',
-      details: error.message
+      details: error.message,
     });
   }
 });
 
 app.get('/api/vendor/:id', authenticateToken, async (req, res) => {
   try {
-    const vendor = await prisma.vendor.findUnique({ 
+    const vendor = await prisma.vendor.findUnique({
       where: { id: req.params.id },
       include: {
         paket: { select: { kodePaket: true, namaPaket: true } },
         dokumen: true,
       },
     });
-    
+
     if (!vendor) {
       return res.status(404).json({ error: 'Vendor not found' });
     }
-    
+
     res.json(vendor);
   } catch (error) {
     console.error('Fetch vendor error:', error);
@@ -2752,210 +2912,222 @@ app.get('/api/vendor/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/vendor', authenticateToken, upload.fields([
-  { name: 'dokumenDED', maxCount: 1 },
-  { name: 'dokumenLaporan', maxCount: 1 },
-  { name: 'uploadDokumen', maxCount: 1 },
-  { name: 'uploadFoto', maxCount: 1 }
-]), async (req, res) => {
-  try {
-    const {
-      namaVendor,
-      jenisVendor,
-      nomorIzin,
-      spesialisasi,
-      kontak,
-      alamat,
-      status,
-      noKontrak,
-      deskripsi,
-      lamaKontrak,
-      namaProyek,
-      deskripsiLaporan,
-      deskripsiProgress,
-    } = req.body;
-    
-    if (!namaVendor || !jenisVendor || !nomorIzin) {
-      return res.status(400).json({ error: 'Missing required fields: namaVendor, jenisVendor, nomorIzin' });
-    }
+app.post(
+  '/api/vendor',
+  authenticateToken,
+  upload.fields([
+    { name: 'dokumenDED', maxCount: 1 },
+    { name: 'dokumenLaporan', maxCount: 1 },
+    { name: 'uploadDokumen', maxCount: 1 },
+    { name: 'uploadFoto', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const {
+        namaVendor,
+        jenisVendor,
+        nomorIzin,
+        spesialisasi,
+        kontak,
+        alamat,
+        status,
+        noKontrak,
+        deskripsi,
+        lamaKontrak,
+        namaProyek,
+        deskripsiLaporan,
+        deskripsiProgress,
+      } = req.body;
 
-    // Check for duplicate nomorIzin
-    const existingVendor = await prisma.vendor.findUnique({ where: { nomorIzin } });
-    if (existingVendor) {
-      return res.status(400).json({ error: 'Nomor izin already exists' });
-    }
+      if (!namaVendor || !jenisVendor || !nomorIzin) {
+        return res
+          .status(400)
+          .json({ error: 'Missing required fields: namaVendor, jenisVendor, nomorIzin' });
+      }
 
-    // Handle file uploads
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    
-    const vendorData: any = {
-      namaVendor,
-      jenisVendor,
-      nomorIzin,
-      spesialisasi: spesialisasi || null,
-      kontak: kontak || null,
-      alamat: alamat || null,
-      status: status || 'AKTIF',
-      noKontrak: noKontrak || null,
-      deskripsi: deskripsi || null,
-      lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : null,
-      namaProyek: namaProyek || null,
-      deskripsiLaporan: deskripsiLaporan || null,
-      deskripsiProgress: deskripsiProgress || null,
-      warningTemuan: false,
-      jumlahTemuan: 0,
-    };
-
-    // Add file paths if uploaded
-    if (files?.dokumenDED?.[0]) {
-      vendorData.dokumenDED = `/uploads/${files.dokumenDED[0].filename}`;
-    }
-    if (files?.dokumenLaporan?.[0]) {
-      vendorData.dokumenLaporan = `/uploads/${files.dokumenLaporan[0].filename}`;
-    }
-    if (files?.uploadDokumen?.[0]) {
-      vendorData.uploadDokumen = `/uploads/${files.uploadDokumen[0].filename}`;
-    }
-    if (files?.uploadFoto?.[0]) {
-      vendorData.uploadFoto = `/uploads/${files.uploadFoto[0].filename}`;
-    }
-
-    const vendor = await prisma.vendor.create({
-      data: vendorData,
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'CREATE',
-        entity: 'VENDOR',
-        entityId: vendor.id,
-        details: { namaVendor, jenisVendor },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.json(vendor);
-  } catch (error) {
-    console.error('Create vendor error:', error);
-    res.status(500).json({ 
-      error: 'Failed to create vendor',
-      details: error.message 
-    });
-  }
-});
-
-app.put('/api/vendor/:id', authenticateToken, upload.fields([
-  { name: 'dokumenDED', maxCount: 1 },
-  { name: 'dokumenLaporan', maxCount: 1 },
-  { name: 'uploadDokumen', maxCount: 1 },
-  { name: 'uploadFoto', maxCount: 1 }
-]), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      namaVendor,
-      jenisVendor,
-      nomorIzin,
-      spesialisasi,
-      kontak,
-      alamat,
-      status,
-      noKontrak,
-      deskripsi,
-      lamaKontrak,
-      namaProyek,
-      deskripsiLaporan,
-      deskripsiProgress,
-    } = req.body;
-
-    const existingVendor = await prisma.vendor.findUnique({ where: { id } });
-    if (!existingVendor) {
-      return res.status(404).json({ error: 'Vendor not found' });
-    }
-
-    // Check for duplicate nomorIzin (excluding current)
-    if (nomorIzin && nomorIzin !== existingVendor.nomorIzin) {
-      const duplicateVendor = await prisma.vendor.findUnique({ where: { nomorIzin } });
-      if (duplicateVendor) {
+      // Check for duplicate nomorIzin
+      const existingVendor = await prisma.vendor.findUnique({ where: { nomorIzin } });
+      if (existingVendor) {
         return res.status(400).json({ error: 'Nomor izin already exists' });
       }
-    }
 
-    // Handle file uploads
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const updateData: any = {
-      namaVendor: namaVendor || undefined,
-      jenisVendor: jenisVendor || undefined,
-      nomorIzin: nomorIzin || undefined,
-      spesialisasi: spesialisasi !== undefined ? (spesialisasi || null) : undefined,
-      kontak: kontak !== undefined ? (kontak || null) : undefined,
-      alamat: alamat !== undefined ? (alamat || null) : undefined,
-      status: status || undefined,
-      noKontrak: noKontrak !== undefined ? (noKontrak || null) : undefined,
-      deskripsi: deskripsi !== undefined ? (deskripsi || null) : undefined,
-      lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : undefined,
-      namaProyek: namaProyek !== undefined ? (namaProyek || null) : undefined,
-      deskripsiLaporan: deskripsiLaporan !== undefined ? (deskripsiLaporan || null) : undefined,
-      deskripsiProgress: deskripsiProgress !== undefined ? (deskripsiProgress || null) : undefined,
-      updatedAt: new Date(),
-    };
+      // Handle file uploads
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // Add file paths if uploaded
-    if (files?.dokumenDED?.[0]) {
-      if (existingVendor.dokumenDED) deleteFile(existingVendor.dokumenDED);
-      updateData.dokumenDED = `/uploads/${files.dokumenDED[0].filename}`;
-    }
-    if (files?.dokumenLaporan?.[0]) {
-      if (existingVendor.dokumenLaporan) deleteFile(existingVendor.dokumenLaporan);
-      updateData.dokumenLaporan = `/uploads/${files.dokumenLaporan[0].filename}`;
-    }
-    if (files?.uploadDokumen?.[0]) {
-      if (existingVendor.uploadDokumen) deleteFile(existingVendor.uploadDokumen);
-      updateData.uploadDokumen = `/uploads/${files.uploadDokumen[0].filename}`;
-    }
-    if (files?.uploadFoto?.[0]) {
-      if (existingVendor.uploadFoto) deleteFile(existingVendor.uploadFoto);
-      updateData.uploadFoto = `/uploads/${files.uploadFoto[0].filename}`;
-    }
+      const vendorData: any = {
+        namaVendor,
+        jenisVendor,
+        nomorIzin,
+        spesialisasi: spesialisasi || null,
+        kontak: kontak || null,
+        alamat: alamat || null,
+        status: status || 'AKTIF',
+        noKontrak: noKontrak || null,
+        deskripsi: deskripsi || null,
+        lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : null,
+        namaProyek: namaProyek || null,
+        deskripsiLaporan: deskripsiLaporan || null,
+        deskripsiProgress: deskripsiProgress || null,
+        warningTemuan: false,
+        jumlahTemuan: 0,
+      };
 
-    const vendor = await prisma.vendor.update({
-      where: { id },
-      data: updateData,
-    });
+      // Add file paths if uploaded
+      if (files?.dokumenDED?.[0]) {
+        vendorData.dokumenDED = `/uploads/${files.dokumenDED[0].filename}`;
+      }
+      if (files?.dokumenLaporan?.[0]) {
+        vendorData.dokumenLaporan = `/uploads/${files.dokumenLaporan[0].filename}`;
+      }
+      if (files?.uploadDokumen?.[0]) {
+        vendorData.uploadDokumen = `/uploads/${files.uploadDokumen[0].filename}`;
+      }
+      if (files?.uploadFoto?.[0]) {
+        vendorData.uploadFoto = `/uploads/${files.uploadFoto[0].filename}`;
+      }
 
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'UPDATE',
-        entity: 'VENDOR',
-        entityId: vendor.id,
-        details: { namaVendor, jenisVendor },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
+      const vendor = await prisma.vendor.create({
+        data: vendorData,
+      });
 
-    res.json(vendor);
-  } catch (error) {
-    console.error('Update vendor error:', error);
-    res.status(500).json({ 
-      error: 'Failed to update vendor',
-      details: error.message 
-    });
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'CREATE',
+          entity: 'VENDOR',
+          entityId: vendor.id,
+          details: { namaVendor, jenisVendor },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json(vendor);
+    } catch (error) {
+      console.error('Create vendor error:', error);
+      res.status(500).json({
+        error: 'Failed to create vendor',
+        details: error.message,
+      });
+    }
   }
-});
+);
+
+app.put(
+  '/api/vendor/:id',
+  authenticateToken,
+  upload.fields([
+    { name: 'dokumenDED', maxCount: 1 },
+    { name: 'dokumenLaporan', maxCount: 1 },
+    { name: 'uploadDokumen', maxCount: 1 },
+    { name: 'uploadFoto', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        namaVendor,
+        jenisVendor,
+        nomorIzin,
+        spesialisasi,
+        kontak,
+        alamat,
+        status,
+        noKontrak,
+        deskripsi,
+        lamaKontrak,
+        namaProyek,
+        deskripsiLaporan,
+        deskripsiProgress,
+      } = req.body;
+
+      const existingVendor = await prisma.vendor.findUnique({ where: { id } });
+      if (!existingVendor) {
+        return res.status(404).json({ error: 'Vendor not found' });
+      }
+
+      // Check for duplicate nomorIzin (excluding current)
+      if (nomorIzin && nomorIzin !== existingVendor.nomorIzin) {
+        const duplicateVendor = await prisma.vendor.findUnique({ where: { nomorIzin } });
+        if (duplicateVendor) {
+          return res.status(400).json({ error: 'Nomor izin already exists' });
+        }
+      }
+
+      // Handle file uploads
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const updateData: any = {
+        namaVendor: namaVendor || undefined,
+        jenisVendor: jenisVendor || undefined,
+        nomorIzin: nomorIzin || undefined,
+        spesialisasi: spesialisasi !== undefined ? spesialisasi || null : undefined,
+        kontak: kontak !== undefined ? kontak || null : undefined,
+        alamat: alamat !== undefined ? alamat || null : undefined,
+        status: status || undefined,
+        noKontrak: noKontrak !== undefined ? noKontrak || null : undefined,
+        deskripsi: deskripsi !== undefined ? deskripsi || null : undefined,
+        lamaKontrak: lamaKontrak ? parseInt(lamaKontrak) : undefined,
+        namaProyek: namaProyek !== undefined ? namaProyek || null : undefined,
+        deskripsiLaporan: deskripsiLaporan !== undefined ? deskripsiLaporan || null : undefined,
+        deskripsiProgress: deskripsiProgress !== undefined ? deskripsiProgress || null : undefined,
+        updatedAt: new Date(),
+      };
+
+      // Add file paths if uploaded
+      if (files?.dokumenDED?.[0]) {
+        if (existingVendor.dokumenDED) deleteFile(existingVendor.dokumenDED);
+        updateData.dokumenDED = `/uploads/${files.dokumenDED[0].filename}`;
+      }
+      if (files?.dokumenLaporan?.[0]) {
+        if (existingVendor.dokumenLaporan) deleteFile(existingVendor.dokumenLaporan);
+        updateData.dokumenLaporan = `/uploads/${files.dokumenLaporan[0].filename}`;
+      }
+      if (files?.uploadDokumen?.[0]) {
+        if (existingVendor.uploadDokumen) deleteFile(existingVendor.uploadDokumen);
+        updateData.uploadDokumen = `/uploads/${files.uploadDokumen[0].filename}`;
+      }
+      if (files?.uploadFoto?.[0]) {
+        if (existingVendor.uploadFoto) deleteFile(existingVendor.uploadFoto);
+        updateData.uploadFoto = `/uploads/${files.uploadFoto[0].filename}`;
+      }
+
+      const vendor = await prisma.vendor.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPDATE',
+          entity: 'VENDOR',
+          entityId: vendor.id,
+          details: { namaVendor, jenisVendor },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json(vendor);
+    } catch (error) {
+      console.error('Update vendor error:', error);
+      res.status(500).json({
+        error: 'Failed to update vendor',
+        details: error.message,
+      });
+    }
+  }
+);
 
 app.delete('/api/vendor/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    const vendor = await prisma.vendor.findUnique({ 
+    const vendor = await prisma.vendor.findUnique({
       where: { id },
-      include: { dokumen: true }
+      include: { dokumen: true },
     });
 
     if (!vendor) {
@@ -3005,7 +3177,7 @@ app.get('/api/vendors/:vendorId/temuan', authenticateToken, async (req, res) => 
   try {
     const { vendorId } = req.params;
     const { status, tingkat } = req.query;
-    
+
     const temuan = await prisma.temuanVendor.findMany({
       where: {
         vendorId,
@@ -3017,51 +3189,52 @@ app.get('/api/vendors/:vendorId/temuan', authenticateToken, async (req, res) => 
           select: {
             kodePaket: true,
             namaPaket: true,
-          }
-        }
+          },
+        },
       },
-      orderBy: { tanggalTemuan: 'desc' }
+      orderBy: { tanggalTemuan: 'desc' },
     });
-    
+
     res.json({
       success: true,
       data: temuan,
       meta: {
         total: temuan.length,
-        baru: temuan.filter(t => t.status === 'BARU').length,
-        dalamPerbaikan: temuan.filter(t => t.status === 'DALAM_PERBAIKAN').length,
-        diperbaiki: temuan.filter(t => t.status === 'DIPERBAIKI').length,
-      }
+        baru: temuan.filter((t) => t.status === 'BARU').length,
+        dalamPerbaikan: temuan.filter((t) => t.status === 'DALAM_PERBAIKAN').length,
+        diperbaiki: temuan.filter((t) => t.status === 'DIPERBAIKI').length,
+      },
     });
   } catch (error) {
     console.error('Fetch vendor temuan error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch temuan',
-      details: error.message
+      details: error.message,
     });
   }
 });
 
 // Vendor respond to temuan
-app.post('/api/vendors/:vendorId/temuan/:temuanId/response', 
-  authenticateToken, 
-  upload.array('dokumen', 5), 
+app.post(
+  '/api/vendors/:vendorId/temuan/:temuanId/response',
+  authenticateToken,
+  upload.array('dokumen', 5),
   async (req, res) => {
     try {
       const { vendorId, temuanId } = req.params;
       const { tanggapan } = req.body;
       const files = req.files as Express.Multer.File[];
-      
+
       if (!tanggapan) {
         return res.status(400).json({
           success: false,
-          error: 'Tanggapan wajib diisi'
+          error: 'Tanggapan wajib diisi',
         });
       }
 
-      const dokumenPaths = files ? files.map(f => f.path) : [];
-      
+      const dokumenPaths = files ? files.map((f) => f.path) : [];
+
       const updatedTemuan = await prisma.temuanVendor.update({
         where: { id: temuanId },
         data: {
@@ -3069,36 +3242,37 @@ app.post('/api/vendors/:vendorId/temuan/:temuanId/response',
           dokumenPerbaikan: dokumenPaths,
           status: 'DALAM_PERBAIKAN',
           tanggalDitanggapi: new Date(),
-        }
+        },
       });
-      
+
       // Notify auditor (get from source)
       // TODO: Implement notification to original auditor
-      
+
       res.json({
         success: true,
         message: 'Tanggapan berhasil disimpan',
-        data: updatedTemuan
+        data: updatedTemuan,
       });
     } catch (error) {
       console.error('Respond temuan error:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to submit response'
+        error: 'Failed to submit response',
       });
     }
-});
+  }
+);
 
 // Auditor verify vendor response
 app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, res) => {
   try {
     const { temuanId } = req.params;
     const { status, catatan } = req.body; // status: 'DIPERBAIKI' | 'DITOLAK'
-    
+
     if (!status || !['DIPERBAIKI', 'DITOLAK'].includes(status)) {
       return res.status(400).json({
         success: false,
-        error: 'Status harus DIPERBAIKI atau DITOLAK'
+        error: 'Status harus DIPERBAIKI atau DITOLAK',
       });
     }
 
@@ -3107,9 +3281,9 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
       data: {
         status,
         tanggalSelesai: status === 'DIPERBAIKI' ? new Date() : null,
-      }
+      },
     });
-    
+
     // Update vendor warning if approved
     if (status === 'DIPERBAIKI') {
       const vendor = await prisma.vendor.findUnique({
@@ -3117,20 +3291,20 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
         include: {
           temuanVendor: {
             where: {
-              status: { in: ['BARU', 'DALAM_PERBAIKAN'] }
-            }
-          }
-        }
+              status: { in: ['BARU', 'DALAM_PERBAIKAN'] },
+            },
+          },
+        },
       });
-      
+
       await prisma.vendor.update({
         where: { id: temuan.vendorId },
         data: {
           warningTemuan: (vendor?.temuanVendor.length || 0) > 1,
-          jumlahTemuan: { decrement: 1 }
-        }
+          jumlahTemuan: { decrement: 1 },
+        },
       });
-      
+
       // Notify vendor
       await prisma.notification.create({
         data: {
@@ -3140,7 +3314,7 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
           message: catatan || `Temuan ${temuan.nomorTemuan} telah diselesaikan`,
           entityType: 'TEMUAN',
           entityId: temuanId,
-        }
+        },
       });
     } else {
       // Notify vendor (rejected)
@@ -3149,23 +3323,24 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
           vendorId: temuan.vendorId,
           type: 'TEMUAN_REJECTED',
           title: 'Perbaikan Ditolak',
-          message: catatan || `Perbaikan temuan ${temuan.nomorTemuan} ditolak. Silakan perbaiki kembali.`,
+          message:
+            catatan || `Perbaikan temuan ${temuan.nomorTemuan} ditolak. Silakan perbaiki kembali.`,
           entityType: 'TEMUAN',
           entityId: temuanId,
-        }
+        },
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Verifikasi berhasil',
-      data: temuan
+      data: temuan,
     });
   } catch (error) {
     console.error('Verify temuan error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to verify temuan'
+      error: 'Failed to verify temuan',
     });
   }
 });
@@ -3174,7 +3349,7 @@ app.post('/api/temuan-vendor/:temuanId/verify', authenticateToken, async (req, r
 app.get('/api/notifications', authenticateToken, async (req, res) => {
   try {
     const { userId, vendorId } = req.query;
-    
+
     const notifications = await prisma.notification.findMany({
       where: {
         ...(userId && { userId: userId as string }),
@@ -3183,16 +3358,16 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
-    
+
     res.json({
       success: true,
-      data: notifications
+      data: notifications,
     });
   } catch (error) {
     console.error('Fetch notifications error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch notifications'
+      error: 'Failed to fetch notifications',
     });
   }
 });
@@ -3201,30 +3376,30 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
 app.post('/api/notifications/:id/read', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await prisma.notification.update({
       where: { id },
       data: {
         isRead: true,
         readAt: new Date(),
-      }
+      },
     });
-    
+
     res.json({
       success: true,
-      message: 'Notification marked as read'
+      message: 'Notification marked as read',
     });
   } catch (error) {
     console.error('Mark read error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to mark as read'
+      error: 'Failed to mark as read',
     });
   }
 });
 
 // ============================================
-// PPK ROUTES 
+// PPK ROUTES
 // ============================================
 
 // GET all PPK
@@ -3244,15 +3419,15 @@ app.get('/api/ppk', authenticateToken, async (req, res) => {
 // GET single PPK
 app.get('/api/ppk/:id', authenticateToken, async (req, res) => {
   try {
-    const ppk = await prisma.pPK.findUnique({ 
+    const ppk = await prisma.pPK.findUnique({
       where: { id: req.params.id },
       include: { dokumen: true },
     });
-    
+
     if (!ppk) {
       return res.status(404).json({ error: 'PPK not found' });
     }
-    
+
     res.json(ppk);
   } catch (error) {
     console.error('Fetch PPK error:', error);
@@ -3263,12 +3438,12 @@ app.get('/api/ppk/:id', authenticateToken, async (req, res) => {
 app.get('/api/ppk/:id/dokumen', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const dokumen = await prisma.dokumen.findMany({
       where: { ppkId: id },
       orderBy: { uploadedAt: 'desc' },
     });
-    
+
     res.json(dokumen);
   } catch (error) {
     console.error('Fetch PPK dokumen error:', error);
@@ -3276,341 +3451,360 @@ app.get('/api/ppk/:id/dokumen', authenticateToken, async (req, res) => {
   }
 });
 
-
-app.post('/api/ppk', authenticateToken, upload.fields([
-  { name: 'kakRab', maxCount: 1 },
-  { name: 'spesifikasiTeknis', maxCount: 1 },
-  { name: 'kontrak', maxCount: 1 },
-  { name: 'timeline', maxCount: 1 },
-  { name: 'syaratKhusus', maxCount: 1 }
-]), async (req, res) => {
-  try {
-    const { 
-      namaLengkap, 
-      nip, 
-      jabatan, 
-      unitKerja, 
-      bidangKompetensi,
-      tingkatKompetensi,
-      pengalamanKompetensi,
-      nomorSertifikat,
-      jenisSertifikat,
-      masaBerlakuSertifikat,
-      pengalaman, 
-      status 
-    } = req.body;
-    
-    if (!namaLengkap || !nip || !jabatan) {
-      return res.status(400).json({ error: 'Missing required fields: namaLengkap, nip, jabatan' });
-    }
-
-    // Check for duplicate NIP
-    const existingPPK = await prisma.pPK.findUnique({ where: { nip } });
-    if (existingPPK) {
-      return res.status(400).json({ error: 'NIP already exists' });
-    }
-
-    // Build kompetensi object dari field individual
-    const kompetensiObj: any = {};
-    if (bidangKompetensi) kompetensiObj.bidang = bidangKompetensi;
-    if (tingkatKompetensi) kompetensiObj.tingkat = tingkatKompetensi;
-    if (pengalamanKompetensi) kompetensiObj.pengalaman = pengalamanKompetensi;
-
-    // Build sertifikasi object dari field individual
-    const sertifikasiObj: any = {};
-    if (nomorSertifikat) sertifikasiObj.nomor = nomorSertifikat;
-    if (jenisSertifikat) sertifikasiObj.jenis = jenisSertifikat;
-    if (masaBerlakuSertifikat) sertifikasiObj.masaBerlaku = masaBerlakuSertifikat;
-
-    // Create PPK
-    const ppk = await prisma.pPK.create({
-      data: {
+app.post(
+  '/api/ppk',
+  authenticateToken,
+  upload.fields([
+    { name: 'kakRab', maxCount: 1 },
+    { name: 'spesifikasiTeknis', maxCount: 1 },
+    { name: 'kontrak', maxCount: 1 },
+    { name: 'timeline', maxCount: 1 },
+    { name: 'syaratKhusus', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const {
         namaLengkap,
         nip,
         jabatan,
-        unitKerja: unitKerja || '',
-        kompetensi: kompetensiObj,
-        sertifikasi: sertifikasiObj,
-        pengalaman: pengalaman ? parseInt(pengalaman) : 0,
-        status: status || 'AKTIF',
-      },
-    });
+        unitKerja,
+        bidangKompetensi,
+        tingkatKompetensi,
+        pengalamanKompetensi,
+        nomorSertifikat,
+        jenisSertifikat,
+        masaBerlakuSertifikat,
+        pengalaman,
+        status,
+      } = req.body;
 
-    // Handle dokumen uploads
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    
-    if (files) {
-      const dokumenData = [];
-
-      if (files?.kakRab?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'KAK RAB',
-          jenisDokumen: 'KAK_RAB',
-          filePath: `/uploads/${files.kakRab[0].filename}`,
-          fileSize: files.kakRab[0].size,
-          mimeType: files.kakRab[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
+      if (!namaLengkap || !nip || !jabatan) {
+        return res
+          .status(400)
+          .json({ error: 'Missing required fields: namaLengkap, nip, jabatan' });
       }
 
-      if (files?.spesifikasiTeknis?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Spesifikasi Teknis',
-          jenisDokumen: 'SPESIFIKASI_TEKNIS',
-          filePath: `/uploads/${files.spesifikasiTeknis[0].filename}`,
-          fileSize: files.spesifikasiTeknis[0].size,
-          mimeType: files.spesifikasiTeknis[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      if (files?.kontrak?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Kontrak',
-          jenisDokumen: 'KONTRAK',
-          filePath: `/uploads/${files.kontrak[0].filename}`,
-          fileSize: files.kontrak[0].size,
-          mimeType: files.kontrak[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      if (files?.timeline?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Timeline',
-          jenisDokumen: 'TIMELINE',
-          filePath: `/uploads/${files.timeline[0].filename}`,
-          fileSize: files.timeline[0].size,
-          mimeType: files.timeline[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      if (files?.syaratKhusus?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Syarat Khusus',
-          jenisDokumen: 'SYARAT_KHUSUS',
-          filePath: `/uploads/${files.syaratKhusus[0].filename}`,
-          fileSize: files.syaratKhusus[0].size,
-          mimeType: files.syaratKhusus[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      // Bulk create dokumen
-      if (dokumenData.length > 0) {
-        await prisma.dokumen.createMany({
-          data: dokumenData,
-        });
-      }
-    }
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'CREATE',
-        entity: 'PPK',
-        entityId: ppk.id,
-        details: { namaLengkap, nip },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.json(ppk);
-  } catch (error) {
-    console.error('Create PPK error:', error);
-    res.status(500).json({ 
-      error: 'Failed to create PPK',
-      details: error.message 
-    });
-  }
-});
-
-app.put('/api/ppk/:id', authenticateToken, upload.fields([
-  { name: 'kakRab', maxCount: 1 },
-  { name: 'spesifikasiTeknis', maxCount: 1 },
-  { name: 'kontrak', maxCount: 1 },
-  { name: 'timeline', maxCount: 1 },
-  { name: 'syaratKhusus', maxCount: 1 }
-]), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { 
-      namaLengkap, 
-      nip, 
-      jabatan, 
-      unitKerja, 
-      bidangKompetensi,
-      tingkatKompetensi,
-      pengalamanKompetensi,
-      nomorSertifikat,
-      jenisSertifikat,
-      masaBerlakuSertifikat,
-      pengalaman, 
-      status 
-    } = req.body;
-
-    const existingPPK = await prisma.pPK.findUnique({ where: { id } });
-    if (!existingPPK) {
-      return res.status(404).json({ error: 'PPK not found' });
-    }
-
-    // Check for duplicate NIP (excluding current)
-    if (nip && nip !== existingPPK.nip) {
-      const duplicatePPK = await prisma.pPK.findUnique({ where: { nip } });
-      if (duplicatePPK) {
+      // Check for duplicate NIP
+      const existingPPK = await prisma.pPK.findUnique({ where: { nip } });
+      if (existingPPK) {
         return res.status(400).json({ error: 'NIP already exists' });
       }
-    }
 
-    // Build kompetensi object dari field individual
-    let kompetensiObj: any = undefined;
-    if (bidangKompetensi !== undefined || tingkatKompetensi !== undefined || pengalamanKompetensi !== undefined) {
-      kompetensiObj = {};
+      // Build kompetensi object dari field individual
+      const kompetensiObj: any = {};
       if (bidangKompetensi) kompetensiObj.bidang = bidangKompetensi;
       if (tingkatKompetensi) kompetensiObj.tingkat = tingkatKompetensi;
       if (pengalamanKompetensi) kompetensiObj.pengalaman = pengalamanKompetensi;
-    }
 
-    // Build sertifikasi object dari field individual
-    let sertifikasiObj: any = undefined;
-    if (nomorSertifikat !== undefined || jenisSertifikat !== undefined || masaBerlakuSertifikat !== undefined) {
-      sertifikasiObj = {};
+      // Build sertifikasi object dari field individual
+      const sertifikasiObj: any = {};
       if (nomorSertifikat) sertifikasiObj.nomor = nomorSertifikat;
       if (jenisSertifikat) sertifikasiObj.jenis = jenisSertifikat;
       if (masaBerlakuSertifikat) sertifikasiObj.masaBerlaku = masaBerlakuSertifikat;
+
+      // Create PPK
+      const ppk = await prisma.pPK.create({
+        data: {
+          namaLengkap,
+          nip,
+          jabatan,
+          unitKerja: unitKerja || '',
+          kompetensi: kompetensiObj,
+          sertifikasi: sertifikasiObj,
+          pengalaman: pengalaman ? parseInt(pengalaman) : 0,
+          status: status || 'AKTIF',
+        },
+      });
+
+      // Handle dokumen uploads
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+      if (files) {
+        const dokumenData = [];
+
+        if (files?.kakRab?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'KAK RAB',
+            jenisDokumen: 'KAK_RAB',
+            filePath: `/uploads/${files.kakRab[0].filename}`,
+            fileSize: files.kakRab[0].size,
+            mimeType: files.kakRab[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.spesifikasiTeknis?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Spesifikasi Teknis',
+            jenisDokumen: 'SPESIFIKASI_TEKNIS',
+            filePath: `/uploads/${files.spesifikasiTeknis[0].filename}`,
+            fileSize: files.spesifikasiTeknis[0].size,
+            mimeType: files.spesifikasiTeknis[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.kontrak?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Kontrak',
+            jenisDokumen: 'KONTRAK',
+            filePath: `/uploads/${files.kontrak[0].filename}`,
+            fileSize: files.kontrak[0].size,
+            mimeType: files.kontrak[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.timeline?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Timeline',
+            jenisDokumen: 'TIMELINE',
+            filePath: `/uploads/${files.timeline[0].filename}`,
+            fileSize: files.timeline[0].size,
+            mimeType: files.timeline[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.syaratKhusus?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Syarat Khusus',
+            jenisDokumen: 'SYARAT_KHUSUS',
+            filePath: `/uploads/${files.syaratKhusus[0].filename}`,
+            fileSize: files.syaratKhusus[0].size,
+            mimeType: files.syaratKhusus[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        // Bulk create dokumen
+        if (dokumenData.length > 0) {
+          await prisma.dokumen.createMany({
+            data: dokumenData,
+          });
+        }
+      }
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'CREATE',
+          entity: 'PPK',
+          entityId: ppk.id,
+          details: { namaLengkap, nip },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json(ppk);
+    } catch (error) {
+      console.error('Create PPK error:', error);
+      res.status(500).json({
+        error: 'Failed to create PPK',
+        details: error.message,
+      });
     }
-
-    const updateData: any = {
-      namaLengkap: namaLengkap || undefined,
-      nip: nip || undefined,
-      jabatan: jabatan || undefined,
-      unitKerja: unitKerja || undefined,
-      kompetensi: kompetensiObj,
-      sertifikasi: sertifikasiObj,
-      pengalaman: pengalaman ? parseInt(pengalaman) : undefined,
-      status: status || undefined,
-      updatedAt: new Date(),
-    };
-
-    // Update PPK data
-    const ppk = await prisma.pPK.update({
-      where: { id },
-      data: updateData,
-    });
-
-    // Handle dokumen uploads
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    
-    if (files) {
-      const dokumenData = [];
-
-      if (files?.kakRab?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'KAK RAB',
-          jenisDokumen: 'KAK_RAB',
-          filePath: `/uploads/${files.kakRab[0].filename}`,
-          fileSize: files.kakRab[0].size,
-          mimeType: files.kakRab[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      if (files?.spesifikasiTeknis?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Spesifikasi Teknis',
-          jenisDokumen: 'SPESIFIKASI_TEKNIS',
-          filePath: `/uploads/${files.spesifikasiTeknis[0].filename}`,
-          fileSize: files.spesifikasiTeknis[0].size,
-          mimeType: files.spesifikasiTeknis[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      if (files?.kontrak?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Kontrak',
-          jenisDokumen: 'KONTRAK',
-          filePath: `/uploads/${files.kontrak[0].filename}`,
-          fileSize: files.kontrak[0].size,
-          mimeType: files.kontrak[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      if (files?.timeline?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Timeline',
-          jenisDokumen: 'TIMELINE',
-          filePath: `/uploads/${files.timeline[0].filename}`,
-          fileSize: files.timeline[0].size,
-          mimeType: files.timeline[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      if (files?.syaratKhusus?.[0]) {
-        dokumenData.push({
-          namaDokumen: 'Syarat Khusus',
-          jenisDokumen: 'SYARAT_KHUSUS',
-          filePath: `/uploads/${files.syaratKhusus[0].filename}`,
-          fileSize: files.syaratKhusus[0].size,
-          mimeType: files.syaratKhusus[0].mimetype,
-          uploadedBy: req.user!.id,
-          ppkId: ppk.id,
-        });
-      }
-
-      // Create dokumen records
-      if (dokumenData.length > 0) {
-        await prisma.dokumen.createMany({
-          data: dokumenData,
-        });
-      }
-    }
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'UPDATE',
-        entity: 'PPK',
-        entityId: ppk.id,
-        details: { namaLengkap, nip },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.json(ppk);
-  } catch (error) {
-    console.error('Update PPK error:', error);
-    res.status(500).json({ 
-      error: 'Failed to update PPK',
-      details: error.message 
-    });
   }
-});
+);
+
+app.put(
+  '/api/ppk/:id',
+  authenticateToken,
+  upload.fields([
+    { name: 'kakRab', maxCount: 1 },
+    { name: 'spesifikasiTeknis', maxCount: 1 },
+    { name: 'kontrak', maxCount: 1 },
+    { name: 'timeline', maxCount: 1 },
+    { name: 'syaratKhusus', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        namaLengkap,
+        nip,
+        jabatan,
+        unitKerja,
+        bidangKompetensi,
+        tingkatKompetensi,
+        pengalamanKompetensi,
+        nomorSertifikat,
+        jenisSertifikat,
+        masaBerlakuSertifikat,
+        pengalaman,
+        status,
+      } = req.body;
+
+      const existingPPK = await prisma.pPK.findUnique({ where: { id } });
+      if (!existingPPK) {
+        return res.status(404).json({ error: 'PPK not found' });
+      }
+
+      // Check for duplicate NIP (excluding current)
+      if (nip && nip !== existingPPK.nip) {
+        const duplicatePPK = await prisma.pPK.findUnique({ where: { nip } });
+        if (duplicatePPK) {
+          return res.status(400).json({ error: 'NIP already exists' });
+        }
+      }
+
+      // Build kompetensi object dari field individual
+      let kompetensiObj: any = undefined;
+      if (
+        bidangKompetensi !== undefined ||
+        tingkatKompetensi !== undefined ||
+        pengalamanKompetensi !== undefined
+      ) {
+        kompetensiObj = {};
+        if (bidangKompetensi) kompetensiObj.bidang = bidangKompetensi;
+        if (tingkatKompetensi) kompetensiObj.tingkat = tingkatKompetensi;
+        if (pengalamanKompetensi) kompetensiObj.pengalaman = pengalamanKompetensi;
+      }
+
+      // Build sertifikasi object dari field individual
+      let sertifikasiObj: any = undefined;
+      if (
+        nomorSertifikat !== undefined ||
+        jenisSertifikat !== undefined ||
+        masaBerlakuSertifikat !== undefined
+      ) {
+        sertifikasiObj = {};
+        if (nomorSertifikat) sertifikasiObj.nomor = nomorSertifikat;
+        if (jenisSertifikat) sertifikasiObj.jenis = jenisSertifikat;
+        if (masaBerlakuSertifikat) sertifikasiObj.masaBerlaku = masaBerlakuSertifikat;
+      }
+
+      const updateData: any = {
+        namaLengkap: namaLengkap || undefined,
+        nip: nip || undefined,
+        jabatan: jabatan || undefined,
+        unitKerja: unitKerja || undefined,
+        kompetensi: kompetensiObj,
+        sertifikasi: sertifikasiObj,
+        pengalaman: pengalaman ? parseInt(pengalaman) : undefined,
+        status: status || undefined,
+        updatedAt: new Date(),
+      };
+
+      // Update PPK data
+      const ppk = await prisma.pPK.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Handle dokumen uploads
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+      if (files) {
+        const dokumenData = [];
+
+        if (files?.kakRab?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'KAK RAB',
+            jenisDokumen: 'KAK_RAB',
+            filePath: `/uploads/${files.kakRab[0].filename}`,
+            fileSize: files.kakRab[0].size,
+            mimeType: files.kakRab[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.spesifikasiTeknis?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Spesifikasi Teknis',
+            jenisDokumen: 'SPESIFIKASI_TEKNIS',
+            filePath: `/uploads/${files.spesifikasiTeknis[0].filename}`,
+            fileSize: files.spesifikasiTeknis[0].size,
+            mimeType: files.spesifikasiTeknis[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.kontrak?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Kontrak',
+            jenisDokumen: 'KONTRAK',
+            filePath: `/uploads/${files.kontrak[0].filename}`,
+            fileSize: files.kontrak[0].size,
+            mimeType: files.kontrak[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.timeline?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Timeline',
+            jenisDokumen: 'TIMELINE',
+            filePath: `/uploads/${files.timeline[0].filename}`,
+            fileSize: files.timeline[0].size,
+            mimeType: files.timeline[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        if (files?.syaratKhusus?.[0]) {
+          dokumenData.push({
+            namaDokumen: 'Syarat Khusus',
+            jenisDokumen: 'SYARAT_KHUSUS',
+            filePath: `/uploads/${files.syaratKhusus[0].filename}`,
+            fileSize: files.syaratKhusus[0].size,
+            mimeType: files.syaratKhusus[0].mimetype,
+            uploadedBy: req.user!.id,
+            ppkId: ppk.id,
+          });
+        }
+
+        // Create dokumen records
+        if (dokumenData.length > 0) {
+          await prisma.dokumen.createMany({
+            data: dokumenData,
+          });
+        }
+      }
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPDATE',
+          entity: 'PPK',
+          entityId: ppk.id,
+          details: { namaLengkap, nip },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json(ppk);
+    } catch (error) {
+      console.error('Update PPK error:', error);
+      res.status(500).json({
+        error: 'Failed to update PPK',
+        details: error.message,
+      });
+    }
+  }
+);
 
 // DELETE PPK
 app.delete('/api/ppk/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    const ppk = await prisma.pPK.findUnique({ 
+    const ppk = await prisma.pPK.findUnique({
       where: { id },
-      include: { dokumen: true }
+      include: { dokumen: true },
     });
 
     if (!ppk) {
@@ -3660,8 +3854,8 @@ app.delete('/api/ppk/:id', authenticateToken, authorizeRoles('admin'), async (re
 app.get('/api/ppk-data', authenticateToken, async (req, res) => {
   try {
     const ppkData = await prisma.pPKData.findMany({
-      include: { 
-        paket: { select: { kodePaket: true, namaPaket: true } } 
+      include: {
+        paket: { select: { kodePaket: true, namaPaket: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -3676,15 +3870,15 @@ app.get('/api/ppk-data/:id', authenticateToken, async (req, res) => {
   try {
     const ppkData = await prisma.pPKData.findUnique({
       where: { id: req.params.id },
-      include: { 
-        paket: { select: { kodePaket: true, namaPaket: true } } 
+      include: {
+        paket: { select: { kodePaket: true, namaPaket: true } },
       },
     });
-    
+
     if (!ppkData) {
       return res.status(404).json({ error: 'PPK data not found' });
     }
-    
+
     res.json(ppkData);
   } catch (error) {
     console.error('Fetch PPK data error:', error);
@@ -3778,10 +3972,30 @@ app.put('/api/ppk-data/:id', authenticateToken, async (req, res) => {
         noSertifikasi: noSertifikasi || undefined,
         jumlahAnggaran: jumlahAnggaran ? parseFloat(jumlahAnggaran) : undefined,
         lamaProyek: lamaProyek ? parseInt(lamaProyek) : undefined,
-        realisasiTermin1: realisasiTermin1 !== undefined ? (realisasiTermin1 ? parseFloat(realisasiTermin1) : null) : undefined,
-        realisasiTermin2: realisasiTermin2 !== undefined ? (realisasiTermin2 ? parseFloat(realisasiTermin2) : null) : undefined,
-        realisasiTermin3: realisasiTermin3 !== undefined ? (realisasiTermin3 ? parseFloat(realisasiTermin3) : null) : undefined,
-        realisasiTermin4: realisasiTermin4 !== undefined ? (realisasiTermin4 ? parseFloat(realisasiTermin4) : null) : undefined,
+        realisasiTermin1:
+          realisasiTermin1 !== undefined
+            ? realisasiTermin1
+              ? parseFloat(realisasiTermin1)
+              : null
+            : undefined,
+        realisasiTermin2:
+          realisasiTermin2 !== undefined
+            ? realisasiTermin2
+              ? parseFloat(realisasiTermin2)
+              : null
+            : undefined,
+        realisasiTermin3:
+          realisasiTermin3 !== undefined
+            ? realisasiTermin3
+              ? parseFloat(realisasiTermin3)
+              : null
+            : undefined,
+        realisasiTermin4:
+          realisasiTermin4 !== undefined
+            ? realisasiTermin4
+              ? parseFloat(realisasiTermin4)
+              : null
+            : undefined,
         PHO: PHO !== undefined ? (PHO ? new Date(PHO) : null) : undefined,
         FHO: FHO !== undefined ? (FHO ? new Date(FHO) : null) : undefined,
         updatedAt: new Date(),
@@ -3858,8 +4072,17 @@ app.get('/api/monitoring', authenticateToken, async (req, res) => {
 
 app.post('/api/monitoring', authenticateToken, async (req, res) => {
   try {
-    const { paketId, jenisMonitoring, periode, status, progress, issues, rekomendasi, tanggalMonitoring } = req.body;
-    
+    const {
+      paketId,
+      jenisMonitoring,
+      periode,
+      status,
+      progress,
+      issues,
+      rekomendasi,
+      tanggalMonitoring,
+    } = req.body;
+
     if (!jenisMonitoring || !periode) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -3901,7 +4124,16 @@ app.post('/api/monitoring', authenticateToken, async (req, res) => {
 app.put('/api/monitoring/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { paketId, jenisMonitoring, periode, status, progress, issues, rekomendasi, tanggalMonitoring } = req.body;
+    const {
+      paketId,
+      jenisMonitoring,
+      periode,
+      status,
+      progress,
+      issues,
+      rekomendasi,
+      tanggalMonitoring,
+    } = req.body;
 
     const existingMonitoring = await prisma.monitoring.findUnique({ where: { id } });
     if (!existingMonitoring) {
@@ -3911,13 +4143,13 @@ app.put('/api/monitoring/:id', authenticateToken, async (req, res) => {
     const monitoring = await prisma.monitoring.update({
       where: { id },
       data: {
-        paketId: paketId !== undefined ? (paketId || null) : undefined,
+        paketId: paketId !== undefined ? paketId || null : undefined,
         jenisMonitoring: jenisMonitoring || undefined,
         periode: periode || undefined,
         status: status || undefined,
         progress: progress !== undefined ? parseInt(progress) : undefined,
-        issues: issues !== undefined ? (issues || null) : undefined,
-        rekomendasi: rekomendasi !== undefined ? (rekomendasi || null) : undefined,
+        issues: issues !== undefined ? issues || null : undefined,
+        rekomendasi: rekomendasi !== undefined ? rekomendasi || null : undefined,
         tanggalMonitoring: tanggalMonitoring ? new Date(tanggalMonitoring) : undefined,
         monitoredBy: req.user!.id,
         updatedAt: new Date(),
@@ -3948,9 +4180,9 @@ app.delete('/api/monitoring/:id', authenticateToken, authorizeRoles('admin'), as
   try {
     const { id } = req.params;
 
-    const monitoring = await prisma.monitoring.findUnique({ 
+    const monitoring = await prisma.monitoring.findUnique({
       where: { id },
-      include: { dokumen: true }
+      include: { dokumen: true },
     });
 
     if (!monitoring) {
@@ -3995,9 +4227,9 @@ app.post('/api/pengaduan/masyarakat', async (req, res) => {
     const { nama, email, telepon, judul, isi, kategori } = req.body;
 
     if (!nama || !judul || !isi) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Nama, judul, dan isi pengaduan wajib diisi' 
+        message: 'Nama, judul, dan isi pengaduan wajib diisi',
       });
     }
 
@@ -4007,7 +4239,9 @@ app.post('/api/pengaduan/masyarakat', async (req, res) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      const random = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, '0');
       return `TKT-${year}${month}${day}${random}`;
     }
 
@@ -4022,7 +4256,7 @@ app.post('/api/pengaduan/masyarakat', async (req, res) => {
         telepon: telepon || null,
         kategori: kategori || 'UMUM',
         nomor_tiket: generateTicketNumber(),
-      }
+      },
     });
 
     res.json({
@@ -4031,14 +4265,14 @@ app.post('/api/pengaduan/masyarakat', async (req, res) => {
       data: {
         id: pengaduan.id,
         nomor_tiket: pengaduan.nomor_tiket,
-        tanggal: pengaduan.tanggal
-      }
+        tanggal: pengaduan.tanggal,
+      },
     });
   } catch (error) {
     console.error('Create pengaduan masyarakat error:', error);
     res.status(500).json({
       success: false,
-      message: 'Gagal mengirim pengaduan'
+      message: 'Gagal mengirim pengaduan',
     });
   }
 });
@@ -4050,7 +4284,7 @@ app.get('/api/pengaduan/masyarakat/tracking/:nomorTiket', async (req, res) => {
 
     const pengaduan = await prisma.pengaduan.findFirst({
       where: {
-        nomor_tiket: nomorTiket.toUpperCase()
+        nomor_tiket: nomorTiket.toUpperCase(),
       },
       select: {
         id: true,
@@ -4059,26 +4293,26 @@ app.get('/api/pengaduan/masyarakat/tracking/:nomorTiket', async (req, res) => {
         tanggal: true,
         nomor_tiket: true,
         createdAt: true,
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
 
     if (!pengaduan) {
       return res.status(404).json({
         success: false,
-        message: 'Nomor tiket tidak ditemukan'
+        message: 'Nomor tiket tidak ditemukan',
       });
     }
 
     res.json({
       success: true,
-      data: pengaduan
+      data: pengaduan,
     });
   } catch (error) {
     console.error('Tracking error:', error);
     res.status(500).json({
       success: false,
-      message: 'Gagal memeriksa status pengaduan'
+      message: 'Gagal memeriksa status pengaduan',
     });
   }
 });
@@ -4100,7 +4334,7 @@ app.get('/api/pengaduan', authenticateToken, async (req, res) => {
 app.post('/api/pengaduan', authenticateToken, async (req, res) => {
   try {
     const { judul, isi, status, pelapor } = req.body;
-    
+
     if (!judul || !isi) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -4163,7 +4397,9 @@ app.post('/api/pengaduan/masyarakat', async (req, res) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      const random = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, '0');
       return `TKT-${year}${month}${day}${random}`;
     }
 
@@ -4178,20 +4414,20 @@ app.post('/api/pengaduan/masyarakat', async (req, res) => {
         telepon,
         kategori,
         nomor_tiket: generateTicketNumber(),
-      }
+      },
     });
 
     res.json({
       success: true,
       message: 'Pengaduan berhasil dikirim',
       id: pengaduan.id,
-      nomor_tiket: pengaduan.nomor_tiket
+      nomor_tiket: pengaduan.nomor_tiket,
     });
   } catch (error) {
     console.error('Create pengaduan error:', error);
     res.status(500).json({
       success: false,
-      message: 'Gagal mengirim pengaduan'
+      message: 'Gagal mengirim pengaduan',
     });
   }
 });
@@ -4203,7 +4439,7 @@ app.get('/api/pengaduan/tracking/:nomorTiket', async (req, res) => {
 
     const pengaduan = await prisma.pengaduan.findFirst({
       where: {
-        nomor_tiket: nomorTiket.toUpperCase()
+        nomor_tiket: nomorTiket.toUpperCase(),
       },
       select: {
         id: true,
@@ -4211,14 +4447,14 @@ app.get('/api/pengaduan/tracking/:nomorTiket', async (req, res) => {
         status: true,
         tanggal: true,
         nomor_tiket: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     if (!pengaduan) {
       return res.status(404).json({
         success: false,
-        message: 'Nomor tiket tidak ditemukan'
+        message: 'Nomor tiket tidak ditemukan',
       });
     }
 
@@ -4227,7 +4463,7 @@ app.get('/api/pengaduan/tracking/:nomorTiket', async (req, res) => {
     console.error('Tracking error:', error);
     res.status(500).json({
       success: false,
-      message: 'Gagal memeriksa status pengaduan'
+      message: 'Gagal memeriksa status pengaduan',
     });
   }
 });
@@ -4236,7 +4472,7 @@ app.get('/api/pengaduan/tracking/:nomorTiket', async (req, res) => {
 app.post('/api/pengaduan', authenticateToken, async (req, res) => {
   try {
     const { judul, isi, status, pelapor } = req.body;
-    
+
     if (!judul || !isi) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -4426,7 +4662,9 @@ app.delete('/api/dokumen/:id', authenticateToken, async (req, res) => {
 
     // Check permissions: Only admin or uploader can delete
     if (req.user!.role.toLowerCase() !== 'admin' && req.user!.id !== dokumen.uploadedBy) {
-      return res.status(403).json({ error: 'Access denied. You can only delete your own documents.' });
+      return res
+        .status(403)
+        .json({ error: 'Access denied. You can only delete your own documents.' });
     }
 
     // Delete physical file
@@ -4534,13 +4772,13 @@ app.get('/api/dashboard/recent-activity', authenticateToken, async (req, res) =>
 app.get('/api/search', authenticateToken, async (req, res) => {
   try {
     const { q } = req.query;
-    
+
     if (!q || typeof q !== 'string') {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
     const searchTerm = q.trim();
-    
+
     if (searchTerm.length < 2) {
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
@@ -4638,7 +4876,7 @@ app.get('/api/laporan-analisis', authenticateToken, async (req, res) => {
 app.post('/api/laporan-analisis', authenticateToken, async (req, res) => {
   try {
     const { jenisLaporan, periode, data, kesimpulan, rekomendasi } = req.body;
-    
+
     if (!jenisLaporan || !periode) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -4674,36 +4912,41 @@ app.post('/api/laporan-analisis', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/laporan-analisis/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
-  try {
-    const { id } = req.params;
+app.delete(
+  '/api/laporan-analisis/:id',
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const laporan = await prisma.laporanAnalisis.findUnique({ where: { id } });
-    if (!laporan) {
-      return res.status(404).json({ error: 'Laporan analisis not found' });
+      const laporan = await prisma.laporanAnalisis.findUnique({ where: { id } });
+      if (!laporan) {
+        return res.status(404).json({ error: 'Laporan analisis not found' });
+      }
+
+      await prisma.laporanAnalisis.delete({ where: { id } });
+
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'DELETE',
+          entity: 'LAPORAN_ANALISIS',
+          entityId: id,
+          details: { jenisLaporan: laporan.jenisLaporan },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      });
+
+      res.json({ message: 'Laporan analisis deleted successfully' });
+    } catch (error) {
+      console.error('Delete laporan analisis error:', error);
+      res.status(500).json({ error: 'Failed to delete laporan analisis' });
     }
-
-    await prisma.laporanAnalisis.delete({ where: { id } });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: 'DELETE',
-        entity: 'LAPORAN_ANALISIS',
-        entityId: id,
-        details: { jenisLaporan: laporan.jenisLaporan },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-    });
-
-    res.json({ message: 'Laporan analisis deleted successfully' });
-  } catch (error) {
-    console.error('Delete laporan analisis error:', error);
-    res.status(500).json({ error: 'Failed to delete laporan analisis' });
   }
-});
+);
 
 // ============================================
 // ROLE & PERMISSION ROUTES
@@ -4724,7 +4967,7 @@ app.get('/api/roles', authenticateToken, authorizeRoles('admin'), async (req, re
 app.post('/api/roles', authenticateToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { name, description, permissions } = req.body;
-    
+
     if (!name) {
       return res.status(400).json({ error: 'Role name is required' });
     }
@@ -4772,9 +5015,9 @@ app.get('/api/permissions', authenticateToken, authorizeRoles('admin'), async (r
 // ============================================
 
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'SIP-KPBJ API is running', 
+  res.json({
+    status: 'OK',
+    message: 'SIP-KPBJ API is running',
     timestamp: new Date().toISOString(),
     environment: IS_PRODUCTION ? 'production' : 'development',
   });
@@ -4850,9 +5093,9 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     return res.status(401).json({ error: 'Token expired' });
   }
 
-  res.status(500).json({ 
+  res.status(500).json({
     error: IS_PRODUCTION ? 'Internal server error' : err.message,
-    ...(IS_PRODUCTION ? {} : { stack: err.stack })
+    ...(IS_PRODUCTION ? {} : { stack: err.stack }),
   });
 });
 
@@ -4868,29 +5111,31 @@ app.use('/api', (req, res) => {
 // ============================================
 if (IS_PRODUCTION) {
   // Serve static files dengan caching
-  app.use(express.static('dist', {
-    maxAge: '1y',
-    immutable: true,
-    setHeaders: (res, filePath) => {
-      // No cache untuk HTML files
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-cache');
-      }
-    }
-  }));
-  
+  app.use(
+    express.static('dist', {
+      maxAge: '1y',
+      immutable: true,
+      setHeaders: (res, filePath) => {
+        // No cache untuk HTML files
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
+    })
+  );
+
   // SPA Fallback - HARUS di paling bawah
   app.get('*', (req, res) => {
     // Skip jika bukan untuk main domain
     if (req.isPortalSubdomain) {
       return res.status(404).send('Not Found');
     }
-    
+
     // Skip jika request untuk uploads
     if (req.path.startsWith('/uploads')) {
       return res.status(404).send('Not Found');
     }
-    
+
     // Serve React app
     res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
   });
@@ -4905,8 +5150,12 @@ const server = app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`🚀 SIPAKAT BPJ API Server`);
   console.log('='.repeat(60));
   console.log(`📍 Environment: ${IS_PRODUCTION ? '🔴 PRODUCTION' : '🟢 DEVELOPMENT'}`);
-  console.log(`🌐 Main Domain: ${IS_PRODUCTION ? 'https://sipakat-bpj.com' : `http://localhost:${PORT}`}`);
-  console.log(`🌐 Portal Domain: ${IS_PRODUCTION ? 'https://portal.sipakat-bpj.com' : `http://portal.localhost:${PORT}`}`);
+  console.log(
+    `🌐 Main Domain: ${IS_PRODUCTION ? 'https://sipakat-bpj.com' : `http://localhost:${PORT}`}`
+  );
+  console.log(
+    `🌐 Portal Domain: ${IS_PRODUCTION ? 'https://portal.sipakat-bpj.com' : `http://portal.localhost:${PORT}`}`
+  );
   console.log(`🔌 API Endpoint: /api`);
   console.log(`📂 Upload directory: ${uploadsDir}`);
   console.log(`🔒 Security: Rate limiting ${IS_PRODUCTION ? '✅ ENABLED' : '⚠️  RELAXED'}`);
