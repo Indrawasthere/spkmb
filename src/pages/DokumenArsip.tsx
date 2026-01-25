@@ -1,26 +1,26 @@
-import { useState, useEffect } from "react";
-import PageBreadcrumb from "../components/common/PageBreadCrumb";
-import PageMeta from "../components/common/PageMeta";
-import Button from "../components/ui/button/Button";
-import Badge from "../components/ui/badge/Badge";
-import { Modal } from "../components/ui/modal";
-import { useModal } from "../hooks/useModal";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
-import Input from "../components/form/input/InputField";
-import Label from "../components/form/Label";
-import Select from "../components/form/Select";
-import { PlusIcon } from "../icons";
-import { DetailsModal } from "../components/common/DetailsModal";
-import { DataTable } from "../components/common/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
-import { StatsCard } from "../components/common/StatsCard";
-import { ActionButtons } from "../components/common/ActionButtons";
-import { useToast } from "../hooks/useToast"; 
+import { useState, useEffect } from 'react';
+import PageBreadcrumb from '../components/common/PageBreadCrumb';
+import PageMeta from '../components/common/PageMeta';
+import Button from '../components/ui/button/Button';
+import Badge from '../components/ui/badge/Badge';
+import { Modal } from '../components/ui/modal';
+import { useModal } from '../hooks/useModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
+import Input from '../components/form/input/InputField';
+import Label from '../components/form/Label';
+import Select from '../components/form/Select';
+import { PlusIcon } from '../icons';
+import { DetailsModal } from '../components/common/DetailsModal';
+import { DataTable } from '../components/common/DataTable';
+import { ColumnDef } from '@tanstack/react-table';
+import { StatsCard } from '../components/common/StatsCard';
+import { ActionButtons } from '../components/common/ActionButtons';
+import { useToast } from '../context/ToastContext';
 import {
   DocumentChartBarIcon as DocumentIcon,
   FolderIcon,
   ChartBarIcon,
-} from "@heroicons/react/24/outline";
+} from '@heroicons/react/24/outline';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -45,7 +45,7 @@ interface Paket {
   id: string;
   kodePaket: string;
   namaPaket: string;
-  status: "DRAFT" | "PUBLISHED" | "ON_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status: 'DRAFT' | 'PUBLISHED' | 'ON_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
 
 interface DokumenFormData {
@@ -69,16 +69,16 @@ export default function DokumenArsip() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedData, setSelectedData] = useState<Dokumen | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
-  const [filterJenis, setFilterJenis] = useState("all");
+  const [filterJenis, setFilterJenis] = useState('all');
   const [editingDokumen, setEditingDokumen] = useState<Dokumen | null>(null);
   const [deletingDokumen, setDeletingDokumen] = useState<Dokumen | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [formData, setFormData] = useState<DokumenFormData>({
-    namaDokumen: "",
-    jenisDokumen: "",
-    paketId: "",
+    namaDokumen: '',
+    jenisDokumen: '',
+    paketId: '',
     file: null,
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -93,7 +93,7 @@ export default function DokumenArsip() {
 
   useEffect(() => {
     const eligible = pakets.filter(
-      (paket) => paket.status === "ON_PROGRESS" || paket.status === "PUBLISHED"
+      (paket) => paket.status === 'ON_PROGRESS' || paket.status === 'PUBLISHED'
     );
     setEligiblePakets(eligible);
   }, [pakets]);
@@ -102,14 +102,14 @@ export default function DokumenArsip() {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/dokumen`, {
-        credentials: "include",
+        credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
         setDokumens(data);
       }
     } catch (err) {
-      error("Gagal memuat data dokumen");
+      error('Gagal memuat data dokumen');
     } finally {
       setIsLoading(false);
     }
@@ -118,47 +118,44 @@ export default function DokumenArsip() {
   const fetchPakets = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/paket`, {
-        credentials: "include",
+        credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
         setPakets(data);
       }
     } catch (err) {
-      error("Gagal memuat data paket");
+      error('Gagal memuat data paket');
     }
   };
 
   const onSubmit = async (data: DokumenFormData) => {
     setIsLoading(true);
-    loading("Mengupload dokumen...");
+    loading('Mengupload dokumen...');
 
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append("paketId", data.paketId);
-      formDataToSend.append("jenisDokumen", data.jenisDokumen);
-      formDataToSend.append("namaDokumen", data.namaDokumen);
-      if (data.file) formDataToSend.append("file", data.file);
+      formDataToSend.append('paketId', data.paketId);
+      formDataToSend.append('jenisDokumen', data.jenisDokumen);
+      formDataToSend.append('namaDokumen', data.namaDokumen);
+      if (data.file) formDataToSend.append('file', data.file);
 
       let response;
       if (editingDokumen && !data.file) {
-        response = await fetch(
-          `${API_BASE_URL}/api/dokumen/${editingDokumen.id}`,
-          {
-            method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              namaDokumen: data.namaDokumen,
-              jenisDokumen: data.jenisDokumen,
-              paketId: data.paketId,
-            }),
-          }
-        );
+        response = await fetch(`${API_BASE_URL}/api/dokumen/${editingDokumen.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            namaDokumen: data.namaDokumen,
+            jenisDokumen: data.jenisDokumen,
+            paketId: data.paketId,
+          }),
+        });
       } else {
         response = await fetch(`${API_BASE_URL}/api/dokumen/upload`, {
-          method: "POST",
-          credentials: "include",
+          method: 'POST',
+          credentials: 'include',
           body: formDataToSend,
         });
       }
@@ -168,13 +165,13 @@ export default function DokumenArsip() {
         closeModal();
         resetForm();
         setEditingDokumen(null);
-        success("Dokumen berhasil disimpan!");
+        success('Dokumen berhasil disimpan!');
       } else {
         const errorData = await response.json();
-        error("Gagal menyimpan dokumen: " + (errorData.error || "Unknown error"));
+        error('Gagal menyimpan dokumen: ' + (errorData.error || 'Unknown error'));
       }
     } catch (err) {
-      error("Terjadi kesalahan saat menyimpan dokumen");
+      error('Terjadi kesalahan saat menyimpan dokumen');
     } finally {
       setIsLoading(false);
     }
@@ -204,26 +201,23 @@ export default function DokumenArsip() {
   const confirmDelete = async () => {
     if (!deletingDokumen) return;
     setIsLoading(true);
-    loading("Menghapus dokumen...");
+    loading('Menghapus dokumen...');
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/dokumen/${deletingDokumen.id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/dokumen/${deletingDokumen.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
       if (response.ok) {
         await fetchDokumens();
-        success("Dokumen berhasil dihapus!");
+        success('Dokumen berhasil dihapus!');
       } else {
         const errorData = await response.json();
-        error("Gagal menghapus: " + (errorData.error || "Unknown error"));
+        error('Gagal menghapus: ' + (errorData.error || 'Unknown error'));
       }
     } catch (err) {
-      error("Terjadi kesalahan saat menghapus dokumen");
+      error('Terjadi kesalahan saat menghapus dokumen');
     } finally {
       setIsLoading(false);
       setIsConfirmModalOpen(false);
@@ -234,31 +228,31 @@ export default function DokumenArsip() {
   const handleSubmit = () => onSubmit(formData);
 
   const handleDownload = (dokumen: Dokumen) => {
-    window.open(`${API_BASE_URL}${dokumen.filePath}`, "_blank");
-    info("📄 Dokumen sedang diunduh...");
+    window.open(`${API_BASE_URL}${dokumen.filePath}`, '_blank');
+    info('Dokumen sedang diunduh...');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        setFormErrors({ ...formErrors, file: "Ukuran file maksimal 10MB" });
+        setFormErrors({ ...formErrors, file: 'Ukuran file maksimal 10MB' });
         return;
       }
 
       const allowedTypes = [
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "text/csv",
-        "image/jpeg",
-        "image/png",
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv',
+        'image/jpeg',
+        'image/png',
       ];
 
       if (!allowedTypes.includes(file.type)) {
-        setFormErrors({ ...formErrors, file: "Format file tidak didukung" });
+        setFormErrors({ ...formErrors, file: 'Format file tidak didukung' });
         return;
       }
 
@@ -269,9 +263,9 @@ export default function DokumenArsip() {
 
   const resetForm = () => {
     setFormData({
-      namaDokumen: "",
-      jenisDokumen: "",
-      paketId: "",
+      namaDokumen: '',
+      jenisDokumen: '',
+      paketId: '',
       file: null,
     });
     setFormErrors({});
@@ -281,7 +275,7 @@ export default function DokumenArsip() {
   const openAddModal = () => {
     if (eligiblePakets.length === 0) {
       error(
-        "Tidak ada paket yang eligible untuk upload dokumen. Pastikan status paket Pelaksanaan atau Dipublikasi."
+        'Tidak ada paket yang eligible untuk upload dokumen. Pastikan status paket Pelaksanaan atau Dipublikasi.'
       );
       return;
     }
@@ -291,33 +285,30 @@ export default function DokumenArsip() {
 
   const filteredDokumens = dokumens.filter((doc) => {
     const matchSearch =
-      searchQuery === "" ||
+      searchQuery === '' ||
       doc.namaDokumen.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.jenisDokumen.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchFilter =
-      filterJenis === "all" || doc.jenisDokumen === filterJenis;
+    const matchFilter = filterJenis === 'all' || doc.jenisDokumen === filterJenis;
     return matchSearch && matchFilter;
   });
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) return '0 Bytes';
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const columns: ColumnDef<Dokumen>[] = [
     {
-      accessorKey: "namaDokumen",
-      header: "Nama Dokumen",
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue() as string}</span>
-      ),
+      accessorKey: 'namaDokumen',
+      header: 'Nama Dokumen',
+      cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
     },
     {
-      accessorKey: "jenisDokumen",
-      header: "Jenis Dokumen",
+      accessorKey: 'jenisDokumen',
+      header: 'Jenis Dokumen',
       cell: ({ getValue }) => (
         <Badge size="sm" color="info">
           {getValue() as string}
@@ -325,10 +316,10 @@ export default function DokumenArsip() {
       ),
     },
     {
-      accessorKey: "paket",
-      header: "Paket",
+      accessorKey: 'paket',
+      header: 'Paket',
       cell: ({ getValue }) => {
-        const paket = getValue() as Dokumen["paket"];
+        const paket = getValue() as Dokumen['paket'];
         return (
           <div>
             <p className="font-medium">{paket?.kodePaket}</p>
@@ -338,20 +329,19 @@ export default function DokumenArsip() {
       },
     },
     {
-      accessorKey: "fileSize",
-      header: "Ukuran File",
+      accessorKey: 'fileSize',
+      header: 'Ukuran File',
       cell: ({ getValue }) => formatFileSize(getValue() as number),
     },
-    { accessorKey: "uploadedBy", header: "Upload By" },
+    { accessorKey: 'uploadedBy', header: 'Upload By' },
     {
-      accessorKey: "uploadedAt",
-      header: "Upload Date",
-      cell: ({ getValue }) =>
-        new Date(getValue() as string).toLocaleDateString("id-ID"),
+      accessorKey: 'uploadedAt',
+      header: 'Upload Date',
+      cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString('id-ID'),
     },
     {
-      id: "actions",
-      header: "Aksi",
+      id: 'actions',
+      header: 'Aksi',
       cell: ({ row }) => (
         <ActionButtons
           onView={() => handleViewDetails(row.original)}
@@ -364,10 +354,7 @@ export default function DokumenArsip() {
 
   return (
     <>
-      <PageMeta
-        title="SIPAKAT-PBJ - Dokumen & Arsip"
-        description="Kelola dokumen pengadaan"
-      />
+      <PageMeta title="SIPAKAT-PBJ - Dokumen & Arsip" description="Kelola dokumen pengadaan" />
       <PageBreadcrumb pageTitle="Dokumen & Arsip" />
 
       <div className="space-y-6">
@@ -375,8 +362,8 @@ export default function DokumenArsip() {
         {eligiblePakets.length === 0 && (
           <div className="rounded-lg border border-warning-300 bg-warning-50 p-4 dark:border-warning-800 dark:bg-warning-900/20">
             <p className="text-sm text-warning-800 dark:text-warning-200">
-              ⚠️ Tidak ada paket yang eligible untuk upload dokumen. Paket harus
-              berstatus "Pelaksanaan" atau "Dipublikasi".
+              ⚠️ Tidak ada paket yang eligible untuk upload dokumen. Paket harus berstatus
+              "Pelaksanaan" atau "Dipublikasi".
             </p>
           </div>
         )}
@@ -395,10 +382,8 @@ export default function DokumenArsip() {
             title="Total Ukuran"
             value={
               dokumens.length > 0
-                ? formatFileSize(
-                    dokumens.reduce((sum, d) => sum + d.fileSize, 0)
-                  )
-                : "0 Bytes"
+                ? formatFileSize(dokumens.reduce((sum, d) => sum + d.fileSize, 0))
+                : '0 Bytes'
             }
             subtitle="Total ukuran file yang diunggah"
             icon={ChartBarIcon}
@@ -454,9 +439,7 @@ export default function DokumenArsip() {
               <option value="Spesifikasi Teknis">Spesifikasi Teknis</option>
               <option value="JAMINAN_UANG_MUKA">Jaminan Uang Muka</option>
               <option value="JAMINAN_PELAKSANAAN">Jaminan Pelaksanaan</option>
-              <option value="JAMINAN_PEMELIHARAAN">
-                Jaminan Pemeliharaan
-              </option>
+              <option value="JAMINAN_PEMELIHARAAN">Jaminan Pemeliharaan</option>
             </select>
           </div>
         </div>
@@ -482,12 +465,12 @@ export default function DokumenArsip() {
         isOpen={isOpen}
         onClose={closeModal}
         size="2xl"
-        title={editingDokumen ? "Edit Dokumen" : "Upload Dokumen"}
+        title={editingDokumen ? 'Edit Dokumen' : 'Upload Dokumen'}
         showHeader={true}
       >
         <div className="flex flex-col max-h-[80vh] overflow-y-auto px-6 py-4 space-y-4">
           <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-            {editingDokumen ? "Edit Dokumen" : "Upload Dokumen"}
+            {editingDokumen ? 'Edit Dokumen' : 'Upload Dokumen'}
           </h3>
 
           <div className="space-y-4">
@@ -496,9 +479,7 @@ export default function DokumenArsip() {
               <Input
                 type="text"
                 value={formData.namaDokumen}
-                onChange={(e) =>
-                  setFormData({ ...formData, namaDokumen: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, namaDokumen: e.target.value })}
                 placeholder="Masukkan nama dokumen"
                 error={!!formErrors.namaDokumen}
                 hint={formErrors.namaDokumen}
@@ -509,27 +490,23 @@ export default function DokumenArsip() {
               <Label>Jenis Dokumen *</Label>
               <Select
                 options={[
-                  { value: "TOR", label: "TOR (Terms of Reference)" },
-                  { value: "HPS", label: "HPS (Harga Perkiraan Sendiri)" },
-                  { value: "Kontrak", label: "Kontrak" },
-                  { value: "BA Serah Terima", label: "BA Serah Terima" },
-                  { value: "Laporan Kemajuan", label: "Laporan Kemajuan" },
-                  { value: "KAK/RAB", label: "KAK/RAB" },
-                  { value: "Spesifikasi Teknis", label: "Spesifikasi Teknis" },
-                  { value: "JAMINAN_UANG_MUKA", label: "Jaminan Uang Muka" },
-                  { value: "JAMINAN_PELAKSANAAN", label: "Jaminan Pelaksanaan" },
-                  { value: "JAMINAN_PEMELIHARAAN", label: "Jaminan Pemeliharaan" },
+                  { value: 'TOR', label: 'TOR (Terms of Reference)' },
+                  { value: 'HPS', label: 'HPS (Harga Perkiraan Sendiri)' },
+                  { value: 'Kontrak', label: 'Kontrak' },
+                  { value: 'BA Serah Terima', label: 'BA Serah Terima' },
+                  { value: 'Laporan Kemajuan', label: 'Laporan Kemajuan' },
+                  { value: 'KAK/RAB', label: 'KAK/RAB' },
+                  { value: 'Spesifikasi Teknis', label: 'Spesifikasi Teknis' },
+                  { value: 'JAMINAN_UANG_MUKA', label: 'Jaminan Uang Muka' },
+                  { value: 'JAMINAN_PELAKSANAAN', label: 'Jaminan Pelaksanaan' },
+                  { value: 'JAMINAN_PEMELIHARAAN', label: 'Jaminan Pemeliharaan' },
                 ]}
                 placeholder="Pilih jenis dokumen"
-                onChange={(value) =>
-                  setFormData({ ...formData, jenisDokumen: value })
-                }
+                onChange={(value) => setFormData({ ...formData, jenisDokumen: value })}
                 value={formData.jenisDokumen}
               />
               {formErrors.jenisDokumen && (
-                <p className="mt-1 text-xs text-error-500">
-                  {formErrors.jenisDokumen}
-                </p>
+                <p className="mt-1 text-xs text-error-500">{formErrors.jenisDokumen}</p>
               )}
             </div>
 
@@ -541,31 +518,23 @@ export default function DokumenArsip() {
                   label: `${paket.kodePaket} - ${paket.namaPaket}`,
                 }))}
                 placeholder="Pilih paket"
-                onChange={(value) =>
-                  setFormData({ ...formData, paketId: value })
-                }
+                onChange={(value) => setFormData({ ...formData, paketId: value })}
                 value={formData.paketId}
               />
               {formErrors.paketId && (
-                <p className="mt-1 text-xs text-error-500">
-                  {formErrors.paketId}
-                </p>
+                <p className="mt-1 text-xs text-error-500">{formErrors.paketId}</p>
               )}
             </div>
 
             <div>
-              <Label>File Dokumen {!editingDokumen && "*"}</Label>
+              <Label>File Dokumen {!editingDokumen && '*'}</Label>
               <input
                 type="file"
                 onChange={handleFileChange}
                 accept=".pdf,.doc,.docx,.xlsx,.csv,.jpg,.jpeg,.png"
                 className="w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
               />
-              {formErrors.file && (
-                <p className="mt-1 text-xs text-error-500">
-                  {formErrors.file}
-                </p>
-              )}
+              {formErrors.file && <p className="mt-1 text-xs text-error-500">{formErrors.file}</p>}
               {editingDokumen && (
                 <p className="mt-1 text-xs text-warning-600">
                   Kosongkan jika tidak ingin mengubah file
@@ -575,25 +544,11 @@ export default function DokumenArsip() {
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={closeModal}
-              disabled={isLoading}
-            >
+            <Button size="sm" variant="outline" onClick={closeModal} disabled={isLoading}>
               Batal
             </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading
-                ? "Menyimpan..."
-                : editingDokumen
-                ? "Update"
-                : "Upload"}
+            <Button size="sm" variant="primary" onClick={handleSubmit} disabled={isLoading}>
+              {isLoading ? 'Menyimpan...' : editingDokumen ? 'Update' : 'Upload'}
             </Button>
           </div>
         </div>
@@ -617,11 +572,11 @@ export default function DokumenArsip() {
           title="Detail Dokumen"
           sections={[
             {
-              title: "Informasi Dokumen",
+              title: 'Informasi Dokumen',
               fields: [
-                { label: "Nama Dokumen", value: selectedData.namaDokumen },
+                { label: 'Nama Dokumen', value: selectedData.namaDokumen },
                 {
-                  label: "Jenis Dokumen",
+                  label: 'Jenis Dokumen',
                   value: (
                     <Badge size="sm" color="info">
                       {selectedData.jenisDokumen}
@@ -629,16 +584,14 @@ export default function DokumenArsip() {
                   ),
                 },
                 {
-                  label: "Ukuran File",
+                  label: 'Ukuran File',
                   value: formatFileSize(selectedData.fileSize),
                 },
-                { label: "Tipe MIME", value: selectedData.mimeType },
-                { label: "Upload Oleh", value: selectedData.uploadedBy },
+                { label: 'Tipe MIME', value: selectedData.mimeType },
+                { label: 'Upload Oleh', value: selectedData.uploadedBy },
                 {
-                  label: "Tanggal Upload",
-                  value: new Date(
-                    selectedData.uploadedAt
-                  ).toLocaleDateString("id-ID"),
+                  label: 'Tanggal Upload',
+                  value: new Date(selectedData.uploadedAt).toLocaleDateString('id-ID'),
                 },
               ],
             },

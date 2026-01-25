@@ -294,6 +294,7 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
         lastName: true,
         role: true,
         isActive: true,
+        password: false,
       },
     });
 
@@ -578,6 +579,7 @@ app.get('/api/auth/me', async (req, res) => {
         lastName: true,
         role: true,
         isActive: true,
+        password: false,
       },
     });
 
@@ -660,6 +662,7 @@ app.get('/api/users', authenticateToken, authorizeRoles('admin'), async (req, re
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        password: false,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -684,6 +687,7 @@ app.get('/api/users/:id', authenticateToken, authorizeRoles('admin'), async (req
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        password: false,
       },
     });
 
@@ -824,6 +828,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        password: false,
       },
     });
 
@@ -874,6 +879,7 @@ app.patch('/api/users/:id/status', authenticateToken, authorizeRoles('admin'), a
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        password: false,
       },
     });
 

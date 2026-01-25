@@ -1,17 +1,17 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import svgr from "vite-plugin-svgr";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import svgr from 'vite-plugin-svgr';
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: "/",
+  base: '/',
   plugins: [
     react(),
     svgr({
       svgrOptions: {
         icon: true,
-        exportType: "named",
-        namedExport: "ReactComponent",
+        exportType: 'named',
+        namedExport: 'ReactComponent',
       },
     }),
   ],
@@ -21,10 +21,10 @@ export default defineConfig({
     allowedHosts: [
       'localhost',
       'https://sipakat-bpj.com',
-    '127.0.0.1',
-    '.ngrok-free.app',
-    '.asse.devtunnels.ms', // biar semua URL ngrok boleh
-    '.loca.lt',        // biar LocalTunnel juga boleh
+      '127.0.0.1',
+      '.ngrok-free.app',
+      '.asse.devtunnels.ms',
+      '.loca.lt',
     ],
     proxy: {
       '/api': {
@@ -34,10 +34,10 @@ export default defineConfig({
         ws: true,
         xfwd: true,
         cookieDomainRewrite: {
-          '*': ''
+          '*': '',
         },
         pathRewrite: {
-          '^/api': '/api'
+          '^/api': '/api',
         },
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
@@ -48,18 +48,18 @@ export default defineConfig({
             console.log('Sending Request:', {
               method: req.method,
               url: req.url,
-              cookies: req.headers.cookie
+              cookies: req.headers.cookie,
             });
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
             console.log('Received Response:', {
               statusCode: proxyRes.statusCode,
               url: req.url,
-              cookies: proxyRes.headers['set-cookie']
+              cookies: proxyRes.headers['set-cookie'],
             });
           });
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 });

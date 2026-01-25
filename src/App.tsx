@@ -1,31 +1,31 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
-import SignIn from "./pages/AuthPages/SignIn";
-import SignUp from "./pages/AuthPages/SignUp";
-import NotFound from "./pages/OtherPage/NotFound";
-import UserProfiles from "./pages/UserProfiles";
-import AppLayout from "./layout/AppLayout";
-import { ScrollToTop } from "./components/common/ScrollToTop";
-import Home from "./pages/Dashboard/Home";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ToastProvider } from "./components/common/ToastProvider";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
+import SignIn from './pages/AuthPages/SignIn';
+import SignUp from './pages/AuthPages/SignUp';
+import NotFound from './pages/OtherPage/NotFound';
+import UserProfiles from './pages/UserProfiles';
+import AppLayout from './layout/AppLayout';
+import { ScrollToTop } from './components/common/ScrollToTop';
+import Home from './pages/Dashboard/Home';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 
-import ManajemenPaket from "./pages/ManajemenPaket";
-import DokumenArsip from "./pages/DokumenArsip";
-import BPKP from "./pages/BPKP";
-import PUPR from "./pages/PUPR";
-import Itwasda from "./pages/Itwasda";
-import KonsultanPerencanaan from "./pages/KonsultanPerencanaan";
-import KonsultanPengawas from "./pages/KonsultanPengawas";
-import Konstruksi from "./pages/Konstruksi";
-import PPKData from "./pages/PPKData";
-import KompetensiPPK from "./pages/KompetensiPPK";
-import MonitoringEvaluasi from "./pages/MonitoringEvaluasi";
-import LaporanAnalisis from "./pages/LaporanAnalisis";
-import PengaturanAkses from "./pages/PengaturanAkses";
-import BantuanPanduan from "./pages/BantuanPanduan";
-import EditProfile from "./pages/EditProfile";
-import AccountSettings from "./pages/AccountSettings";
-import Pengaduan from "./pages/Pengaduan";
+import ManajemenPaket from './pages/ManajemenPaket';
+import DokumenArsip from './pages/DokumenArsip';
+import BPKP from './pages/BPKP';
+import PUPR from './pages/PUPR';
+import Itwasda from './pages/Itwasda';
+import KonsultanPerencanaan from './pages/KonsultanPerencanaan';
+import KonsultanPengawas from './pages/KonsultanPengawas';
+import Konstruksi from './pages/Konstruksi';
+import PPKData from './pages/PPKData';
+import KompetensiPPK from './pages/KompetensiPPK';
+import MonitoringEvaluasi from './pages/MonitoringEvaluasi';
+import LaporanAnalisis from './pages/LaporanAnalisis';
+import PengaturanAkses from './pages/PengaturanAkses';
+import BantuanPanduan from './pages/BantuanPanduan';
+import EditProfile from './pages/EditProfile';
+import AccountSettings from './pages/AccountSettings';
+import Pengaduan from './pages/Pengaduan';
 import PortalPengaduan from './pages/PortalPengaduan';
 
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
@@ -35,50 +35,60 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
   return isAuthenticated ? children : <Navigate to="/signin" replace />;
 }
 
-
 export default function App() {
   return (
     <AuthProvider>
-      <ToastProvider />
-      <Router>
-        <ScrollToTop />
-        <Routes>
-          {/* Dashboard Layout */}
-          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route index element={<Home />} />
+      <ToastProvider>
+        <Router>
+          <ScrollToTop />
+          <Routes>
+            {/* Dashboard Layout */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Home />} />
 
-            {/* Sistem Pengawasan Routes */}
-            <Route path="manajemen-paket" element={<ManajemenPaket />} />
-            <Route path="dokumen-arsip" element={<DokumenArsip />} />
-            <Route path="pengawasan-audit/itwasda" element={<Itwasda />} />
-            <Route path="pengawasan-audit/bpkp" element={<BPKP />} />
-            <Route path="pengawasan-audit/pupr" element={<PUPR />} />
-            <Route path="vendor-penyedia/konsultan-perencanaan" element={<KonsultanPerencanaan />} />
-            <Route path="vendor-penyedia/konsultan-pengawas" element={<KonsultanPengawas />} />
-            <Route path="vendor-penyedia/konstruksi" element={<Konstruksi />} />
-            <Route path="pengawasan-audit/ppk" element={<PPKData />} />
-            <Route path="kompetensi-ppk" element={<KompetensiPPK />} />
-            <Route path="monitoring-evaluasi" element={<MonitoringEvaluasi />} />
-            <Route path="laporan-analisis" element={<LaporanAnalisis />} />
-            <Route path="pengaturan-akses" element={<PengaturanAkses />} />
-            <Route path="bantuan-panduan" element={<BantuanPanduan />} />
+              {/* Sistem Pengawasan Routes */}
+              <Route path="manajemen-paket" element={<ManajemenPaket />} />
+              <Route path="dokumen-arsip" element={<DokumenArsip />} />
+              <Route path="pengawasan-audit/itwasda" element={<Itwasda />} />
+              <Route path="pengawasan-audit/bpkp" element={<BPKP />} />
+              <Route path="pengawasan-audit/pupr" element={<PUPR />} />
+              <Route
+                path="vendor-penyedia/konsultan-perencanaan"
+                element={<KonsultanPerencanaan />}
+              />
+              <Route path="vendor-penyedia/konsultan-pengawas" element={<KonsultanPengawas />} />
+              <Route path="vendor-penyedia/konstruksi" element={<Konstruksi />} />
+              <Route path="pengawasan-audit/ppk" element={<PPKData />} />
+              <Route path="kompetensi-ppk" element={<KompetensiPPK />} />
+              <Route path="monitoring-evaluasi" element={<MonitoringEvaluasi />} />
+              <Route path="laporan-analisis" element={<LaporanAnalisis />} />
+              <Route path="pengaturan-akses" element={<PengaturanAkses />} />
+              <Route path="bantuan-panduan" element={<BantuanPanduan />} />
 
-            {/* Others Page */}
-            <Route path="profile" element={<UserProfiles />} />
-            <Route path="edit-profile" element={<EditProfile />} />
-            <Route path="account-settings" element={<AccountSettings />} />
-            <Route path="pengaduan" element={<Pengaduan />} />
-            <Route path="portal-pengaduan" element={<PortalPengaduan />} />
-          </Route>
+              {/* Others Page */}
+              <Route path="profile" element={<UserProfiles />} />
+              <Route path="edit-profile" element={<EditProfile />} />
+              <Route path="account-settings" element={<AccountSettings />} />
+              <Route path="pengaduan" element={<Pengaduan />} />
+              <Route path="portal-pengaduan" element={<PortalPengaduan />} />
+            </Route>
 
-          {/* Auth Layout */}
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
+            {/* Auth Layout */}
+            <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<SignUp />} />
 
-          {/* Fallback Route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
+            {/* Fallback Route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </ToastProvider>
     </AuthProvider>
   );
 }
